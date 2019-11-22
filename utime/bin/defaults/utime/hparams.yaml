@@ -1,0 +1,82 @@
+# This files stores hyperparameters for the building and fitting of a model
+# in the models library.
+#
+# Components prefixed __CB are for keras callback hyperparamer settings
+
+__CB_tb: &TB
+  # tensorboard
+  nickname: "tb"
+  class_name: "TensorBoard"
+  kwargs: {log_dir: './tensorboard'}
+
+__CB_es: &ES
+  # Early stopping
+  nickname: "es"
+  class_name: "EarlyStopping"
+  kwargs: {monitor: 'val_dice', min_delta: 0,
+           patience: 150, verbose: 1 , mode: 'max'}
+
+__CB_mcp_clean: &MCP_CLEAN
+  # Model checkpoint
+  nickname: "mcp_clean"
+  class_name: "ModelCheckPointClean"
+  kwargs: {filepath: "./model/@epoch_{epoch:02d}_val_dice_{val_dice:.5f}.h5",
+           monitor: "val_dice", save_best_only: true, save_weights_only: true,
+           verbose: 1, mode: "max"}
+
+__CB_timer: &TIMER
+  # Train timer callback
+  nickname: "timer"
+  class_name: "TrainTimer"
+  pass_logger: True
+  kwargs: {verbose: True}
+
+__CB_csv: &CSV
+  # keras.CSVLogger
+  nickname: "csv"
+  class_name: "CSVLogger"
+  kwargs: {filename: "logs/training.csv", separator: ",", append: true}
+
+datasets:
+  # Add dataset IDs --> relative paths here
+  dataset_1: dataset_configurations/dataset_1.yaml
+
+build:
+  #
+  # Hyperparameters passed to the Model.build and __init__ methods
+  #
+  model_class_name: "UTime"
+  activation: relu
+  depth: 4
+  pools: [10, 8, 6, 4]
+  kernel_size: 5
+  dilation: 2
+  transition_window: 1
+  complexity_factor: 2
+  n_classes: 5
+
+fit:
+  #
+  # Hyperparameters passed to the Trainer object
+  #
+  balanced_sampling: True
+  use_multiprocessing: False
+  margin: 17
+
+  # Loss function
+  loss: ["sparse_dice_loss"]
+  metrics: ["sparse_categorical_accuracy"]
+
+  # Optimization
+  batch_size: 12
+  n_epochs: 2000
+  verbose: true
+  optimizer: "Adam"
+  optimizer_kwargs: {lr: 5.0e-06, decay: 0.0, beta_1: 0.9, beta_2: 0.999, epsilon: 1.0e-8}
+
+  # Callbacks
+  callbacks: [*TB, *MCP_CLEAN, *TIMER, *CSV, *ES]
+
+__VERSION__: Null
+__BRANCH__: Null
+__COMMIT__: Null
