@@ -1,0 +1,54 @@
+train_data:
+  data_dir: Null
+  period_length_sec: 30
+  identifier: "TRAIN"
+
+val_data:
+  data_dir: Null
+  period_length_sec: 30
+  identifier: "VAL"
+
+test_data:
+  data_dir: Null
+  period_length_sec: 30
+  identifier: "TEST"
+
+# Re-sampling rate
+set_sample_rate: 128
+
+# List of channels to train on from the given dataset
+select_channels: ['EEG Fpz-Cz']    # Or ['C4-A1'], etc...
+
+# If the above channels cannot be found in a given PSG, try to load one of the
+# following sets instead (must be a list of lists each of length equal to
+# select_channels)
+alternative_select_channels: Null  # E.g. [['C3-A2'], ['O1-M2']], etc...
+
+sleep_stage_annotations:
+  # Keep blank to attempt to get auto
+  # Otherwise, manually specify as 'Sleep stage name': 'sleep stage integer':
+
+  # EXAMPLE ('Sleep stage W' will be mapped to integer 0:
+  Sleep stage W: 0
+  Sleep stage 1: 1
+  Sleep stage 2: 2
+  Sleep stage 3: 3
+  Sleep stage 4: 3
+  Sleep stage R: 4
+  Sleep stage ?: 5
+  Movement time: 5
+
+strip_func:
+  # Keep blank to apply no strip function
+  strip_func: drop_class
+  class_int: 5
+
+quality_control_func:
+  # Keep blank to apply no strip function
+  quality_control_func: "zero_out_noisy_epochs"
+  max_times_global_iqr: 20
+
+# Options: MinMaxScaler, StandardScaler, MaxAbsScaler,
+#          RobustScaler, QuantileTransformer, Null
+scaler: "RobustScaler"
+batch_wise_scaling: false
