@@ -254,23 +254,28 @@ class UTime(Model):
                             n_periods,
                             n_classes,
                             transition_window,
+                            activation,
                             name_prefix=""):
         cls = AveragePooling2D((data_per_period, 1),
                                name="{}average_pool".format(name_prefix))(in_)
-        out = Conv2D(filters=n_classes,
-                     kernel_size=(transition_window, 1),
-                     activation="softmax",
-                     kernel_regularizer=regularizers.l2(1e-5),
-                     padding="same",
-                     name="{}sequence_conv_out".format(name_prefix))(cls)
+        out1 = Conv2D(filters=n_classes,
+                      kernel_size=(transition_window, 1),
+                      activation=activation,
+                      padding="same",
+                      name="{}sequence_conv_out_1".format(name_prefix))(cls)
+        out2 = Conv2D(filters=n_classes,
+                      kernel_size=(transition_window, 1),
+                      activation="softmax",
+                      padding="same",
+                      name="{}sequence_conv_out_2".format(name_prefix))(out1)
         s = [-1, n_periods, input_dims//data_per_period, n_classes]
         if s[2] == 1:
             s.pop(2)  # Squeeze the dim
         out = Lambda(lambda x: tf.reshape(x, s),
-                     name="{}sequence_classification_reshaped".format(name_prefix))(out)
+                     name="{}sequence_classification_reshaped".format(name_prefix))(out2)
         return out
 
-    def init_model(self, inputs=None, create_seg_modeling=True, name_prefix=""):
+    def init_model(self, inputs=None, name_prefix=""):
         """
         Build the UNet model with the specified input image shape.
         """
@@ -320,16 +325,14 @@ class UTime(Model):
         """
         Sequence modeling
         """
-        if create_seg_modeling:
-            out = self.create_seq_modeling(in_=cls,
-                                           input_dims=self.input_dims,
-                                           data_per_period=self.data_per_prediction,
-                                           n_periods=self.n_periods,
-                                           n_classes=self.n_classes,
-                                           transition_window=self.transition_window,
-                                           name_prefix=name_prefix)
-        else:
-            out = cls
+        out = self.create_seq_modeling(in_=cls,
+                                       input_dims=self.input_dims,
+                                       data_per_period=self.data_per_prediction,
+                                       n_periods=self.n_periods,
+                                       n_classes=self.n_classes,
+                                       transition_window=self.transition_window,
+                                       activation=self.activation,
+                                       name_prefix=name_prefix)
 
         return [inputs], [out]
 
