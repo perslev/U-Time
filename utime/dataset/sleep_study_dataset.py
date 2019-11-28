@@ -53,7 +53,9 @@ class SleepStudyDataset(object):
 
         self.logger = logger or ScreenLogger()
         self.data_dir = os.path.abspath(data_dir)
-        self.pairs = []
+        self._id_to_study = None
+        self._study_identifiers = None
+        self._pairs = []
         self.period_length_sec = (period_length_sec or
                                   defaults.get_default_period_length(self.logger))
 
@@ -75,11 +77,12 @@ class SleepStudyDataset(object):
                 load=False,
                 logger=self.logger
             )
-            self.pairs.append(ss)
+            self._pairs.append(ss)
         if len(np.unique([p.identifier for p in self.pairs])) != len(self.pairs):
             raise RuntimeError("Two or more SleepStudy objects share the same"
                                " identifier, but all must be unique.")
         self._identifier = identifier or os.path.split(self.data_dir)[-1]
+        self.update_id_to_study_dict()
         if not no_log:
             self.log()
 
@@ -110,6 +113,40 @@ class SleepStudyDataset(object):
         """ Returns stored SleepStudy objects that do not have data loaded """
         return [s for s in self if not s.loaded]
 
+    @property
+    def pairs(self):
+        """ Return the stored SleepStudy pairs """
+        return self._pairs
+
+    @property
+    def id_to_study(self):
+        """ Returns the ID to SleepStudy object dictionary """
+        return self._id_to_study
+
+    @property
+    def study_identifiers(self):
+        """
+        Returns a list of SleepStudy identifier strings matching the currently
+        stored objects.
+        """
+        return self._study_identifiers
+
+    def add_pairs(self, pairs):
+        """
+        Add new SleepStudy pairs to this object.
+        This method also recomputes the self.id_to_study dictionary
+        """
+        self._pairs.extend(pairs)
+        self.update_id_to_study_dict()
+
+    def update_id_to_study_dict(self):
+        """
+        Recompute the self.id_to_study dictionary based on the currently stored
+        SleepStudy pairs.
+        """
+        self._id_to_study = {ss.identifier: ss for ss in self.pairs}
+        self._study_identifiers = list(self.id_to_study.keys())
+
     def __len__(self):
         """ Returns the number of stored SleepStudy objects """
         return len(self.pairs)
@@ -126,6 +163,11 @@ class SleepStudyDataset(object):
     def __str__(self):
         return "SleepStudyDataset(identifier: {}, N pairs: {}, N loaded: {})" \
                "".format(self.identifier, len(self), self.n_loaded)
+
+    def unload(self):
+        """ Invokes the unload method on all stored objects """
+        for ss in self:
+            ss.unload()
 
     def load(self, N=None, random_order=True):
         """
@@ -167,15 +209,10 @@ class SleepStudyDataset(object):
 
     def get_by_id(self, sleep_study_id):
         """ Return a stored SleepStudy object by its ID string """
-        matches = [s for s in self if s.identifier == sleep_study_id]
-        if len(matches) == 0:
+        if sleep_study_id not in self.id_to_study:
             raise ValueError("Did not find a match to id {}".format(sleep_study_id))
-        elif len(matches) > 1:
-            raise ValueError("Found multiple matches to identifier: {}: {}".format(
-                sleep_study_id, matches
-            ))
         else:
-            return matches[0]
+            return self.id_to_study[sleep_study_id]
 
     def get_all_periods(self, stack=False):
         """

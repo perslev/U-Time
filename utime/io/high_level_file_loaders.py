@@ -9,6 +9,7 @@ This file should contain only the following functions:
 """
 
 from utime.io.file_loaders import load_psg_file, load_hyp_file
+from utime.io.channels import ChannelMontageTuple
 from utime.io.extractors import (extract_psg_data,
                                  extract_header,
                                  extract_hyp_data)
@@ -22,12 +23,17 @@ def load_psg(psg_file_path, load_channels=None):
 
     Args:
         psg_file_path: Path to PSG file
-        load_channels: List of channels to read from the file, defaults to all
+        load_channels: A list of channel name strings or a ChannelMontageTuple
+                       storing ChannelMontage objects representing all channels
+                       to load.
 
     Returns:
         A numpy array of shape NxC (N samples, C channels)
         A dictionary of header information
     """
+    if load_channels and not isinstance(load_channels, ChannelMontageTuple):
+        load_channels = ChannelMontageTuple(load_channels)
+
     # Load the PSG file - depending on file type this may not load any actual
     # data from disk yet, but rather return an object representing the file,
     # from which actual data is loaded in 'extract_psg_data'.

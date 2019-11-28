@@ -130,9 +130,6 @@ _EXT_TO_LOADER = {
     "h5": load_h5
 }
 
-_ALLOWED_CHAN_SYNONYMS = (("A1", "M1"), ("A2", "M2"),
-                          ("ROC", "E2"), ("LOC", "E1"))
-
 
 def load_psg_file(file_path, load_channels=None):
     """

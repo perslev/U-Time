@@ -140,7 +140,8 @@ def run(args, gpu_mon):
     for data in datasets:
         for d in data:
             d.load(1 if args.just_one else None)
-            d.pairs = d.loaded_pairs   # remove the other pairs
+            d._pairs = d.loaded_pairs   # remove the other pairs
+            d.update_id_to_study_dict()
 
     # Get sequence generators for all datasets
     train_seq, val_seq = get_generators(datasets, hparams, no_val)
@@ -204,9 +205,8 @@ def entry_func(args=None):
     gpu_mon = GPUMonitor()
     try:
         run(args=args, gpu_mon=gpu_mon)
-    except Exception as e:
+    finally:
         gpu_mon.stop()
-        raise e
 
 
 if __name__ == "__main__":

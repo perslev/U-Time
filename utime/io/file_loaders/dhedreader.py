@@ -76,7 +76,15 @@ def edf_header(f):
     channels = range(h['n_channels'])
     h['label'] = [f.read(16).strip().decode("utf-8") for n in channels]
     h['transducer_type'] = [f.read(80).strip().decode("utf-8") for n in channels]
-    h['units'] = [f.read(8).strip().decode("utf-8") for n in channels]
+    units = []
+    for _ in channels:
+        b = f.read(8).strip()
+        try:
+            unit = b.decode('utf-8')
+        except UnicodeDecodeError:
+            unit = b.decode('latin-1')
+        units.append(unit)
+    h['units'] = units
     h['physical_min'] = np.asarray([float(f.read(8)) for n in channels])
     h['physical_max'] = np.asarray([float(f.read(8)) for n in channels])
     h['digital_min'] = np.asarray([float(f.read(8)) for n in channels])

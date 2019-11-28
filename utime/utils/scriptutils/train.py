@@ -133,7 +133,7 @@ def merge_train_and_val(train, val):
         A list of 1 SleepStudyDataset object storing data from both 'train'
         and 'val'
     """
-    train.pairs.extend(val.pairs)
+    train.add_pairs(val.pairs)
     train._identifier = train.identifier + "_" + val.identifier.split("/")[-1]
     train.log()
     return [train]

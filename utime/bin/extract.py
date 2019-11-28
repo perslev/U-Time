@@ -10,6 +10,9 @@ utime.io.high_level_file_loaders import load_psg
 from argparse import ArgumentParser
 from glob import glob
 import os
+from utime.errors import ChannelNotFoundError
+from utime.io.channels import ChannelMontageTuple
+from MultiPlanarUNet.logging import Logger
 
 
 def get_argparser():
@@ -28,7 +31,10 @@ def get_argparser():
                         help="Directory in which extracted files will be "
                              "stored")
     parser.add_argument("--channels", nargs="+", type=str,
-                        help="Comma sepparated list of channels to extract")
+                        help="Space-separated list of channels to extract")
+    parser.add_argument('--ignore_reference_channels', action='store_true',
+                        help='Match only against the channel names and not'
+                             ' their (potential) reference channel name.')
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name")
     return parser
@@ -38,11 +44,15 @@ def run(file_regex, out_dir, channels, overwrite):
     files = glob(file_regex)
     out_dir = os.path.abspath(out_dir)
     n_files = len(files)
-    print("Found {} files matching glob statement".format(n_files))
+    logger = Logger(out_dir,
+                    active_file='extraction_log',
+                    overwrite_existing=overwrite)
+    logger("Found {} files matching glob statement".format(n_files))
     if n_files == 0:
         return
-    print("Extracting channels {}".format(channels))
-    print("Saving .h5 files to '{}'".format(out_dir))
+    channels = ChannelMontageTuple(channels, relax=True)
+    logger("Extracting channels {}".format(channels))
+    logger("Saving .h5 files to '{}'".format(out_dir))
 
     from utime.io.high_level_file_loaders import load_psg
     from utime.utils.scriptutils import to_h5_file
@@ -52,12 +62,21 @@ def run(file_regex, out_dir, channels, overwrite):
         name = os.path.splitext(os.path.split(file_)[-1])[0]
         print("  {}/{} Processing {}".format(i+1, n_files, name),
               flush=True, end="\r")
-        out = os.path.join(out_dir, name + ".h5")
+        out_dir_subject = os.path.join(out_dir, name)
+        if not os.path.exists(out_dir_subject):
+            os.mkdir(out_dir_subject)
+        out = os.path.join(out_dir_subject, name + ".h5")
         if os.path.exists(out):
             if not overwrite:
                 continue
             os.remove(out)
-        psg, header = load_psg(file_, load_channels=channels)
+        try:
+            psg, header = load_psg(file_, load_channels=channels)
+        except ChannelNotFoundError as e:
+            logger("\n-----\nCHANNEL ERROR ON FILE {}".format(file_))
+            logger(str(e) + "\n-----")
+            os.rmdir(out_dir_subject)
+            continue
         to_h5_file(out, psg, **header)
 
 

@@ -261,11 +261,13 @@ class UTime(Model):
         out1 = Conv2D(filters=n_classes,
                       kernel_size=(transition_window, 1),
                       activation=activation,
+                      kernel_regularizer=regularizers.l2(1e-5),
                       padding="same",
                       name="{}sequence_conv_out_1".format(name_prefix))(cls)
         out2 = Conv2D(filters=n_classes,
                       kernel_size=(transition_window, 1),
                       activation="softmax",
+                      kernel_regularizer=regularizers.l2(1e-5),
                       padding="same",
                       name="{}sequence_conv_out_2".format(name_prefix))(out1)
         s = [-1, n_periods, input_dims//data_per_period, n_classes]
