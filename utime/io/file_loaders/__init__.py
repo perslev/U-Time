@@ -1,2 +1,2 @@
-from .psg_file_loaders import load_psg_file
-from .hyp_file_loaders import load_hyp_file
+from .psg_file_loaders import read_psg_header
+from .hyp_file_loaders import read_hyp_file

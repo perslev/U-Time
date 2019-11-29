@@ -5,36 +5,35 @@ from utime.utils import mne_no_log_context
 from utime.errors import ChannelNotFoundError
 
 
-def extract_from_mne_raw(edf_obj, **kwargs):
+def extract_from_edf(psg_file_path, exclude_channels, **kwargs):
     """
-    Function for loading the actual data from a RawEDF and Raw object.
-    Note: Channels have already been selected at RawEDF/Raw init time.
-    We simply return the data here.
+    TODO
 
     Returns:
         pandas.DataFrame
     """
-    with mne_no_log_context():  # prevents unimportant logging info
-        df = edf_obj.to_data_frame()
-    return df
+    from mne.io import read_raw_edf
+    with mne_no_log_context():
+        return read_raw_edf(psg_file_path, preload=False,
+                            stim_channel=None, verbose=False,
+                            exclude=exclude_channels).to_data_frame()
 
 
-def extract_from_wfdb(record_obj, **kwargs):
+def extract_from_wfdb(wfdb_file_path, include_channels, **kwargs):
     """
-    Function for loading the actual data from a WFDB Record object.
-    Note: Channels have already been selected at Record init time.
-    We simply return the data here.
+    TODO
 
     Returns:
         ndarray
     """
-    return record_obj.p_signal
+    from wfdb.io import rdrecord
+    return rdrecord(record_name=os.path.splitext(wfdb_file_path)[0],
+                    channels=include_channels).p_signal
 
 
-def load_dcsm_dict(chnl_dict, load_channels, data_dir, **kwargs):
+def extract_from_pickle(pickle_file_path, header, include_channels, **kwargs):
     """
-    Function for loading the actual data from a DCSMDict PSG object.
-    If specified, loads only channels from the 'load_channels' list
+    TODO
 
     Args:
         ...
@@ -45,63 +44,63 @@ def load_dcsm_dict(chnl_dict, load_channels, data_dir, **kwargs):
     Returns:
         pandas.DataFrame object
     """
-    if not load_channels:
-        load_channels = list(chnl_dict.keys())
+    import pickle
+    with open(pickle_file_path, "rb") as in_f:
+        chnl_dict = pickle.load(in_f)
+    data_dir = header['data_dir']
     data = {}
-    for chnl in load_channels:
+    for chnl in include_channels:
         path = os.path.join(data_dir, chnl_dict[chnl][0])
         dtype = os.path.splitext(path)[-1][1:]
-        try:
-            data[chnl] = np.fromfile(path, dtype=np.dtype(dtype))
-        except FileNotFoundError as e:
-            raise ChannelNotFoundError from e
+        data[chnl] = np.fromfile(path, dtype=np.dtype(dtype))
     return DataFrame(data=data)
 
 
-def load_h5_file(h5_file, load_channels, **kwargs):
+def extract_from_h5(h5_file_path, include_channels, **kwargs):
     """
-    Function for loading the actual data from a h5py.File PSG object.
-    If specified, loads only channels from the 'load_channels' list
+    TODO
 
     Returns:
         pandas.DataFrame object
     """
-    if not load_channels:
-        load_channels = list(h5_file["channels"].keys())
     data = {}
-    for chnl in load_channels:
-        try:
+    import h5py
+    with h5py.File(h5_file_path, "r") as h5_file:
+        for chnl in include_channels:
             data[chnl] = h5_file["channels"][chnl]
-        except KeyError as e:
-            raise ChannelNotFoundError from e
     return DataFrame(data=data)
 
 
-_OBJ_TYPE_TO_DATA_LOADER = {
-    "RawEDF": extract_from_mne_raw,
-    "Raw": extract_from_mne_raw,
-    "Record": extract_from_wfdb,
-    "DCSMDict": load_dcsm_dict,
-    "File": load_h5_file
+_EXT_TO_LOADER = {
+    "edf": extract_from_edf,
+    "mat": extract_from_wfdb,
+    "dat": extract_from_wfdb,
+    "pickle": extract_from_pickle,
+    "h5": extract_from_h5
 }
 
 
-def extract_psg_data(psg_obj, load_channels, **kwargs):
+def extract_psg_data(psg_file_path, header, include_channels, exclude_channels):
     """
     Extract final ndarray data from the PSG object
     """
-    loader = _OBJ_TYPE_TO_DATA_LOADER[type(psg_obj).__name__]
-    psg_data = loader(psg_obj, load_channels=load_channels, **kwargs)
+    fname = os.path.split(os.path.abspath(psg_file_path))[-1]
+    _, ext = os.path.splitext(fname)
+    load_func = _EXT_TO_LOADER[ext[1:]]
+    psg_data = load_func(psg_file_path,
+                         header=header,
+                         include_channels=include_channels,
+                         exclude_channels=exclude_channels)
 
     # Convert to float32 ndarray
     psg_data = np.array(psg_data, dtype=np.float32)
 
-    if load_channels and psg_data.shape[1] != len(load_channels):
+    if include_channels and psg_data.shape[1] != len(include_channels):
             raise ChannelNotFoundError("Unexpected channel loading error. "
                                        "Should have loaded {} channels ({}), "
                                        "but the PSG array has shape {}. There "
                                        "might be an error in the code. Please"
                                        " rais an issue on GitHub.".format(
-                len(load_channels), load_channels, psg_data.shape
+                len(include_channels), include_channels, psg_data.shape
             ))
     return psg_data

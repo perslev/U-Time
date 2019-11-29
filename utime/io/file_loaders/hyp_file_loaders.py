@@ -71,7 +71,7 @@ _EXT_TO_LOADER = {
 }
 
 
-def load_hyp_file(file_path):
+def read_hyp_file(file_path):
     """ Load a hypnogram from a file at 'file_path' """
     extension = os.path.splitext(file_path)[-1].lower()[1:]
     return _EXT_TO_LOADER[extension](file_path)

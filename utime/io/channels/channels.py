@@ -6,21 +6,36 @@ _ALLOWED_CHAN_SYNONYMS = {"A1": "M1",
                           "ROC": "E2",
                           "LOC": "E1"}
 
+_REPLACE_RULES = (("EEG", ""), ("(", ""), (")", ""))
+
 _ALLOWED_CHANNELS_LIST = read_layout("biosemi").names + \
                          list(_ALLOWED_CHAN_SYNONYMS.keys()) + \
                          list(_ALLOWED_CHAN_SYNONYMS.values())
-ALLOWED_CHANNELS = {c: None for c in _ALLOWED_CHANNELS_LIST}
+ALLOWED_CHANNELS = {c.upper(): None for c in _ALLOWED_CHANNELS_LIST}
+
+
+def _apply_replacement_rules(channel_str):
+    for replace, target in _REPLACE_RULES:
+        channel_str = channel_str.replace(replace, target)
+    return channel_str
+
+
+def preprocess_channel_string(channel_str):
+    channel_str = channel_str.upper()
+    channel_str = _apply_replacement_rules(channel_str)
+    channel_str = channel_str.strip(" -/")
+    channel_str = channel_str.replace(' ', "_")
+    return channel_str
 
 
 def get_standardized_channel_name(name):
-    name = name.upper().strip(" -/")
     if name in _ALLOWED_CHAN_SYNONYMS:
         name = _ALLOWED_CHAN_SYNONYMS[name]
     return name
 
 
 def split_by_valid_chan(channel_str):
-    channel_str_standard = channel_str.upper().strip(" -/")
+    channel_str_standard = preprocess_channel_string(channel_str)
     for chan in ALLOWED_CHANNELS:
         if channel_str_standard.startswith(chan.upper()):
             return channel_str_standard.replace(chan, "{}-".format(chan))
@@ -28,7 +43,8 @@ def split_by_valid_chan(channel_str):
 
 
 def infer_channels(channel_str, relax=False):
-    split_channel_str = channel_str.upper().strip(" -/").replace(" ", "-").split("-")
+    channel_str_standard = preprocess_channel_string(channel_str)
+    split_channel_str = channel_str_standard.split("-")
     for chan in split_channel_str:
         if not relax and chan not in ALLOWED_CHANNELS:
             new_chan = split_by_valid_chan(chan)

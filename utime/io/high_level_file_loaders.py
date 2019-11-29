@@ -8,12 +8,22 @@ This file should contain only the following functions:
 
 """
 
-from utime.io.file_loaders import load_psg_file, load_hyp_file
+from utime.io.file_loaders import read_psg_header, read_hyp_file
 from utime.io.channels import ChannelMontageTuple
-from utime.io.extractors import (extract_psg_data,
-                                 extract_header,
-                                 extract_hyp_data)
-import os
+from utime.io.extractors import extract_psg_data, extract_hyp_data
+
+
+def get_org_include_and_exclude_channel_montages(load_channels, header):
+    channels_in_file = ChannelMontageTuple(header['channel_names'], relax=True)
+    if load_channels:
+        if not isinstance(load_channels, ChannelMontageTuple):
+            load_channels = ChannelMontageTuple(load_channels, relax=True)
+        include_channels = channels_in_file.match(load_channels)
+    else:
+        include_channels = channels_in_file
+    exclude_channels = [c for c in channels_in_file if c not in include_channels]
+    exclude_channels = ChannelMontageTuple(exclude_channels, relax=True)
+    return channels_in_file, include_channels, exclude_channels
 
 
 def load_psg(psg_file_path, load_channels=None):
@@ -31,23 +41,21 @@ def load_psg(psg_file_path, load_channels=None):
         A numpy array of shape NxC (N samples, C channels)
         A dictionary of header information
     """
-    if load_channels and not isinstance(load_channels, ChannelMontageTuple):
-        load_channels = ChannelMontageTuple(load_channels)
+    # Load the header of a PSG file. Stores e.g. channel names and sample rates
+    header = read_psg_header(psg_file_path)
 
-    # Load the PSG file - depending on file type this may not load any actual
-    # data from disk yet, but rather return an object representing the file,
-    # from which actual data is loaded in 'extract_psg_data'.
-    psg_obj = load_psg_file(psg_file_path, load_channels=load_channels)
+    org_channels, include_channels, exclude_channels = \
+        get_org_include_and_exclude_channel_montages(
+            load_channels, header
+        )
+    header["channel_names"] = include_channels
+    header["n_channels"] = len(include_channels)
 
-    # Extract header information, most importantly the sample rate
-    header = extract_header(psg_obj)
-    if load_channels:
-        header['channel_names'] = load_channels
-
-    # Actually load data from disk, if not done already in load_psg_file
-    # Select the relevant channels if not done already in load_psg_file
-    psg_data = extract_psg_data(psg_obj, load_channels,
-                                data_dir=os.path.split(psg_file_path)[0])
+    # Actually load data from disk, if not done already in open_psg_file
+    # Select the relevant channels if not done already in open_psg_file
+    psg_data = extract_psg_data(psg_file_path, header,
+                                include_channels=include_channels.original_names,
+                                exclude_channels=exclude_channels.original_names)
     return psg_data, header
 
 
@@ -73,7 +81,7 @@ def load_hypnogram(file_path, period_length_sec, annotation_dict, sample_rate):
         annotation_dict unless None was passed for annotation_dict, in which
         case the returned annotation_dict will be the automatically inferred
     """
-    hyp_obj = load_hyp_file(file_path)
+    hyp_obj = read_hyp_file(file_path)
     hyp, annotation_dict = extract_hyp_data(hyp_obj=hyp_obj,
                                             period_length_sec=period_length_sec,
                                             annotation_dict=annotation_dict,
