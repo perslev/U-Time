@@ -1,6 +1,8 @@
+from utime.io.channels.channels import ChannelMontageTuple
 
 
-def to_h5_file(out_path, data, channel_names, sample_rate, date, **kwargs):
+def to_h5_file(out_path, data, channel_names, sample_rate, date,
+               compress=True, **kwargs):
     """
     Saves a NxC ndarray 'data' of PSG data (N samples, C channels) to a .h5
     archive at path 'out_path'. A list 'channel_names' of length C must be
@@ -37,9 +39,14 @@ def to_h5_file(out_path, data, channel_names, sample_rate, date, **kwargs):
     if isinstance(date, datetime):
         # Convert datetime object to TS naive unix time stamp
         date = time.mktime(date.timetuple())
-    with h5py.File(out_path) as out_f:
+    if isinstance(channel_names, ChannelMontageTuple):
+        channel_names = channel_names.original_names
+    with h5py.File(out_path, "w") as out_f:
         out_f.create_group("channels")
         for chan_dat, chan_name in zip(data, channel_names):
-            out_f["channels"][chan_name] = chan_dat
+            out_f['channels'].create_dataset(chan_name,
+                                             data=chan_dat,
+                                             chunks=True,
+                                             compression='gzip')
         out_f.attrs['date'] = date
         out_f.attrs["sample_rate"] = sample_rate

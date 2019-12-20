@@ -6,7 +6,8 @@ _ALLOWED_CHAN_SYNONYMS = {"A1": "M1",
                           "ROC": "E2",
                           "LOC": "E1"}
 
-_REPLACE_RULES = (("EEG", ""), ("(", ""), (")", ""))
+#_REPLACE_RULES = (("EEG", ""), ("(", ""), (")", ""))
+_REPLACE_RULES = (("(", ""), (")", ""))
 
 _ALLOWED_CHANNELS_LIST = read_layout("biosemi").names + \
                          list(_ALLOWED_CHAN_SYNONYMS.keys()) + \
@@ -35,6 +36,15 @@ def get_standardized_channel_name(name):
 
 
 def split_by_valid_chan(channel_str):
+    """
+
+
+    Args:
+        channel_str:
+
+    Returns:
+
+    """
     channel_str_standard = preprocess_channel_string(channel_str)
     for chan in ALLOWED_CHANNELS:
         if channel_str_standard.startswith(chan.upper()):
@@ -43,9 +53,19 @@ def split_by_valid_chan(channel_str):
 
 
 def infer_channels(channel_str, relax=False):
+    """
+
+
+    Args:
+        channel_str:
+        relax:
+
+    Returns:
+
+    """
     channel_str_standard = preprocess_channel_string(channel_str)
     split_channel_str = channel_str_standard.split("-")
-    for chan in split_channel_str:
+    for i, chan in enumerate(split_channel_str):
         if not relax and chan not in ALLOWED_CHANNELS:
             new_chan = split_by_valid_chan(chan)
             if new_chan != chan and len(split_channel_str) == 1:
@@ -58,7 +78,12 @@ def infer_channels(channel_str, relax=False):
     if len(split_channel_str) == 1:
         return split_channel_str[0], None
     elif len(split_channel_str) == 2:
-        return split_channel_str
+        if split_channel_str[1].isnumeric():
+            # A channel was named something like 'Pulse-1', which was wrongly
+            # interpreted as channel 'Pulse' minus reference channel '1'.
+            return "_".join(split_channel_str), None
+        else:
+            return split_channel_str
     else:
         raise ValueError("Could not infer 1 or 2 (chan + ref) channels from "
                          "channel string '{}'".format(channel_str))
@@ -66,6 +91,7 @@ def infer_channels(channel_str, relax=False):
 
 class ChannelMontage:
     def __init__(self, channel_name, relax=False):
+        self.relax = relax
         self._original_name = channel_name
         channel, reference = infer_channels(channel_name, relax)
         self._channel = get_standardized_channel_name(channel)
@@ -90,6 +116,13 @@ class ChannelMontage:
 
     def __repr__(self):
         return "ChannelMontage({}-{})".format(self.channel, self.reference)
+
+    def separate(self):
+        if not self.reference:
+            raise ValueError("Separating a channel with no reference channel "
+                             "is probably not correct.")
+        return (ChannelMontage(self.channel, self.relax),
+                ChannelMontage(self.reference, self.relax))
 
     def match_reference(self, channel_montage):
         return self.reference == channel_montage.reference
@@ -138,6 +171,10 @@ class ChannelMontageTuple(tuple):
     @property
     def original_names(self):
         return [montage.original_name for montage in self]
+
+    @property
+    def names(self):
+        return [str(montage) for montage in self]
 
     def _match(self, other_list, match_func_name):
         matches = []

@@ -235,9 +235,12 @@ class UTime(Model):
                               in_reshaped,
                               filters,
                               dense_classifier_activation,
-                              name_prefix=""):
+                              kernel_reg,
+                              name_prefix="",
+                              **kwargs):
         cls = Conv2D(filters=filters,
                      kernel_size=(1, 1),
+                     kernel_regularizer=kernel_reg,
                      activation=dense_classifier_activation,
                      name="{}dense_classifier_out".format(name_prefix))(in_)
         s = (self.n_periods * self.input_dims) - cls.get_shape().as_list()[1]
@@ -255,26 +258,21 @@ class UTime(Model):
                             n_classes,
                             transition_window,
                             activation,
+                            kernel_reg=None,
                             name_prefix=""):
         cls = AveragePooling2D((data_per_period, 1),
                                name="{}average_pool".format(name_prefix))(in_)
-        out1 = Conv2D(filters=n_classes,
-                      kernel_size=(transition_window, 1),
-                      activation=activation,
-                      kernel_regularizer=regularizers.l2(1e-5),
-                      padding="same",
-                      name="{}sequence_conv_out_1".format(name_prefix))(cls)
-        out2 = Conv2D(filters=n_classes,
-                      kernel_size=(transition_window, 1),
-                      activation="softmax",
-                      kernel_regularizer=regularizers.l2(1e-5),
-                      padding="same",
-                      name="{}sequence_conv_out_2".format(name_prefix))(out1)
+        out = Conv2D(filters=n_classes,
+                     kernel_size=(transition_window, 1),
+                     activation="softmax",
+                     kernel_regularizer=kernel_reg or regularizers.l2(1e-5),
+                     padding="same",
+                     name="{}sequence_conv_out".format(name_prefix))(cls)
         s = [-1, n_periods, input_dims//data_per_period, n_classes]
         if s[2] == 1:
             s.pop(2)  # Squeeze the dim
         out = Lambda(lambda x: tf.reshape(x, s),
-                     name="{}sequence_classification_reshaped".format(name_prefix))(out2)
+                     name="{}sequence_classification_reshaped".format(name_prefix))(out)
         return out
 
     def init_model(self, inputs=None, name_prefix=""):
@@ -322,6 +320,7 @@ class UTime(Model):
                                          in_reshaped=in_reshaped,
                                          filters=self.n_classes,
                                          dense_classifier_activation=self.dense_classifier_activation,
+                                         kernel_reg=kr,
                                          name_prefix=name_prefix)
 
         """
@@ -334,6 +333,7 @@ class UTime(Model):
                                        n_classes=self.n_classes,
                                        transition_window=self.transition_window,
                                        activation=self.activation,
+                                       kernel_reg=kr,
                                        name_prefix=name_prefix)
 
         return [inputs], [out]

@@ -3,6 +3,7 @@ A collection of lower level data loader for various data files such as EDF,
 EDF+, CSV, mat, numpy...
 """
 import os
+import warnings
 from utime.utils import mne_no_log_context
 from utime.io.extractors.header_extractors import extract_header
 
@@ -16,10 +17,18 @@ def read_edf_header(file_path, **kwargs):
         A dictionary of header information
     """
     from mne.io import read_raw_edf
-    with mne_no_log_context():
+    with mne_no_log_context(), warnings.catch_warnings(record=True) as warns:
+        warnings.filterwarnings('default')
         raw_edf = read_raw_edf(file_path, preload=False,
                                stim_channel=None, verbose=False)
-    return extract_header(raw_edf)
+    header = extract_header(raw_edf)
+    if warns:
+        duplicates = str(warns[0]).split("{")[-1].split("}")[0].replace("'", "").split(",")
+        duplicates = [d.strip() for d in duplicates]
+    else:
+        duplicates = []
+    header['duplicates'] = duplicates
+    return header
 
 
 def read_wfdb_header(file_path, **kwargs):

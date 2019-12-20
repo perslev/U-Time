@@ -6,7 +6,6 @@ training the model given a set of parameters and (non-initialized) callbacks.
 """
 
 from multiprocessing import cpu_count
-from tensorflow.keras import optimizers, losses
 from tensorflow.python.framework.errors_impl import (ResourceExhaustedError,
                                                      InternalError)
 from MultiPlanarUNet.callbacks import (init_callback_objects,
@@ -14,8 +13,10 @@ from MultiPlanarUNet.callbacks import (init_callback_objects,
 from MultiPlanarUNet.logging import ScreenLogger
 from MultiPlanarUNet.callbacks import (DividerLine, LearningCurve)
 from MultiPlanarUNet.utils import ensure_list_or_tuple
-from MultiPlanarUNet.train.utils import (ensure_sparse, init_losses,
-                                         init_metrics)
+from MultiPlanarUNet.train.utils import (ensure_sparse,
+                                         init_losses,
+                                         init_metrics,
+                                         init_optimizer)
 from utime.callbacks import Validation
 from utime.train.utils import get_steps
 
@@ -67,11 +68,9 @@ class Trainer(object):
         losses = ensure_list_or_tuple(loss)
         ensure_sparse(metrics+losses)
 
-        # Initialize optimizer
-        optimizer = optimizers.__dict__[optimizer]
-        optimizer = optimizer(**optimizer_kwargs)
-
-        # Initialize loss(es) and metrics from tf.keras or MultiPlanarUNet
+        # Initialize optimizer, loss(es) and metric(s) from tf.keras or
+        # MultiPlanarUNet
+        optimizer = init_optimizer(optimizer, self.logger, **optimizer_kwargs)
         losses = init_losses(losses, self.logger, **kwargs)
         metrics = init_metrics(metrics, self.logger, **kwargs)
 

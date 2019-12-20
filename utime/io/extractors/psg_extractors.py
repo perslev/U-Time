@@ -5,13 +5,14 @@ from utime.utils import mne_no_log_context
 from utime.errors import ChannelNotFoundError
 
 
-def extract_from_edf(psg_file_path, exclude_channels, **kwargs):
+def extract_from_edf(psg_file_path, exclude_channels, header, **kwargs):
     """
     TODO
 
     Returns:
         pandas.DataFrame
     """
+    exclude_channels += header.get('duplicates', [])  # TODO: Make sure dups are not in include set
     from mne.io import read_raw_edf
     with mne_no_log_context():
         return read_raw_edf(psg_file_path, preload=False,
@@ -67,7 +68,7 @@ def extract_from_h5(h5_file_path, include_channels, **kwargs):
     import h5py
     with h5py.File(h5_file_path, "r") as h5_file:
         for chnl in include_channels:
-            data[chnl] = h5_file["channels"][chnl]
+            data[chnl] = np.array(h5_file["channels"][chnl])
     return DataFrame(data=data)
 
 
@@ -96,11 +97,11 @@ def extract_psg_data(psg_file_path, header, include_channels, exclude_channels):
     psg_data = np.array(psg_data, dtype=np.float32)
 
     if include_channels and psg_data.shape[1] != len(include_channels):
-            raise ChannelNotFoundError("Unexpected channel loading error. "
-                                       "Should have loaded {} channels ({}), "
-                                       "but the PSG array has shape {}. There "
-                                       "might be an error in the code. Please"
-                                       " rais an issue on GitHub.".format(
-                len(include_channels), include_channels, psg_data.shape
-            ))
+        raise ChannelNotFoundError("Unexpected channel loading error. "
+                                   "Should have loaded {} channels ({}), "
+                                   "but the PSG array has shape {}. There "
+                                   "might be an error in the code. Please"
+                                   " rais an issue on GitHub.".format(
+            len(include_channels), include_channels, psg_data.shape
+        ))
     return psg_data

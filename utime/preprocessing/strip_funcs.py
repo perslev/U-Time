@@ -161,6 +161,25 @@ def strip_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     return psg, hyp
 
 
+def strip_psg_trailing(psg, hyp, sample_rate, check_lengths=False):
+    """
+    TODO
+
+    Args:
+        psg:
+        hyp:
+        sample_rate:
+        check_lengths:
+
+    Returns:
+
+    """
+    reminder = psg.shape[0] % sample_rate
+    if reminder:
+        psg = psg[:-reminder]
+    return psg, hyp
+
+
 def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     """
     Drops a sleep stage / class with integer value 'class_int' entirely. That
