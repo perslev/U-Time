@@ -106,6 +106,7 @@ class SleepStudy(object):
         self._select_channels = None
         self._alternative_select_channels = None
         self._channel_sampling_groups = None
+        self._load_time_channel_sampler = None
         self._strip_func = None
         self._quality_control_func = None
         self._class_to_period_dict = None
@@ -541,11 +542,7 @@ class SleepStudy(object):
         self._date = header["date"]
         self._org_sample_rate = header["sample_rate"]
         self._sample_rate = self._sample_rate or self._org_sample_rate
-
-        if not self.select_channels:
-            # OBS: Important to access private variable here as otherwise
-            # the method may reload in a loop (depending on self.loaded state)
-            self._select_channels = header["channel_names"]
+        self._select_channels = header["channel_names"]
 
         if self.hyp_file_path is not None and not self.no_hypnogram:
             self._hypnogram, \
@@ -560,8 +557,9 @@ class SleepStudy(object):
             # Strip the data using the passed function on the passed class
             self._psg, self._hypnogram = apply_strip_func(self,
                                                           self.org_sample_rate)
-        elif not assert_equal_length(self.psg,
-                                     self.hypnogram, self.org_sample_rate):
+        elif self.hypnogram and not assert_equal_length(self.psg,
+                                                        self.hypnogram,
+                                                        self.org_sample_rate):
             self.raise_err(RuntimeError, "PSG and hypnogram are not equally "
                                          "long in seconds. Consider setting a "
                                          "strip_function. "

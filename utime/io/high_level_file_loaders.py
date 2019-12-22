@@ -33,10 +33,12 @@ def get_org_include_exclude_channel_montages(load_channels, header,
         if not isinstance(load_channels, ChannelMontageTuple):
             load_channels = ChannelMontageTuple(load_channels, relax=True)
         if ignore_reference_channels:
-            include_channels = load_channels.match_ignore_reference(channels_in_file)
+            include_channels = load_channels.match_ignore_reference(channels_in_file,
+                                                                    take_target=True)
         else:
-            include_channels = load_channels.match(channels_in_file)
-        if check_num_channels and len(include_channels) != len(channels_in_file):
+            include_channels = load_channels.match(channels_in_file,
+                                                   take_target=True)
+        if check_num_channels and len(include_channels) != len(load_channels):
             raise ChannelNotFoundError(
                 "Could not load {} channels ({}) from file with {} channels "
                 "({}). Found the follow {} matches: {}".format(
@@ -48,7 +50,7 @@ def get_org_include_exclude_channel_montages(load_channels, header,
     else:
         include_channels = channels_in_file
     exclude_channels = [c for c in channels_in_file if c not in include_channels]
-    exclude_channels = ChannelMontageTuple(exclude_channels, relax=True)
+    exclude_channels = ChannelMontageTuple(exclude_channels)
     return channels_in_file, include_channels, exclude_channels
 
 

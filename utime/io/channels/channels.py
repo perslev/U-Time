@@ -90,6 +90,9 @@ def infer_channels(channel_str, relax=False):
 
 
 class ChannelMontage:
+    """
+    TODO
+    """
     def __init__(self, channel_name, relax=False):
         self.relax = relax
         self._original_name = channel_name
@@ -118,11 +121,11 @@ class ChannelMontage:
         return "ChannelMontage({}-{})".format(self.channel, self.reference)
 
     def separate(self):
+        chan = ChannelMontage(self.channel, self.relax)
         if not self.reference:
-            raise ValueError("Separating a channel with no reference channel "
-                             "is probably not correct.")
-        return (ChannelMontage(self.channel, self.relax),
-                ChannelMontage(self.reference, self.relax))
+            return chan, None
+        else:
+            return chan, ChannelMontage(self.reference, self.relax)
 
     def match_reference(self, channel_montage):
         return self.reference == channel_montage.reference
@@ -138,6 +141,8 @@ class ChannelMontage:
         return hash(str(self))
 
     def __eq__(self, channel_montage):
+        if channel_montage is None:
+            return False
         if not isinstance(channel_montage, ChannelMontage):
             raise TypeError("Cannot compare {} object '{}' to '{}' of "
                             "type {}".format(self.__class__.__name__,
@@ -147,7 +152,10 @@ class ChannelMontage:
 
 
 class ChannelMontageTuple(tuple):
-    def __new__(cls, channels, relax=False):
+    """
+    TODO
+    """
+    def __new__(cls, channels, relax=True):
         if not isinstance(channels, (list, tuple, ndarray)):
             raise TypeError("Input to {} should be a list, tuple or "
                             "ndarray of channel names or ChannelMontage "
@@ -176,17 +184,20 @@ class ChannelMontageTuple(tuple):
     def names(self):
         return [str(montage) for montage in self]
 
-    def _match(self, other_list, match_func_name):
+    def _match(self, other_list, match_func_name, take_target=False):
         matches = []
         for montage in self:
             for target in other_list:
                 if getattr(montage, match_func_name)(target):
-                    matches.append(montage)
+                    if take_target:
+                        matches.append(target)
+                    else:
+                        matches.append(montage)
                     break
         return ChannelMontageTuple(matches)
 
-    def match(self, channel_montage_set):
-        return self._match(channel_montage_set, 'match')
+    def match(self, channel_montage_set, take_target=False):
+        return self._match(channel_montage_set, 'match', take_target)
 
-    def match_ignore_reference(self, channel_montage_set):
-        return self._match(channel_montage_set, 'match_channel')
+    def match_ignore_reference(self, channel_montage_set, take_target=False):
+        return self._match(channel_montage_set, 'match_channel', take_target)
