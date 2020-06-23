@@ -100,6 +100,36 @@ def strip_psg_to_match_hyp_len(psg, hyp, sample_rate, check_lengths=False):
     return psg[:-idx_to_strip]
 
 
+def end_pad_psg(psg, hyp, sample_rate, pad_value=0.0,
+                check_lengths=False):
+    """
+    TODO
+
+    Args:
+        psg:
+        hyp:
+        sample_rate:
+        pad_value:
+        check_lengths:
+
+    Returns:
+
+    """
+    n_seconds = hyp.total_duration - psg.shape[0]/sample_rate
+    if n_seconds < 0:
+        raise StripError("Hypnogram should be longer than PSG for "
+                         "'end_pad_psg' to make sense. Got a negative time "
+                         "difference of {} seconds.".format(n_seconds))
+    n_inserts = int(n_seconds * sample_rate)
+    padded_psg = np.empty(shape=[psg.shape[0] + n_inserts, psg.shape[1]],
+                          dtype=psg.dtype)
+    padded_psg[:len(psg)] = psg
+    padded_psg[len(psg):] = pad_value
+    if check_lengths and not assert_equal_length(padded_psg, hyp, sample_rate):
+        raise _STRIP_ERR
+    return padded_psg
+
+
 def strip_hyp_to_match_psg_len(psg, hyp, sample_rate, check_lengths=False):
     """
     Strips a (longer) hypnogram to match the length of a (shorter) PSG
@@ -108,10 +138,6 @@ def strip_hyp_to_match_psg_len(psg, hyp, sample_rate, check_lengths=False):
     """
     psg_len_sec = psg.shape[0] / sample_rate
     diff_sec = hyp.end_time - psg_len_sec
-    if diff_sec % hyp.period_length_sec:
-        raise StripError("Time difference between PSG and HYP ({} sec) not"
-                         " evenly divisible by the period length "
-                         "({} sec)".format(diff_sec, hyp.period_length_sec))
     if diff_sec < 0:
         raise StripError("PSG length is larger than HYP length, "
                          "should not strip HYP. Consider the "
@@ -119,6 +145,10 @@ def strip_hyp_to_match_psg_len(psg, hyp, sample_rate, check_lengths=False):
                          "functions")
     elif diff_sec == 0:
         return hyp
+    if diff_sec % hyp.period_length_sec:
+        raise StripError("Time difference between PSG and HYP ({} sec) not"
+                         " evenly divisible by the period length "
+                         "({} sec)".format(diff_sec, hyp.period_length_sec))
     hyp.set_new_end_time(hyp.end_time - diff_sec)
     if check_lengths and not assert_equal_length(psg, hyp, sample_rate):
         raise _STRIP_ERR
@@ -141,7 +171,11 @@ def strip_to_match(psg, hyp, sample_rate, class_int=None, check_lengths=False):
         # Remove trailing class integer
         strip_class_trailing(None, hyp, class_int, None)
     if hyp.total_duration > psg_length_sec:
-        strip_hyp_to_match_psg_len(psg, hyp, sample_rate)
+        if not hyp.total_duration % 30 and psg.shape[0] % 30:
+            # PSG is shorter than hyp, and hyp seems to be 'correct', pad PSG
+            psg = end_pad_psg(psg, hyp, sample_rate, pad_value=0.0)
+        else:
+            strip_hyp_to_match_psg_len(psg, hyp, sample_rate)
     if psg_length_sec > hyp.total_duration:  # Note total_dur. is a property
         psg = strip_psg_to_match_hyp_len(psg, hyp, sample_rate)
     if check_lengths and not assert_equal_length(psg, hyp, sample_rate):
@@ -154,33 +188,39 @@ def strip_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     Remove class 'class_int' if leading or trailing, then strip to match
     See drop_class function for argument description.
     """
-    strip_class_leading_and_trailing(psg, hyp, class_int, sample_rate)
-    strip_to_match(psg, hyp, class_int=class_int, sample_rate=sample_rate)
-    if check_lengths and not assert_equal_length(psg, hyp, sample_rate):
-        raise _STRIP_ERR
-    return psg, hyp
+    raise DeprecationWarning("'strip_class' is no longer a supported strip "
+                             "function. Use 'drop_class' with "
+                             "strip_only=True instead.")
 
 
-def strip_psg_trailing(psg, hyp, sample_rate, check_lengths=False):
+def convert_to_strip_mask(bool_mask):
     """
-    TODO
+    Takes a bool list/array where True represents a class to drop; returns
+    a bool array where True entries that have a False entry to the left or
+    right in the list, and that are not in the first or last position in the
+    list, are replaced by False.
 
-    Args:
-        psg:
-        hyp:
-        sample_rate:
-        check_lengths:
+    In other words, this function removes any True entries that are not part of
+    a segment of potentially multiple Trues that connect to the first or last
+    entry in the list.
 
-    Returns:
-
+    In:  [True, True, False, True,  True,  False, True, True]
+    Out: [True, True, False, False, False, False, True, True]
+                               *      *
     """
-    reminder = psg.shape[0] % sample_rate
-    if reminder:
-        psg = psg[:-reminder]
-    return psg, hyp
+    def false_index(arr):
+        for i, elem in enumerate(arr):
+            if not elem:
+                return i
+    bool_mask = np.array(bool_mask, dtype=np.bool, copy=True)
+    forward_false_idx = false_index(bool_mask)
+    backward_false_idx = false_index(bool_mask[::-1])
+    bool_mask[forward_false_idx:-backward_false_idx] = False
+    return bool_mask
 
 
-def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
+def drop_class(psg, hyp, class_int, sample_rate,
+               strip_only=False, check_lengths=False):
     """
     Drops a sleep stage / class with integer value 'class_int' entirely. That
     is, all 'class_int' stages in SparseHypnogram 'hyp' will be dropped and
@@ -207,6 +247,10 @@ def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
         class_int:     Integer value corresponding to the class that should be
                        dropped.
         sample_rate:   The sample rate (Hz) of the passed PSG
+        strip_only:    If True, only drop segments for the class connected to
+                       the start or end of the hypnogram. I.e. if the class
+                       appears in the middle of the hypnogram flanked by other
+                       classes, it will not be removed.
         check_lengths: Assert that the PSG and HYP have equal length after the
                        stripping function has been applied. This is usually
                        wanted, but the default parameter is set to False for
@@ -220,6 +264,8 @@ def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     """
     # Get all stages of class 'class_int'
     mask = hyp.stages == class_int
+    if strip_only:
+        mask = convert_to_strip_mask(mask)
 
     # Get init and duration drop masks
     inits_to_drop = hyp.inits[mask]
@@ -230,8 +276,8 @@ def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     for i, (start_sec, dur) in enumerate(zip(inits_to_drop, durs_to_drop)):
         end_sec = start_sec + dur
         # Convert to indices
-        start_idx = start_sec * sample_rate
-        end_idx = end_sec * sample_rate
+        start_idx = int(start_sec * sample_rate)
+        end_idx = int(end_sec * sample_rate)
         inds_to_remove.extend(range(start_idx, min(len(psg), end_idx)))
 
     # Drop PSG on inds
@@ -248,15 +294,7 @@ def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     # Create new hypnogram (just to perform some value checks)
     hyp = SparseHypnogram(inits, durations, stages, hyp.period_length_sec)
 
-    # Make sure the PSG and HYP matches in length of seconds
-    psg_len_sec = psg.shape[0] / sample_rate
-
-    if psg_len_sec > hyp.total_duration:
-        # Remove PSG from the tail to match HYP
-        psg = strip_psg_to_match_hyp_len(psg, hyp, sample_rate)
-    elif psg_len_sec < hyp.total_duration:
-        # Shorten the hypnogram to match PSG
-        hyp = strip_hyp_to_match_psg_len(psg, hyp, sample_rate)
+    psg, hyp = strip_to_match(psg, hyp, sample_rate=sample_rate)
     if check_lengths and not assert_equal_length(psg, hyp, sample_rate):
         raise StripError("Unexpected difference between PSG length ({} "
                          "seconds) and HYP length ({} seconds). This error "
@@ -275,10 +313,10 @@ def assert_equal_length(psg, hyp, sample_rate):
 
 def apply_strip_func(sleep_study, sample_rate):
     """
-    Applies the strip function set on a SleepStudy object to itself.
+    Applies the strip function set on a SleepStudyBase object to itself.
 
     Args:
-        sleep_study: A SleepStudy object
+        sleep_study: A SleepStudyBase object
         sample_rate: The sample rate of the currently set PSG.
 
     Returns:

@@ -1,5 +1,5 @@
 import utime
-from MultiPlanarUNet.hyperparameters import YAMLHParams as _YAMLHParams
+from mpunet.hyperparameters import YAMLHParams as _YAMLHParams
 
 
 class YAMLHParams(_YAMLHParams):

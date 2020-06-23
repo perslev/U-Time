@@ -4,9 +4,10 @@ comparing to the ground truth labels.
 """
 
 import os
-from argparse import ArgumentParser
 import readline
 import numpy as np
+from argparse import ArgumentParser
+from utime import defaults
 
 readline.parse_and_bind('tab: complete')
 
@@ -29,7 +30,7 @@ def get_argparser():
                         help="A list of channels to use instead of those "
                              "specified in the parameter file.")
     parser.add_argument("--one_shot", action="store_true",
-                        help="Segment each SleepStudy in one forward-pass "
+                        help="Segment each SleepStudyBase in one forward-pass "
                              "instead of using (GPU memory-efficient) sliding "
                              "window predictions.")
     parser.add_argument("--overwrite", action='store_true',
@@ -99,7 +100,7 @@ def get_logger(out_dir, overwrite, name="evaluation_log"):
     The logger will throw an OSError if the dir exists and overwrite=False, in
     which case the script will terminate with a print message.
     """
-    from MultiPlanarUNet.logging import Logger
+    from mpunet.logging import Logger
     try:
         logger = Logger(out_dir,
                         active_file=name,
@@ -147,7 +148,7 @@ def get_and_load_model(project_dir, hparams, logger, weights_file_name=None):
     return model
 
 
-def get_and_load_one_shot_model(full_hypnogram, project_dir,
+def get_and_load_one_shot_model(n_periods, project_dir,
                                 hparams, logger, weights_file_name=None):
     """
     Returns a model according to 'hparams', potentially initialized from
@@ -169,7 +170,6 @@ def get_and_load_one_shot_model(full_hypnogram, project_dir,
         Initialized model
     """
     # Set seguence length
-    n_periods = full_hypnogram.shape[0]
     hparams["build"]["batch_shape"][1] = n_periods
     hparams["build"]["batch_shape"][0] = 1  # Should not matter
     return get_and_load_model(project_dir, hparams, logger, weights_file_name)
@@ -178,11 +178,11 @@ def get_and_load_one_shot_model(full_hypnogram, project_dir,
 def set_gpu_vis(num_GPUs, force_GPU, logger=None):
     """ Helper function that sets the GPU visibility as per parsed args """
     if force_GPU:
-        from MultiPlanarUNet.utils.system import set_gpu
+        from mpunet.utils.system import set_gpu
         set_gpu(force_GPU)
     else:
         # Automatically determine GPUs to use
-        from MultiPlanarUNet.utils.system import GPUMonitor
+        from mpunet.utils.system import GPUMonitor
         GPUMonitor(logger).await_and_set_free_GPU(num_GPUs, stop_after=True)
 
 
@@ -321,7 +321,7 @@ def predict_on(study_pair, seq, model=None, model_func=None, n_aug=None,
             # One-shot sequencing
             pred_func = _predict_sequence_one_shot
             # Get one-shot model of input shape matching the hypnogram
-            model = model_func(y)
+            model = model_func(study_pair.n_periods)
         else:
             # Batch-wise sequencing with pre-loaded model
             pred_func = _predict_sequence
@@ -355,14 +355,22 @@ def get_sequencer(dataset, hparams):
     Returns:
         A BatchSequence object
     """
-    dataset.pairs[0].load()  # get_batch_sequence needs 1 loaded study
+    # Wrap dataset in LazyQueue object
+    from utime.dataset.queue import LazyQueue
+    dataset_queue = LazyQueue(dataset)
+
+    from utime.sequences import get_batch_sequence
+    if 'fit' not in hparams:
+        hparams['fit'] = {}
     hparams["fit"]["balanced_sampling"] = False
-    seq = dataset.get_batch_sequence(random_batches=False,
-                                     augmenters=hparams.get("augmenters"),
-                                     **hparams["fit"],
-                                     no_log=True,
-                                     scale_assertion=False,  # needs >1 Studies
-                                     require_all_loaded=False)
+    seq = get_batch_sequence(dataset_queue=dataset_queue,
+                             random_batches=False,
+                             augmenters=hparams.get("augmenters"),
+                             n_classes=hparams.get_from_anywhere('n_classes'),
+                             **hparams["fit"],
+                             no_log=True,
+                             scale_assertion=False,
+                             require_all_loaded=False)
     seq.augmentation_enabled = False
     return seq
 
@@ -378,7 +386,7 @@ def run_pred_and_eval(dataset,
     Run evaluation (predict + evaluate) on a all entries of a SleepStudyDataset
 
     Args:
-        dataset:     A SleepStudyDataset object storing one or more SleepStudy
+        dataset:     A SleepStudyDataset object storing one or more SleepStudyBase
                      objects
         out_dir:     Path to directory that will store predictions and
                      evaluation results
@@ -388,7 +396,7 @@ def run_pred_and_eval(dataset,
         args:        Passed command-line arguments
         logger:      A Logger object
     """
-    from MultiPlanarUNet.evaluate.metrics import dice_all, class_wise_kappa
+    from mpunet.evaluate.metrics import dice_all, class_wise_kappa
     from utime.evaluation.dataframe import (get_eval_df, add_to_eval_df,
                                             log_eval_df, with_grand_mean_col)
     logger("\nPREDICTING ON {} STUDIES".format(len(dataset.pairs)))
@@ -401,7 +409,7 @@ def run_pred_and_eval(dataset,
     # Predict on all samples
     for i, sleep_study_pair in enumerate(dataset):
         id_ = sleep_study_pair.identifier
-        logger("[{}/{}] Predicting on SleepStudy: {}".format(i+1,
+        logger("[{}/{}] Predicting on SleepStudyBase: {}".format(i+1,
                                                              len(dataset),
                                                              id_))
 
@@ -482,7 +490,7 @@ def run(args):
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(project_dir + "/hparams.yaml", logger)
+    hparams = YAMLHParams(defaults.get_hparams_path(project_dir), logger)
     if args.channels:
         hparams["select_channels"] = args.channels
         hparams["channel_sampling_groups"] = None
@@ -493,9 +501,11 @@ def run(args):
     model, model_func = None, None
     if args.one_shot:
         # Model is initialized for each sleep study later
-        def model_func(full_hyp):
-            return get_and_load_one_shot_model(full_hyp, project_dir,
-                                               hparams, logger,
+        def model_func(n_periods):
+            return get_and_load_one_shot_model(n_periods,
+                                               project_dir,
+                                               hparams,
+                                               logger,
                                                args.weights_file_name)
     else:
         model = get_and_load_model(project_dir, hparams, logger,

@@ -1,6 +1,7 @@
 from .elastic_deformation import elastic_transform
 from utime.utils import exactly_one_specified
 import numpy as np
+from memory_profiler import profile
 
 
 class Augmenter(object):
@@ -200,10 +201,10 @@ class RegionalAugmenter(Augmenter):
         aug_length = len(insert)
         wrap = start+aug_length-x_length
         if wrap > 0:
-            x[start:start + aug_length - wrap] = insert[:-wrap]
-            x[0:wrap] = insert[-wrap:]
+            x[start:start + aug_length - wrap] = insert[:-wrap].copy()
+            x[0:wrap] = insert[-wrap:].copy()
         else:
-            x[start:start+aug_length] = insert
+            x[start:start+aug_length] = insert.copy()
         return x, y
 
     def augment_region(self, x, y, start=None, transform_func=None, insert=None):
@@ -371,6 +372,33 @@ class GlobalGaussianNoise(Augmenter):
         return x+noise, y
 
 
+class ChannelDropout(Augmenter):
+    """
+    Drops whole channels at random with a certain probability, replacing
+    all values in the channel with low sigma Gaussian noise.
+    """
+    def __init__(self, drop_fraction, apply_prob, aug_weight=0.5):
+        self.__name__ = "ChannelDropout"
+        super().__init__(self.drop_channels, apply_prob, aug_weight)
+        self.drop_fraction = drop_fraction
+
+    #@profile
+    def drop_channels(self, x, y):
+        n_channels = x.shape[-1]
+        n_to_drop = max(int(n_channels * self.drop_fraction), 1)
+        if n_to_drop >= n_channels:
+            raise ValueError("Attempted to drop {} channels from 'x' with {}"
+                             " channels (shape {})".format(n_to_drop,
+                                                           n_channels,
+                                                           x.shape))
+        to_drop = np.random.choice(np.arange(n_channels), n_to_drop, False)
+        for i in to_drop:
+            x[..., i] = np.random.normal(loc=np.mean(x[..., i]),
+                                         scale=0.01,
+                                         size=x.shape[:-1])
+        return x, y
+
+
 class RegionalGaussianNoise(RegionalAugmenter):
     """
     Applies position-wise gaussian noise to a sub-region of a signal
@@ -409,6 +437,7 @@ class RegionalErase(RegionalAugmenter):
                          max_region_fraction, apply_prob, log_sample,
                          aug_weight)
 
+    #@profile
     def random_erase(self, x, y):
         x, org_shape = self.reshape_x(x)
         x_length = len(x)

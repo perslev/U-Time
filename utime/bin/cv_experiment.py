@@ -1,7 +1,7 @@
 import os
 from multiprocessing import Process, Lock, Queue, Event
-from MultiPlanarUNet.utils import create_folders
-from MultiPlanarUNet.logging import Logger
+from mpunet.utils import create_folders
+from mpunet.logging import Logger
 from utime.bin.init import init_project_folder
 import argparse
 import subprocess
@@ -69,7 +69,7 @@ def _get_GPU_sets(free_gpus, num_GPUs):
 
 
 def get_free_GPU_sets(num_GPUs, ignore_gpus=None):
-    from MultiPlanarUNet.utils.system import GPUMonitor
+    from mpunet.utils.system import GPUMonitor
     mon = GPUMonitor()
     ignore_gpus = _gpu_string_to_list(ignore_gpus or "", as_int=True)
     free_gpus = sorted(mon.free_GPUs, key=lambda x: int(x))
@@ -262,12 +262,12 @@ def run(args):
 
     # Wait for PID?
     if args.wait_for:
-        from MultiPlanarUNet.utils import await_PIDs
+        from mpunet.utils import await_PIDs
         await_PIDs(args.wait_for)
 
     if args.run_on_split is not None:
-        cv_folders = [cv_folders[args.run_split]]
-        log_appendix = "_split{}".format(args.run_split)
+        cv_folders = [cv_folders[args.run_on_split]]
+        log_appendix = "_split{}".format(args.run_on_split)
     else:
         log_appendix = ""
 
@@ -277,7 +277,7 @@ def run(args):
 
     if args.force_GPU:
         # Only these GPUs fill be chosen from
-        from MultiPlanarUNet.utils import set_gpu
+        from mpunet.utils import set_gpu
         set_gpu(args.force_GPU)
     if args.num_GPUs:
         # Get GPU sets (up to the number of splits)

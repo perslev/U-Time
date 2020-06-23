@@ -7,6 +7,7 @@ This file should contain only the following functions:
 - load_hypnogram(file_path, *args, **kwargs) --> hypnogram, annotation dict
 """
 
+import h5py
 from utime.io.file_loaders import read_psg_header, read_hyp_file
 from utime.io.channels import ChannelMontageTuple
 from utime.io.extractors import extract_psg_data, extract_hyp_data
@@ -57,6 +58,7 @@ def get_org_include_exclude_channel_montages(load_channels, header,
 def load_psg(psg_file_path,
              load_channels=None,
              ignore_reference_channels=False,
+             load_time_channel_selector=None,
              check_num_channels=True):
     """
     Returns a numpy object of shape NxC (N data points, C channels) and a
@@ -68,6 +70,7 @@ def load_psg(psg_file_path,
                        storing ChannelMontage objects representing all channels
                        to load.
         ignore_reference_channels: TODO
+        load_time_channel_selector: TODO
         check_num_channels: TODO
 
     Returns:
@@ -77,6 +80,25 @@ def load_psg(psg_file_path,
     # Load the header of a PSG file. Stores e.g. channel names and sample rates
     header = read_psg_header(psg_file_path)
 
+    if load_time_channel_selector:
+        # Randomly select from the available channels in groups according to
+        # passed RandomChannelSelector object
+        if load_channels is not None:
+            raise ValueError("Must not specify the 'load_channels' argument "
+                             "with the 'load_time_channel_selector' argument.")
+        try:
+            load_channels = load_time_channel_selector.sample(
+                available_channels=header["channel_names"]
+            )
+        except ChannelNotFoundError as e:
+            raise ChannelNotFoundError(
+                "The PSG file at path {} is missing channels according to one "
+                "or multiple of the specified channel sampling groups. "
+                "File has: {}, requested groups: {}"
+                "".format(psg_file_path, header['channel_names'],
+                          load_time_channel_selector.channel_groups)) from e
+
+    # Work out which channels to include and exclude during loading
     org_channels, include_channels, exclude_channels = \
         get_org_include_exclude_channel_montages(
             load_channels=load_channels,
@@ -93,6 +115,31 @@ def load_psg(psg_file_path,
                                 include_channels=include_channels.original_names,
                                 exclude_channels=exclude_channels.original_names)
     return psg_data, header
+
+
+def open_h5_archive(h5_file_path,
+                    load_channels=None,
+                    ignore_reference_channels=False,
+                    check_num_channels=True,
+                    dataset_name='channels'):
+    # Open archive
+    h5_obj = h5py.File(h5_file_path, "r")
+
+    # Get channels in file
+    header = {'channel_names': list(h5_obj[dataset_name].keys())}
+
+    # Work out which channels to include and exclude during loading
+    org_channels, include_channels, _ = \
+        get_org_include_exclude_channel_montages(
+            load_channels=load_channels,
+            header=header,
+            ignore_reference_channels=ignore_reference_channels,
+            check_num_channels=check_num_channels
+        )
+    data = {}
+    for chnl in include_channels:
+        data[chnl] = h5_obj[dataset_name][chnl.original_name]
+    return h5_obj, data, include_channels
 
 
 def load_hypnogram(file_path, period_length_sec, annotation_dict, sample_rate):

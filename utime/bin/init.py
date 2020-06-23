@@ -2,8 +2,9 @@
 Script for initializing new U-Time project directories
 """
 
-from argparse import ArgumentParser
 import os
+from argparse import ArgumentParser
+from utime import defaults
 
 
 def get_parser():
@@ -75,6 +76,10 @@ def init_project_folder(default_folder, preset, out_folder, data_dir=None):
     """
     # Copy files and folders to project dir, set data_dirs if specified
     in_folder = os.path.join(default_folder, preset)
+    # Create hyperparameters folder
+    out_folder = defaults.get_hparams_dir(out_folder)
+    if not os.path.exists(out_folder):
+        os.mkdir(out_folder)
     for dir_path, dir_names, file_names in os.walk(in_folder):
         for dir_name in dir_names:
             p_ = os.path.join(out_folder, dir_name)

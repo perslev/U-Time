@@ -1,6 +1,9 @@
 from utime.sequences.base_sequence import _BaseSequence
-from MultiPlanarUNet.logging import ScreenLogger
+from mpunet.logging import ScreenLogger
+from utime.errors import NotLoadedError
 import numpy as np
+from memory_profiler import profile
+import gc
 
 
 def _assert_comparable_sequencers(sequencers):
@@ -36,16 +39,46 @@ class MultiSequence(_BaseSequence):
     Inherits from _BaseSequence and implements a select set of methods that
     are distributed across the members of this MultiSequence.
     """
-    def __init__(self, sequencers, batch_size, no_log=False, logger=None):
+    def __init__(self,
+                 sequencers,
+                 batch_size,
+                 dataset_sample_alpha=0.5,
+                 no_log=False, logger=None):
+        """
+        TODO
+
+        Args:
+            sequencers:
+            batch_size:
+            dataset_sample_alpha:  TODO
+            no_log:
+            logger:
+        """
         # Make sure we can use the 0th sequencer as a reference that respects
         # all the sequences (same batch-size, margins etc.)
         _assert_comparable_sequencers(sequencers)
         super().__init__()
         self.logger = logger or ScreenLogger()
         self.sequences = sequencers
+        self.sequences_idxs = np.arange(len(self.sequences))
         self.batch_size = batch_size
         self.margin = sequencers[0].margin
         self.n_classes = sequencers[0].n_classes
+
+        # Compute probability of sampling a given dataset
+        # We sample a given dataset either:
+        #   1) Uniformly across datasets, independent of dataset size
+        #   2) Unifomrly across records, sample a dataset according to size
+        # The 'dataset_sample_alpha' parameter in [0...1] determines the
+        # degree to which strategy 1 or 2 is followed:
+        #   P = (1-alpha)*P_r + alpha*P_d
+        # If alpha = 0, sample only according to
+        n_samples = [len(s.dataset_queue) for s in sequencers]
+        linear = n_samples / np.sum(n_samples)
+        uniform = np.array([1/len(self.sequences)] * len(self.sequences))
+        self.alpha = dataset_sample_alpha
+        self.sample_prob = (1-self.alpha) * linear + self.alpha * uniform
+
         for s in self.sequences:
             s.batch_size = 1
         if not no_log:
@@ -54,13 +87,31 @@ class MultiSequence(_BaseSequence):
     def log(self):
         self.logger("[*] MultiSequence initialized:\n"
                     "    --- Contains {} sequences\n"
-                    "    --- Sequence IDs: {}"
+                    "    --- Sequence IDs: {}\n"
+                    "    --- Sequence sample probs (alpha={}): {}\n"
+                    "    --- Batch shape: {}"
                     "".format(len(self.sequences),
-                              ", ".join(s.identifier for s in self.sequences)))
+                              ", ".join(s.identifier for s in self.sequences),
+                              self.alpha, self.sample_prob, self.batch_shape))
 
     def __len__(self):
         """ Returns the sum over stored sequencer lengths """
-        return np.sum([len(s) for s in self.sequences])
+        try:
+            return np.sum([len(s) for s in self.sequences])
+        except NotLoadedError:
+            # Queued data - return some reasonably large number, does not
+            # matter as batches are normally randomly selected anyway.
+            return 10000
+
+    def __call__(self):
+        import tensorflow as tf
+        def tensor_iter():
+            """ Iterates the dataset, converting numpy arrays to tensors """
+            while True:
+                x, y = self[0]  # index does not matter
+                yield (tf.convert_to_tensor(x),
+                       tf.convert_to_tensor(y))
+        return tensor_iter()
 
     @property
     def batch_shape(self):
@@ -92,18 +143,29 @@ class MultiSequence(_BaseSequence):
         stored sequencer objects.
         """
         self.seed()
-        seq_idxs = np.random.randint(0, len(self.sequences), self.batch_size)
-        X, y = [], []
-        for i, seq_idx in enumerate(seq_idxs):
-            seq = self.sequences[seq_idx]
+
+        # OBS: Do not choose from self.sequences! The Sequence typed object is
+        # array-like and numpy will attempt to iterate it to construct an
+        # ndarray. For H5 datasets that may lead to all data stored in a
+        # potentially very large dataset to be loaded every time this method is
+        # called.
+        sequences_idxs = np.random.choice(self.sequences_idxs,
+                                          size=self.batch_size,
+                                          replace=True,
+                                          p=self.sample_prob)
+
+        X, y = self.get_empty_batch_arrays()
+        for i, sequence_idx in enumerate(sequences_idxs):
+            sequence = self.sequences[sequence_idx]
             try:
                 # Currently only supported BalancedRandomBatchSequence
                 # and RandomBatchSequence. Try balanced first.
-                xx, yy = seq.get_class_balanced_random_period()
+                xx, yy = sequence.get_class_balanced_random_period()
             except AttributeError:
                 # Fall back to RandomBatchSequence
-                xx, yy = seq.get_random_period()
-            X.append(xx), y.append(yy)
+                xx, yy = sequence.get_random_period()
+            X[i] = xx
+            y[i] = np.expand_dims(np.asarray(yy).ravel(), -1)
         return self.sequences[0].process_batch(X, y)
 
 

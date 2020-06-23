@@ -4,12 +4,14 @@ randomly splitting the dataset into partitions and storing links to the
 relevant files in sub-folders for each split.
 """
 
-from glob import glob
 import os
 import numpy as np
 import random
-from MultiPlanarUNet.utils import create_folders
 import argparse
+import re
+import pandas as pd
+from glob import glob
+from mpunet.utils import create_folders
 
 
 # These values are normally overwritten from the command-line, see argparser
@@ -50,15 +52,28 @@ def get_argparser():
                              " N=100 and val_frac=0.20, each split will have "
                              "N_train=60, N_val=20 and N_test=20 "
                              "subjects/records")
+    parser.add_argument("--max_validation_subjects", type=int, required=False,
+                        help="(Optional) specify a maximum number of subjects"
+                             " to use for validation. That is, only up to "
+                             "'max_validation_subjects' number of subjects "
+                             "will be used, even if 'validation_fraction' "
+                             "dictates a larger number should be used.")
     parser.add_argument("--test_fraction", type=float,
                         default=_DEFAULT_TEST_FRACTION,
                         help="Fraction of data size used for test if CV=1.")
-    parser.add_argument("--common_prefix_length", type=int, required=False,
-                        help="If specified, files of identical naming in the"
-                             " first 'common_prefix_length' letters will be"
-                             " considered a single entry. This is useful for"
-                             " splitting multiple studies on the same subject"
-                             " as together.")
+    parser.add_argument("--max_test_subjects", type=int, required=False,
+                        help="(Optional) specify a maximum number of subjects"
+                             " to use for testing. That is, only up to "
+                             "'max_test_subjects' number of subjects "
+                             "will be used, even if 'test_fraction' "
+                             "dictates a larger number should be used.")
+    parser.add_argument("--subject_matching_regex", type=str, required=False,
+                        help="If specified, files of identical sub-strings as "
+                             "matched by the regular expression "
+                             "'subject_matching_regex' will be considered a "
+                             "single entry when splitting. This is useful for "
+                             "splitting multiple studies on the same subject "
+                             "as together.")
     return parser
 
 
@@ -98,6 +113,7 @@ def add_files(file_paths, out_folder, link_func=os.symlink):
                     Typically one of os.symlink, os.copy or
                     _add_to_file_list_fallback.
     """
+    n_records = 0
     for file_path in file_paths:
         if not isinstance(file_path, (list, tuple, np.ndarray)):
             file_path = (file_path,)
@@ -105,6 +121,8 @@ def add_files(file_paths, out_folder, link_func=os.symlink):
             file_name = os.path.split(str(path))[-1]
             rel_path = os.path.relpath(path, out_folder)
             link_func(rel_path, out_folder + "/%s" % file_name)
+            n_records += 1
+    return n_records
 
 
 def _add_to_file_list_fallback(rel_file_path,
@@ -140,26 +158,41 @@ def _add_to_file_list_fallback(rel_file_path,
         out_f.write(abs_file_path + "\n")
 
 
-def pair_by_names(files, common_prefix_length=None):
+def pair_by_names(files, subject_matching_regex=None):
     """
     Takes a list of file names and returns a list of tuples of file names in
-    the list that share 'common_prefix_length' of identical leading characters
+    the list that share substrings matches by the regular expression
+    'subject_matching_regex'. The regex should match to 1 group in each file.
 
     That is, a list of files ['FILE_1_1', 'FILE_1_2', 'FILE_2_1'] and
-    common_prefix_length 6 will result in:
+    subject_matching_regex ".*?_(\d+).*" will result in:
 
        [ ('FILE_1_1', 'FILE_1_2') , ('FILE_2_1',) ]
 
     Args:
-        files:                (list) A list of filenames
-        common_prefix_length: (int)  A number of leading characters to match
+        files:                  (list) A list of filenames
+        subject_matching_regex: (str)  A regex string that that matches exactly
+                                       one group (sub-string) within all file
+                                       names in 'files'. Paring will be made
+                                       based on these sub-strings.
 
     Returns:
         A list of tuples of paired filenames
     """
     from collections import defaultdict
-    if common_prefix_length is not None:
-        names = [os.path.split(i)[-1][:common_prefix_length] for i in files]
+    regex = re.compile(subject_matching_regex)
+    if subject_matching_regex is not None:
+        names = []
+        for f_path in files:
+            f_path = os.path.split(f_path)[-1]  # Split just in case full paths
+            matches = re.findall(regex, f_path)
+            if len(matches) != 1:
+                raise ValueError("'subject_matching_regex' of {} matched {} "
+                                 "substrings ({}) within filename {}, "
+                                 "expected 1.".format(subject_matching_regex,
+                                                      len(matches),
+                                                      matches, f_path))
+            names.append(matches[0])
     else:
         names = [os.path.splitext(os.path.split(i)[-1])[0] for i in files]
     inds = defaultdict(list)
@@ -169,7 +202,7 @@ def pair_by_names(files, common_prefix_length=None):
     return [tuple(np.array(files)[i]) for i in pairs]
 
 
-def get_split_sizes(subject_dirs, n_splits, args, desc):
+def get_split_sizes(subject_dirs, n_splits, args):
     """
     Returns the number of samples to include in the training, validation and
     testing sub-sets in each split given the parsed arguments (see argparser)
@@ -192,16 +225,15 @@ def get_split_sizes(subject_dirs, n_splits, args, desc):
         n_test = int(np.ceil(n_total / n_splits))
     else:
         n_test = int(np.ceil(n_total * args.test_fraction))
+    if args.max_test_subjects:
+        n_test = min(n_test, args.max_test_subjects)
     n_val = int(np.ceil(n_total * args.validation_fraction))
+    if args.max_validation_subjects:
+        n_val = min(n_val, args.max_validation_subjects)
     if n_val + n_test >= n_total:
         raise ValueError("Too large test/validation_fraction - "
                          "No training samples left!")
     n_train = n_total - n_test - n_val
-    print("-----")
-    print("Total {}:".ljust(40).format(desc), n_total)
-    print("(Approx.) Train {} pr. split:".ljust(40).format(desc), n_train)
-    print("Validation {} pr. split:".ljust(40).format(desc), n_val)
-    print("(Approx.) Test {} pr. split:".ljust(40).format(desc), n_test)
     return n_train, n_val, n_test
 
 
@@ -244,12 +276,15 @@ def run_on_split(split_path, test_split, train_val_data, n_val, args):
     training = train_val_data[n_val:]
 
     # Add training
-    add_files(training, train_path, move_func)
+    train_records = add_files(training, train_path, move_func)
     # Add test data
-    add_files(test_split, test_path, move_func)
+    test_records = add_files(test_split, test_path, move_func)
     if n_val:
         # Add validation
-        add_files(validation, val_path, move_func)
+        val_records = add_files(validation, val_path, move_func)
+    else:
+        val_records = 0
+    return train_records, val_records, test_records
 
 
 def run(args):
@@ -279,27 +314,36 @@ def run(args):
 
     # Get subject dirs
     subject_dirs = glob(os.path.join(data_dir, args.subject_dir_pattern))
+    org_n_dirs = len(subject_dirs)
 
-    desc = "records"
-    if args.common_prefix_length:
-        print("OBS: Pairing files based on first "
-              "{} characters".format(args.common_prefix_length))
-        subject_dirs = pair_by_names(subject_dirs, args.common_prefix_length)
-        desc = "subjects"
+    if args.subject_matching_regex:
+        print("OBS: Pairing files based on regex "
+              "{}".format(args.subject_matching_regex))
+        subject_dirs = pair_by_names(subject_dirs, args.subject_matching_regex)
 
     if n_splits > len(subject_dirs):
         raise ValueError("CV ({}) cannot be larger than number of "
                          "subjects ({})".format(n_splits, len(subject_dirs)))
 
     # Get train/val/test sizes
-    n_train, n_val, n_test = get_split_sizes(subject_dirs, n_splits, args, desc)
+    n_train, n_val, n_test = get_split_sizes(subject_dirs, n_splits, args)
 
     # Shuffle and split the files into CV parts
     random.shuffle(subject_dirs)
     splits = np.array_split(subject_dirs, n_splits)
 
+    # Prepare dataframe to store counts
+    col_names = ['split_{}'.format(i) for i in range(n_splits)] \
+        if n_splits != 1 else ['fixed_split']
+    counts_df = pd.DataFrame(index=['train_records', 'train_subjects',
+                                    'val_records', 'val_subjects',
+                                    'test_records', 'test_subjects',
+                                    'total_records', 'total_subjects'],
+                             columns=col_names)
+
     # Symlink / copy files
-    for split_index, test_split in enumerate(splits):
+    for split_index, (test_split, col_name) in enumerate(zip(splits,
+                                                             col_names)):
         print("  Split %i/%i" % (split_index + 1, n_splits),
               end="\r", flush=True)
 
@@ -323,11 +367,23 @@ def run(args):
         train_val_data = [item for sublist in train_val_data for item in sublist]
 
         # Add/copy/symlink the files to the split directories
-        run_on_split(split_path=split_path,
-                     test_split=test_split,
-                     train_val_data=train_val_data,
-                     n_val=n_val,
-                     args=args)
+        train_records, val_records, test_records = run_on_split(
+            split_path=split_path,
+            test_split=test_split,
+            train_val_data=train_val_data,
+            n_val=n_val,
+            args=args
+        )
+        train_subjects = len(train_val_data) - n_val  # n_val is exact
+        val_subjects = n_val
+        test_subjects = len(test_split)
+        counts_col = [train_records, train_subjects, val_records, val_subjects,
+                      test_records, test_subjects,
+                      np.sum([train_records, val_records, test_records]),
+                      np.sum([train_subjects, val_subjects, test_subjects])]
+        counts_df[col_name] = counts_col
+    counts_df["sum"] = np.sum(counts_df, axis=1)
+    print("\n", counts_df.T)
 
 
 def entry_func(args=None):

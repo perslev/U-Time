@@ -31,7 +31,7 @@ def b_if_a_is_none(a, b):
 
 def assert_all_loaded(pairs, raise_=True):
     """
-    Returns True if all SleepStudy objects in 'pairs' have the 'loaded'
+    Returns True if all SleepStudyBase objects in 'pairs' have the 'loaded'
     property set to True, otherwise returns False.
 
     If raise_ is True, raises a NotImplementedError if one or more objects are
@@ -98,3 +98,11 @@ def mne_no_log_context():
         yield
     finally:
         log.disabled = mem
+
+
+def get_memory_usage():
+    """ Returns the current process memory usage in bytes """
+    import os
+    import psutil
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss

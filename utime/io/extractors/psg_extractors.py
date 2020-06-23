@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import h5py
 from pandas import DataFrame
 from utime.utils import mne_no_log_context
 from utime.errors import ChannelNotFoundError
@@ -14,13 +15,21 @@ def extract_from_edf(psg_file_path, exclude_channels, header, **kwargs):
     """
     exclude_channels += header.get('duplicates', [])  # TODO: Make sure dups are not in include set
     from mne.io import read_raw_edf
+
+    exclude_channels += ['Respiratory Rate', 'Compumedics Body',
+                         'Pro Tech Positio', 'ProTechPositione',
+                         'Heart Rate Varia']
+
     with mne_no_log_context():
-        return read_raw_edf(psg_file_path, preload=False,
-                            stim_channel=None, verbose=False,
-                            exclude=exclude_channels).to_data_frame()
+        edf = read_raw_edf(psg_file_path, preload=False,
+                           stim_channel=None, verbose=False,
+                           exclude=exclude_channels)
+        # Update header with actually used sample rate
+        header["sample_rate"] = float(edf.info['sfreq'])
+        return edf.to_data_frame()
 
 
-def extract_from_wfdb(wfdb_file_path, include_channels, **kwargs):
+def extract_from_wfdb(wfdb_file_path, include_channels, header, **kwargs):
     """
     TODO
 
@@ -28,8 +37,10 @@ def extract_from_wfdb(wfdb_file_path, include_channels, **kwargs):
         ndarray
     """
     from wfdb.io import rdrecord
-    return rdrecord(record_name=os.path.splitext(wfdb_file_path)[0],
-                    channels=include_channels).p_signal
+    rec = rdrecord(record_name=os.path.splitext(wfdb_file_path)[0],
+                   channel_names=include_channels)
+    header["sample_rate"] = float(rec.fs)
+    return rec.p_signal
 
 
 def extract_from_pickle(pickle_file_path, header, include_channels, **kwargs):
@@ -65,7 +76,6 @@ def extract_from_h5(h5_file_path, include_channels, **kwargs):
         pandas.DataFrame object
     """
     data = {}
-    import h5py
     with h5py.File(h5_file_path, "r") as h5_file:
         for chnl in include_channels:
             data[chnl] = np.array(h5_file["channels"][chnl])
@@ -92,9 +102,7 @@ def extract_psg_data(psg_file_path, header, include_channels, exclude_channels):
                          header=header,
                          include_channels=include_channels,
                          exclude_channels=exclude_channels)
-
-    # Convert to float32 ndarray
-    psg_data = np.array(psg_data, dtype=np.float32)
+    psg_data = np.asarray(psg_data)
 
     if include_channels and psg_data.shape[1] != len(include_channels):
         raise ChannelNotFoundError("Unexpected channel loading error. "

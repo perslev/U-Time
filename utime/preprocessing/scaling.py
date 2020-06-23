@@ -87,7 +87,7 @@ class MultiChannelScaler(object):
     initializing, fitting, storing and applying such scalers to/for individual
     channels of a [N, C] shaped ndarray (e.g. PSG data with C channels)
     """
-    def __init__(self, scalers, with_centering=False):
+    def __init__(self, scalers, with_centering=True):
         """
         Initializes the scaler object with a set of scaler strings. Does not
         fit or transform any data yet.

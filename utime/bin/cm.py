@@ -3,11 +3,11 @@ Script to compute confusion matrices from one or more pairs of true/pred .npz
 files of labels
 """
 
-from argparse import ArgumentParser
-from glob import glob
 import os
 import numpy as np
 import pandas as pd
+from argparse import ArgumentParser
+from glob import glob
 from utime.evaluation import concatenate_true_pred_pairs
 from sklearn.metrics import confusion_matrix
 from utime.evaluation import (f1_scores_from_cm, precision_scores_from_cm,
@@ -22,11 +22,11 @@ def get_argparser():
                                         'over one or more true/pred .npz '
                                         'files.')
     parser.add_argument("--true_pattern", type=str,
-                        default="split*/predictions/test_data/files/*/true.npz",
+                        default="split*/predictions/test_data/dataset_1/files/*/true.npz",
                         help='Glob-like pattern to one or more .npz files '
                              'storing the true labels')
     parser.add_argument("--pred_pattern", type=str,
-                        default="split*/predictions/test_data/files/*/pred.npz",
+                        default="split*/predictions/test_data/dataset_1/files/*/pred.npz",
                         help='Glob-like pattern to one or more .npz files '
                              'storing the true labels')
     parser.add_argument("--normalized", action="store_true",

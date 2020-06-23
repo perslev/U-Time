@@ -39,13 +39,15 @@ class ChannelMontageCreator:
         for channel in self.channels_required:
             if channel in self.existing_channels:
                 channels_to_load.append(channel)
-                output_channels.append(channel)
+                if channel not in output_channels:
+                    output_channels.append(channel)
             else:
                 sep = get_existing_separated_channels(channel,
                                                       self.existing_channels)
                 if len(sep) == 2:
                     channels_to_load += sep
-                    output_channels.append(channel)
+                    if channel not in output_channels:
+                        output_channels.append(channel)
                 elif not allow_missing:
                     raise ValueError(
                         "One or both of the channels in the requested montage "

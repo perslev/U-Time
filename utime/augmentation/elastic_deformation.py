@@ -1,5 +1,5 @@
 import numpy as np
-from MultiPlanarUNet.interpolation import RegularGridInterpolator
+from mpunet.interpolation import RegularGridInterpolator
 from scipy.ndimage.filters import gaussian_filter
 
 

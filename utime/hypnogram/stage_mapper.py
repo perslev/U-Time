@@ -113,5 +113,10 @@ def stage_string_to_class(stage_string):
 def create_variable_ann_to_class_int_dict(annotations):
     import numpy as np
     unique_ann = np.unique(annotations)
-    mapping = {s: stage_string_to_class(standardize_stage_string(s)) for s in unique_ann}
+    mapping = {}
+    for s in unique_ann:
+        try:
+            mapping[s] = int(s)
+        except (TypeError, ValueError):
+            mapping[s] = stage_string_to_class(standardize_stage_string(s))
     return mapping

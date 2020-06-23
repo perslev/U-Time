@@ -5,7 +5,9 @@ See SparseHypnogram and DenseHypnogram docstrings below.
 
 import numpy as np
 import pandas as pd
+from collections import defaultdict
 from utime.utils import exactly_one_specified
+from utime import defaults
 
 
 class SparseHypnogram(object):
@@ -13,7 +15,7 @@ class SparseHypnogram(object):
     Data structure for hypnogram internally represented sparsely by 3 lists:
     - init time seconds (list of integers of initial period time points)
     - durations seconds (list of integers of seconds of period duration)
-    - sleep stage (list of sleep stages, typically integer, for each period)
+    - sleep stage (list of sleep stages, integer, for each period)
 
     Implements methods to query a sleep stage at a given time point from the
     sparse representation.
@@ -23,26 +25,30 @@ class SparseHypnogram(object):
         if not (len(init_times_sec) == len(durations_sec) == len(sleep_stages)):
             raise ValueError("Lists 'init_times_sec' and 'sleep_stages' must "
                              "be of equal length.")
-
+        self.period_length_sec = period_length_sec
+        init_times_sec, durations_sec, sleep_stages = map(list, (init_times_sec,
+                                                                 durations_sec,
+                                                                 sleep_stages))
+        if init_times_sec[0] != 0:
+            # Insert leading UNKNOWN class if hypnogram does not start at
+            # second 0
+            init_times_sec.insert(0, 0)
+            durations_sec.insert(0, init_times_sec[1])
+            sleep_stages.insert(0, defaults.UNKNOWN[1])
         self.inits = np.array(init_times_sec, dtype=np.int32)
         self.durations = np.array(durations_sec, dtype=np.int32)
         self.stages = np.array(sleep_stages, dtype=np.uint8)
-        self.period_length_sec = period_length_sec
+        self.class_int_to_idx = {
+            c: np.where(self.stages == c)[0] for c in self.classes
+        }
 
         # Check sorted init times
-        if np.any(np.diff(self.inits) < 0):
+        if np.any(np.diff(init_times_sec) < 0):
             raise ValueError("Array of init times must be sorted.")
         # Check init times and durations match
-        if not np.all(np.isclose(np.diff(self.inits), self.durations[:-1])):
+        if not np.all(np.isclose(np.diff(init_times_sec),
+                                 durations_sec[:-1])):
             raise ValueError("Init times and durations do not match.")
-        if self.inits[0] != 0:
-            raise ValueError("Invalid init times passed to SparseHypnogram. "
-                             "Initial period should be at second 0 (got {}). "
-                             "If the hypnogram does not start at second 0, add"
-                             " a 'class 5' (unknown/movement etc) class, "
-                             "which may then be stripped together with the PSG"
-                             " using the 'drop_class' strip function."
-                             "".format(self.inits[0]))
 
     def __str__(self):
         return "SparseHypnogram(start={}s, end={}s, " \
@@ -138,6 +144,36 @@ class SparseHypnogram(object):
             ind -= 1
         assert ind >= 0
         return self.stages[ind]
+
+    def get_class_counts(self):
+        """
+        Computes the class counts for the hypnogram.
+
+        Returns:
+            A dictionary mapping class labels to counts.
+        """
+        counts = defaultdict(int)
+        for stage, dur in zip(self.stages, self.durations):
+            counts[stage] += dur // self.period_length_sec
+        return counts
+
+    def get_random_class_period(self, class_int):
+        """
+        TODO
+
+        Args:
+            class_int:
+
+        Returns:
+
+        """
+        idx = np.random.choice(self.class_int_to_idx[int(class_int)], 1)
+        start = self.inits[idx]
+        end = start + self.durations[idx]
+        num_periods = (end-start)//self.period_length_sec
+        start_sec = start + (np.random.randint(0, num_periods, 1) *
+                             self.period_length_sec)
+        return int(start_sec)
 
     def to_dense(self):
         """

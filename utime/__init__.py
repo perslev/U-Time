@@ -1,4 +1,5 @@
 __version__ = "0.0.1"
+import os
 
 
 class _Defaults:
@@ -24,6 +25,13 @@ class _Defaults:
         # Default segmentation length in seconds
         self.PERIOD_LENGTH_SEC = 30
 
+        # Default hyperparameters path (relative to project dir)
+        self.hparams_dir = 'hyperparameters'
+        self.hparams_name = 'hparams.yaml'
+        self.pre_processed_hparams_name = 'pre_proc_hparams.yaml'
+        self.dataset_conf_dir = "dataset_configurations"
+        self.pre_processed_data_conf_dir = "preprocessed"
+
     @property
     def vectorized_stage_colors(self):
         import numpy as np
@@ -48,11 +56,29 @@ class _Defaults:
         return {s[1]: s[0] for s in self.stage_lists}
 
     def get_default_period_length(self, logger=None):
-        from MultiPlanarUNet.logging import ScreenLogger
+        from mpunet.logging import ScreenLogger
         l = logger or ScreenLogger()
         l.warn("Using default period length of {} seconds."
                "".format(self.PERIOD_LENGTH_SEC))
         return self.PERIOD_LENGTH_SEC
+
+    def get_hparams_dir(self, project_dir):
+        return os.path.join(project_dir, self.hparams_dir)
+
+    def get_hparams_path(self, project_dir):
+        return os.path.join(project_dir, self.hparams_dir, self.hparams_name)
+
+    def get_pre_processed_hparams_path(self, project_dir):
+        return os.path.join(project_dir, self.hparams_dir,
+                            self.pre_processed_hparams_name)
+
+    def get_dataset_configurations_dir(self, project_dir):
+        return os.path.join(self.get_hparams_dir(project_dir),
+                            self.dataset_conf_dir)
+
+    def get_pre_processed_data_configurations_dir(self, project_dir):
+        return os.path.join(self.get_dataset_configurations_dir(project_dir),
+                            self.pre_processed_data_conf_dir)
 
 
 defaults = _Defaults()

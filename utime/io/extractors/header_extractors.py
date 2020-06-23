@@ -105,7 +105,8 @@ def read_h5_file(h5_file, **kwargs):
         A dictionary with header elements
     """
     d = h5_file.attrs.get("date")
-    if isinstance(d, int) or np.issubdtype(d, np.integer):
+    if not isinstance(d, str) and (isinstance(d, int) or
+                                   np.issubdtype(d, np.integer)):
         d = datetime.fromtimestamp(d)
     return {
         "n_channels": len(h5_file["channels"]),

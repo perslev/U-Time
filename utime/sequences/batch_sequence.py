@@ -1,6 +1,6 @@
 """
 The BatchSequence class implements the primary mode of access to batches of
-sampled data from a list of SleepStudy objects.
+sampled data from a list of SleepStudyBase objects.
 
 See docstring below.
 """
@@ -8,18 +8,19 @@ See docstring below.
 import numpy as np
 from utime.sequences.base_sequence import BaseSequence, requires_all_loaded
 from utime.errors import MarginError
+from memory_profiler import profile
 
 
-def _infer_n_classes(n_classes, pairs):
+def _infer_n_classes(n_classes, queue):
     """
     Helper function for inferring the n_classes parameter from a list of
-    SleepStudy pairs
+    SleepStudyBase pairs
     """
     if n_classes is not None:
         return int(n_classes)
     else:
-        pairs = [p for p in pairs if p.loaded]
-        return int(np.max([p.n_classes for p in pairs]))
+        with queue.get_random_study() as ss:
+            return ss.n_classes
 
 
 def _check_margin(n_periods, margin, at_idx=None):
@@ -59,7 +60,7 @@ class BatchSequence(BaseSequence):
     """
     Implements the BatchSequence object.
     The BatchSequence currently provides the main mechanism for sampling batches
-    of data across one or more SleepStudy objects.
+    of data across one or more SleepStudyBase objects.
 
     The BatchSequence acts like a tf.keras.Sequence object, returning batches
     of data when indexed.
@@ -69,7 +70,7 @@ class BatchSequence(BaseSequence):
     of signal as output for each entry of a batch.
     """
     def __init__(self,
-                 sleep_study_pairs,
+                 dataset_queue,
                  batch_size,
                  data_per_period,
                  n_classes,
@@ -85,13 +86,13 @@ class BatchSequence(BaseSequence):
                  **kwargs):
         """
         Args:
-            sleep_study_pairs: (list)   A list of SleepStudy objects
+            dataset_queue:     (queue)  TODO
             batch_size:        (int)    The size of each sampled batch
             data_per_period    (int)    The dimensionality/number of samples
                                         in each 'period/epoch/segment' of data
             n_classes:         (int)    Number of classes (sleep stages)
             n_channels:        (int)    The number of PSG channels to expect in
-                                        data extracted from a SleepStudy object
+                                        data extracted from a SleepStudyBase object
             margin             (int)    The margin (number of periods/segments)
                                         to include down- and up-stream from
                                         a selected center segment. E.g. a
@@ -106,9 +107,9 @@ class BatchSequence(BaseSequence):
             identifier:        (string) A string identifier name
         """
         self._inferred = n_classes is None
-        n_classes = _infer_n_classes(n_classes, sleep_study_pairs)
+        n_classes = _infer_n_classes(n_classes, dataset_queue)
         super().__init__(identifier=identifier,
-                         sleep_study_pairs=sleep_study_pairs,
+                         dataset_queue=dataset_queue,
                          n_classes=n_classes,
                          n_channels=n_channels,
                          batch_size=batch_size,
@@ -122,13 +123,17 @@ class BatchSequence(BaseSequence):
         self.data_per_period = data_per_period
 
         if scale_assertion:
-            self._assert_scaled()
+            try:
+                self._assert_scaled()
+            except Exception:
+                pass
         if not no_log:
             self.log()
 
     def log(self):
         """ Log basic information on this object """
         self.logger("[*] BatchSequence initialized{}:\n"
+                    "    Data queue type: {}\n"
                     "    Batch shape:     {}\n"
                     "    N pairs:         {}\n"
                     "    Margin:          {}\n"
@@ -136,9 +141,10 @@ class BatchSequence(BaseSequence):
                     "    Aug enabled:     {}\n"
                     "    Batch scaling:   {}\n"
                     "    All loaded:      {}\n"
-                    "    N classes:       {}{}".format(" ()".format(self.identifier) if self.identifier else "",
+                    "    N classes:       {}{}".format(" ({})".format(self.identifier) if self.identifier else "",
+                                                       type(self.dataset_queue),
                                                        self.batch_shape,
-                                                       len(self.pairs),
+                                                       len(self.dataset_queue),
                                                        self.margin,
                                                        self.augmenters,
                                                        self.augmentation_enabled,
@@ -151,13 +157,13 @@ class BatchSequence(BaseSequence):
     @property
     @requires_all_loaded
     def total_periods(self):
-        """ Return the som of n_periods across all SleepStudy objects """
+        """ Return the som of n_periods across all SleepStudyBase objects """
         return self.cum_periods_per_pair[-1]
 
     @property
     @requires_all_loaded
     def total_periods_minus_margins(self):
-        """ Return the som of n_periods across all SleepStudy objects """
+        """ Return the som of n_periods across all SleepStudyBase objects """
         return self.cum_periods_per_pair_minus_margins[-1]
 
     @property
@@ -204,13 +210,11 @@ class BatchSequence(BaseSequence):
         """ Returns the total number of batches in this dataset """
         return int(np.ceil(self.total_periods_minus_margins/self.batch_size))
 
-    @requires_all_loaded
     def __iter__(self):
         """ Yields the entire dataset in fixed ordered batches """
         for i in range(len(self)):
             yield self.get_batch(i)
 
-    @requires_all_loaded
     def __getitem__(self, idx):
         """
         Return a batch of data by overall dataset batch index
@@ -225,43 +229,56 @@ class BatchSequence(BaseSequence):
 
     def get_pair_by_id(self, study_id):
         """
-        Return a SleepStudy object by its identifier string
+        Return a SleepStudyBase object by its identifier string
 
         Args:
-            study_id: String identifier of a specific SleepStudy
+            study_id: String identifier of a specific SleepStudyBase
 
         Returns:
-            A stored SleepStudy object
+            A stored SleepStudyBase object
         """
         return self.id_to_pair[study_id]
 
-    def get_single_study_full_seq(self, study_id):
+    def get_single_study_full_seq(self, study_id, reshape=False):
         """
         Return all periods/epochs/segments of data (X, y) of a SleepStudy.
         Differs only from 'SleepStudy.get_all_periods' in that the batch is
         processed and thus may be scaled and/or augmented.
 
         Args:
-            study_id: A string identifier matching a single SleepStudy object
+            study_id: A string identifier matching a single SleepStudyBase object
+            reshape:  TODO
 
         Returns:
             X: ndarray of PSG data, shape [-1, data_per_period, n_channels]
             y: ndarray of labels, shape [-1, 1]
         """
-        ss = self.get_pair_by_id(study_id)
-        return self.process_batch(*ss.get_all_periods())
+        with self.dataset_queue.get_study_by_id(study_id) as ss:
+            x, y = ss.get_all_periods()
+            if reshape:
+                # x is shape [-1, data_per_period, n_channels]
+                # reshape to [-1, seq_length, data_per_period, n_channels]
+                shape = [-1] + self.batch_shape[1:]
+                border = x.shape[0] % shape[1]
+                if border:
+                    # OBS: We remove border if needed
+                    x = x[:-border]
+                    y = y[:-border]
+                x = x.reshape(shape)
+                y = y.reshape(shape[:2] + [1])
+            return self.process_batch(x, y)
 
     def single_study_seq_generator(self, study_id, margin=None,
                                    overlapping=True, batch_size=None):
         """
         Yields single (batch-size 1) sequence elements (margin > 0) from a
-        SleepStudy object of identifier 'study_id'. A margin may be passed,
+        SleepStudyBase object of identifier 'study_id'. A margin may be passed,
         otherwise the set self.margin property is used. One of the two must be
         set. A batch_size may be set, otherwise uses the self.batch_size
         property.
 
         Args:
-            study_id:     A string identifier matching a single SleepStudy obj.
+            study_id:     A string identifier matching a single SleepStudyBase obj.
             margin:       Optional value to use for margin instead of self.margin
             overlapping:  Yield overlapping batches (sliding window). Otherwise
                           return non-overlapping, connected segments.
@@ -281,22 +298,25 @@ class BatchSequence(BaseSequence):
                              "'single_study_batch_generator' function.")
         from utime.sequences import batch_wrapper
         seq_length = margin * 2 + 1
-        batch_size = batch_size or self.batch_size
-        ss = self.get_pair_by_id(study_id)
-        sequence_generator = ss.to_batch_generator(batch_size=seq_length,
-                                                   overlapping=overlapping)
-        for X, y in batch_wrapper(sequence_generator, batch_size=batch_size):
-            yield self.process_batch(X, y)
+        with self.dataset_queue.get_study_by_id(study_id) as ss:
+            sequence_generator = ss.to_batch_generator(batch_size=seq_length,
+                                                       overlapping=overlapping)
+            shapes = self.get_batch_shapes(batch_size)
+            for X, y in batch_wrapper(sequence_generator, *shapes):
+                try:
+                    yield self.process_batch(X, y)
+                except RuntimeError:
+                    continue
 
     def single_study_batch_generator(self, study_id, batch_size=None):
         """
-        Yield batches of data from a single SleepStudy object. A batch_size may
+        Yield batches of data from a single SleepStudyBase object. A batch_size may
         be set, otherwise uses the self.batch_size property.
 
         Cannot be used with the self.margin property set.
 
         Args:
-            study_id:   A string identifier matching a single SleepStudy obj.
+            study_id:   A string identifier matching a single SleepStudyBase obj.
             batch_size: Optional value to use for batch_size instead of
                         self.batch_size
 
@@ -310,14 +330,15 @@ class BatchSequence(BaseSequence):
                              "self.margin set. Consider using "
                              "'single_study_seq_generator' instead.")
         batch_size = batch_size or self.batch_size
-        ss = self.get_pair_by_id(study_id)
-        for batch in ss.to_batch_generator(batch_size=batch_size):
-            yield self.process_batch(*batch)
+        with self.dataset_queue.get_study_by_id(study_id) as ss:
+            for batch in ss.to_batch_generator(batch_size=batch_size):
+                yield self.process_batch(*batch)
 
-    def get_period(self, study_id, period_idx, allow_shift_at_border=True,
+    #@profile
+    def get_period(self, sleep_study, period_idx, allow_shift_at_border=True,
                    return_shifted_idx=False, margin=False):
         """
-        Return period with index 'period_idx' of SleepStudy 'sleep_study'.
+        Return period with index 'period_idx' of SleepStudyBase 'sleep_study'.
         If self.margin > 0 a sequence will be returned with the period at
         period_idx in the center. The upper or lower tails of such sequence may
         extend beyond the boarders of the total sequence. If
@@ -327,10 +348,9 @@ class BatchSequence(BaseSequence):
         bounds with the original index).
 
         Args:
-            study_id:              A string identifier matching a single
-                                   SleepStudy obj.
+            sleep_study:           A SleepStudyBase obj.
             period_idx:            The period/segment/epoch index within the
-                                   SleepStudy to return
+                                   SleepStudyBase to return
             allow_shift_at_border: Allow shifting of the index if margin > 0
                                    makes the sequence extend beyond the PSG
                                    boundaries
@@ -346,7 +366,6 @@ class BatchSequence(BaseSequence):
             y, list of margin*2+1 class labels
         """
         margin = margin or self.margin
-        sleep_study = self.get_pair_by_id(study_id)
         n_periods = sleep_study.n_periods
         try:
             _check_margin(n_periods, margin, at_idx=period_idx)
@@ -356,10 +375,8 @@ class BatchSequence(BaseSequence):
             else:
                 raise MarginError("Margin error with "
                                   "'allow_shift_at_border=False'") from e
-        Xs, ys = [], []
-        for idx in range(period_idx-margin, period_idx+margin+1):
-            X, y = sleep_study.get_period_by_idx(idx)
-            Xs.append(X), ys.append(y)
+        Xs, ys = sleep_study.get_periods_by_idx(start_idx=period_idx-margin,
+                                                end_idx=period_idx+margin)
         if return_shifted_idx:
             return Xs, ys, period_idx
         else:
@@ -369,13 +386,13 @@ class BatchSequence(BaseSequence):
         """
         Helper method for the self.get_batch method.
         Returns a list of periods with indices in [start, ..., end-1] using
-        self.get_period from SleepStudy  'sleep_study'
+        self.get_period from SleepStudyBase  'sleep_study'
 
         See self.bet_batch docstring.
         """
         X, y = [], []
         for period_idx in range(start, end):
-            X_, y_ = self.get_period(sleep_study.identifier, period_idx,
+            X_, y_ = self.get_period(sleep_study, period_idx,
                                      allow_shift_at_border=False)
             X.append(X_), y.append(y_)
         return X, y
@@ -384,13 +401,13 @@ class BatchSequence(BaseSequence):
     def get_batch(self, batch_idx):
         """
         Return a batch of data index by overall batch index across the dataset.
-        The order of the stored SleepStudy pairs is assumed fixed.
+        The order of the stored SleepStudyBase pairs is assumed fixed.
 
         Note that the final batch may be smaller than self.batch_size due to
         boundary effects.
 
         Args:
-            batch_idx: Overall batch index across the stored SleepStudy objects
+            batch_idx: Overall batch index across the stored SleepStudyBase objects
 
         Returns:
             X: A batch of PSG data, ndarray of shape
@@ -400,46 +417,45 @@ class BatchSequence(BaseSequence):
                [batch_size, margin*2+1, 1] if margin, else
                [batch_size, 1]
         """
+        X, y = self.get_empty_batch_arrays()
+
         # batch_idx is the batch number. We first find the total period index
         # at which we should start sampling
         global_period_start = batch_idx * self.batch_size
 
-        # Find the SleepStudy object in which the given period occurs
-        pair_idx = np.searchsorted(self.cum_periods_per_pair_minus_margins,
-                                   1+global_period_start)
-        sleep_study = self.pairs[pair_idx]
-        if pair_idx > 0:
-            previous_periods = self.cum_periods_per_pair_minus_margins[pair_idx-1]
-        else:
-            previous_periods = 0
-
-        # Get the number of periods to sample in the given pair
-        local_period_start = global_period_start - previous_periods + self.margin
-        local_period_end = local_period_start + self.batch_size
-
-        # Get number of periods that span into the next pair
-        max_ = sleep_study.n_periods - self.margin
-        periods_in_next_ss = abs(min(max_ - local_period_end, 0))
-        local_period_end -= periods_in_next_ss
-
-        # Get all periods in the current SS
-        X, y = self._get_periods_in_range(sleep_study,
-                                          local_period_start,
-                                          local_period_end)
-        if periods_in_next_ss:
-            # Add potential periods from next SleepStudy
-            try:
-                next_sleep_study = self.pairs[pair_idx + 1]
-            except IndexError:
-                pass  # at the end
+        # Find the SleepStudyBase object in which the given period occurs
+        study_idx = np.searchsorted(self.cum_periods_per_pair_minus_margins,
+                                    1+global_period_start)
+        with self.dataset_queue.get_study_by_idx(study_idx) as sleep_study:
+            if study_idx > 0:
+                previous_periods = self.cum_periods_per_pair_minus_margins[study_idx-1]
             else:
-                # No error - that is we were able to get the next_sleep_study
+                previous_periods = 0
+
+            # Get the number of periods to sample in the given pair
+            local_period_start = global_period_start - previous_periods + self.margin
+            local_period_end = local_period_start + self.batch_size
+
+            # Get number of periods that span into the next pair
+            max_ = sleep_study.n_periods - self.margin
+            periods_in_next_ss = abs(min(max_ - local_period_end, 0))
+            local_period_end -= periods_in_next_ss
+
+            # Get all periods in the current SS
+            xx, yy = self._get_periods_in_range(sleep_study,
+                                                local_period_start,
+                                                local_period_end)
+            X[len(xx)] = xx
+            y[len(yy)] = yy
+
+        if periods_in_next_ss and len(self.dataset_queue) > study_idx + 1:
+            with self.dataset_queue.get_study_by_idx(study_idx + 1) as next_sleep_study:
                 if periods_in_next_ss > next_sleep_study.n_periods:
                     raise NotImplementedError("Batch spans three SleepPairs. "
                                               "Handling this situation is not "
                                               "yet implemented.")
-                x_, y_ = self._get_periods_in_range(sleep_study, self.margin,
+                xx, yy = self._get_periods_in_range(sleep_study, self.margin,
                                                     self.margin+periods_in_next_ss)
-                X.extend(x_)
-                y.extend(y_)
+                X[-periods_in_next_ss:] = xx
+                y[-periods_in_next_ss:] = yy
         return self.process_batch(X, y)

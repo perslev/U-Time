@@ -1,14 +1,11 @@
-import tensorflow as tf
-from tensorflow.keras.callbacks import Callback
-from MultiPlanarUNet.utils import highlighted
-from MultiPlanarUNet.logging import ScreenLogger
-
 import numpy as np
 import pandas as pd
-from concurrent.futures import ThreadPoolExecutor
-from threading import Lock
-from queue import Queue
-from threading import Thread
+from tensorflow.keras.callbacks import Callback
+from utime.utils import get_memory_usage
+from mpunet.utils import highlighted
+from mpunet.logging import ScreenLogger
+from collections import defaultdict
+from datetime import timedelta
 
 
 class Validation(Callback):
@@ -29,12 +26,13 @@ class Validation(Callback):
     mechanism is to calculate certain metrics over the entire epoch of data as
     opposed to averaged batch-wise computations.
     """
-    def __init__(self, val_sequence, steps, logger=None, verbose=True):
+    def __init__(self,
+                 val_sequence,
+                 max_val_studies_per_dataset=20,
+                 logger=None, verbose=True):
         """
         Args:
             val_sequence: A deepsleep ValidationMultiSequence object
-            steps:        Numer of batches to sample from val_sequences in each
-                          validation epoch for each validation set
             logger:       An instance of a MultiPlanar Logger that prints to
                           screen and/or file
             verbose:      Print progress to screen - OBS does not use Logger
@@ -42,94 +40,86 @@ class Validation(Callback):
         super().__init__()
         self.logger = logger or ScreenLogger()
         self.sequences = val_sequence.sequences
-        self.steps = steps
         self.verbose = verbose
+        self.max_studies = max_val_studies_per_dataset
         self.n_classes = val_sequence.n_classes
         self.IDs = val_sequence.IDs
         self.print_round = 3
         self.log_round = 4
 
+    def _compute_counts(self, pred, true, ignore_class=None):
+        # Argmax and CM elements
+        pred = pred.argmax(-1).ravel()
+        true = true.ravel()
+
+        if ignore_class:
+            mask = np.where(true != ignore_class)
+            true = true[mask]
+            pred = pred[mask]
+
+        # Compute relevant CM elements
+        # We select the number following the largest class integer when
+        # y != pred, then bincount and remove the added dummy class
+        tps = np.bincount(np.where(true == pred, true, self.n_classes),
+                          minlength=self.n_classes+1)[:-1].astype(np.uint64)
+        rel = np.bincount(true, minlength=self.n_classes).astype(np.uint64)
+        sel = np.bincount(pred, minlength=self.n_classes).astype(np.uint64)
+        return tps, rel, sel
+
     def predict(self):
-        def eval(queue, steps, TPs, relevant, selected, id_, lock):
-            step = 0
-            while step < steps:
-                # Get prediction and true labels from prediction queue
-                step += 1
-                p, y = queue.get(block=True)
-
-                # Argmax and CM elements
-                p = p.argmax(-1).ravel()
-                y = y.ravel()
-
-                # Compute relevant CM elements
-                # We select the number following the largest class integer when
-                # y != pred, then bincount and remove the added dummy class
-                tps = np.bincount(np.where(y == p, y, self.n_classes),
-                                  minlength=self.n_classes+1)[:-1]
-                rel = np.bincount(y, minlength=self.n_classes)
-                sel = np.bincount(p, minlength=self.n_classes)
-
-                # Update counts on shared lists
-                lock.acquire()
-                TPs[id_] += tps.astype(np.uint64)
-                relevant[id_] += rel.astype(np.uint64)
-                selected[id_] += sel.astype(np.uint64)
-                lock.release()
-
         # Get tensors to run and their names
-        metrics = self.model.metrics
+        metrics = self.model.loss_functions + self.model.metrics
         metrics_names = self.model.metrics_names
         self.model.reset_metrics()
-        assert "loss" in metrics_names and metrics_names.index("loss") == 0
-        assert len(metrics_names)-1 == len(metrics)
+        assert len(metrics_names) == len(metrics)
 
         # Prepare arrays for CM summary stats
-        TPs, relevant, selected, metrics_results = {}, {}, {}, {}
-        count_threads = []
+        true_pos, relevant, selected, metrics_results = {}, {}, {}, {}
         for id_, sequence in zip(self.IDs, self.sequences):
             # Add count arrays to the result dictionaries
-            TPs[id_] = np.zeros(shape=(self.n_classes,), dtype=np.uint64)
+            true_pos[id_] = np.zeros(shape=(self.n_classes,), dtype=np.uint64)
             relevant[id_] = np.zeros(shape=(self.n_classes,), dtype=np.uint64)
             selected[id_] = np.zeros(shape=(self.n_classes,), dtype=np.uint64)
 
-            # Fetch validation samples from the generator
-            pool = ThreadPoolExecutor(max_workers=7)
-            result = pool.map(sequence.__getitem__, np.arange(self.steps))
+            # Get validation sleep study loader
+            n_val = min(len(sequence.dataset_queue), self.max_studies)
+            study_iterator = sequence.dataset_queue.get_study_iterator(n_val)
 
-            # Prepare queue and thread for computing counts
-            count_queue = Queue(maxsize=self.steps)
-            count_thread = Thread(target=eval, args=[count_queue, self.steps,
-                                                     TPs, relevant, selected,
-                                                     id_, Lock()])
-            count_threads.append(count_thread)
-            count_thread.start()
-
-            # Predict and evaluate on all batches
-            for i, (X, y) in enumerate(result):
+            # Predict and evaluate on all studies
+            per_study_metrics = defaultdict(list)
+            for i, sleep_study_context in enumerate(study_iterator):
                 if self.verbose:
-                    s = "   {}Validation step: {}/{}".format(f"[{id_}] "
-                                                             if id_ else "",
-                                                             i+1, self.steps)
+                    s = "   {}Validation subject: {}/{}".format(f"[{id_}] "
+                                                                if id_ else "",
+                                                                i+1,
+                                                                n_val)
                     print(s, end="\r", flush=True)
-                pred = self.model.predict_on_batch(X)
-                # Put values in the queue for counting
-                count_queue.put([pred.numpy(), y])
+
+                with sleep_study_context as ss:
+                    x, y = sequence.get_single_study_full_seq(ss.identifier,
+                                                              reshape=True)
+                    pred = self.model.predict_on_batch(x)
+
+                # Compute counts
+                tps, rel, sel = self._compute_counts(pred=pred.numpy(),
+                                                     true=y,
+                                                     ignore_class=5)
+                true_pos[id_] += tps
+                relevant[id_] += rel
+                selected[id_] += sel
+
                 # Run all metrics
-                for metric in metrics:
-                    metric(y, pred)
+                for metric, name in zip(metrics, metrics_names):
+                    per_study_metrics[name].append(metric(y, pred).numpy())
 
             # Compute mean metrics for the dataset
             metrics_results[id_] = {}
-            for metric, name in zip(metrics, metrics_names[1:]):
-                metrics_results[id_][name] = metric.result().numpy()
+            for metric, name in zip(metrics, metrics_names):
+                metrics_results[id_][name] = np.mean(per_study_metrics[name])
             self.model.reset_metrics()
-            pool.shutdown()
             self.logger("")
         self.logger("")
-        # Terminate count threads
-        for thread in count_threads:
-            thread.join()
-        return TPs, relevant, selected, metrics_results
+        return true_pos, relevant, selected, metrics_results
 
     @staticmethod
     def _compute_dice(tp, rel, sel):
@@ -227,5 +217,77 @@ class Validation(Callback):
             if self.verbose:
                 df = pd.DataFrame(to_print)
                 df.index = self.IDs + ["mean"]
-                print(df.round(self.print_round))
+                self.logger(df.round(self.print_round))
             self.logger("")
+
+
+class MemoryConsumption(Callback):
+    def __init__(self, max_gib=None, round_=2, logger=None, set_limit=False):
+        self.max_gib = max_gib
+        self.logger = logger
+        self.round_ = round_
+        if set_limit:
+            import resource
+            _, hard = resource.getrlimit(resource.RLIMIT_AS)
+            resource.setrlimit(resource.RLIMIT_AS,
+                               (self._gib_to_bytes(max_gib), hard))
+            self.logger("Setting memory limit to {} GiB".format(max_gib))
+
+    @staticmethod
+    def _gib_to_bytes(gib):
+        return gib * (1024 ** 3)
+
+    @staticmethod
+    def _bytes_to_gib(bytes):
+        return bytes / (1024 ** 3)
+
+    def on_epoch_end(self, epoch, logs={}):
+        mem_bytes = get_memory_usage()
+        mem_gib = round(self._bytes_to_gib(mem_bytes), self.round_)
+        logs['memory_usage_gib'] = mem_gib
+        if self.max_gib and mem_gib >= self.max_gib:
+            self.logger.warn("Stopping training from callback 'MemoryConsumption'! "
+                             "Total memory consumption of {} GiB exceeds limitation"
+                             " (self.max_gib = {}) ".format(mem_gib, self.max_gib))
+            self.model.stop_training = True
+
+
+class MaxTrainingTime(Callback):
+    def __init__(self, max_minutes, log_name='train_time_total', logger=None):
+        """
+        TODO
+        Args:
+        """
+        super().__init__()
+        self.max_minutes = int(max_minutes)
+        self.log_name = log_name
+        self.logger = logger or ScreenLogger()
+
+    def on_epoch_end(self, epochs, logs={}):
+        """
+        TODO
+
+        Args:
+            epochs:
+            logs:
+
+        Returns:
+
+        """
+        train_time_str = logs.get(self.log_name, None)
+        if not train_time_str:
+            self.logger.warn("Did not find log entry '{}' (needed in callback "
+                             "'MaxTrainingTime')".format(self.log_name))
+            return
+        train_time_m = timedelta(
+            days=int(train_time_str[:2]),
+            hours=int(train_time_str[4:6]),
+            minutes=int(train_time_str[8:10]),
+            seconds=int(train_time_str[12:14])
+        ).total_seconds() / 60
+        if train_time_m >= self.max_minutes:
+            # Stop training
+            self.warn("Stopping training from callback 'MaxTrainingTime'! "
+                      "Total training length of {} minutes exceeded (now {}) "
+                      "".format(self.max_minutes, train_time_m))
+            self.model.stop_training = True

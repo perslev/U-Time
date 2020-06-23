@@ -13,7 +13,7 @@ import os
 from utime.errors import ChannelNotFoundError
 from utime.io.channels import ChannelMontageTuple, ChannelMontageCreator
 from utime.io.file_loaders import read_psg_header
-from MultiPlanarUNet.logging import Logger
+from mpunet.logging import Logger
 
 
 def get_argparser():
@@ -47,6 +47,9 @@ def get_argparser():
                         help='Re-sample the selected channels before storage.')
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name")
+    parser.add_argument("--use_dir_names", action="store_true",
+                        help='Each PSG file will be saved as '
+                             '<parent directory>.h5 instead of <file_name>.h5')
     return parser
 
 
@@ -96,6 +99,8 @@ def _extract(file_,
                                   new_sample_rate=args.resample,
                                   old_sample_rate=header['sample_rate'])
         header['sample_rate'] = args.resample
+        if psg.shape[0] % args.resample:
+            logger("ERROR: Not divisible by sample rate!")
     logger("[*] PSG shape after re-sampling: {}".format(psg.shape))
 
     # Rename channels
@@ -115,7 +120,10 @@ def extract(files, out_dir, channels, renamed_channels, logger, args):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     for i, file_ in enumerate(files):
-        name = os.path.splitext(os.path.split(file_)[-1])[0]
+        if args.use_dir_names:
+            name = os.path.split(os.path.split(file_)[0])[-1]
+        else:
+            name = os.path.splitext(os.path.split(file_)[-1])[0]
         logger("------------------")
         logger("[*] {}/{} Processing {}".format(i + 1, len(files), name))
         out_dir_subject = os.path.join(out_dir, name)
