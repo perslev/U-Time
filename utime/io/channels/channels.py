@@ -156,7 +156,7 @@ class ChannelMontageTuple(tuple):
     TODO
     """
     def __new__(cls, channels, relax=True):
-        if not isinstance(channels, (list, tuple, ndarray)):
+        if not isinstance(channels, (list, tuple, ndarray, ChannelMontageTuple)):
             raise TypeError("Input to {} should be a list, tuple or "
                             "ndarray of channel names or ChannelMontage "
                             "objects. Got {} "
@@ -175,6 +175,9 @@ class ChannelMontageTuple(tuple):
                                 "objects, channel name iterables or channel "
                                 "name strings.".format(c, type(c), channels))
         return super(ChannelMontageTuple, cls).__new__(cls, montage_objs)
+
+    def __add__(self, other):
+        return ChannelMontageTuple(tuple(self) + tuple(other))
 
     @property
     def original_names(self):
