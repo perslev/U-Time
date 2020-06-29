@@ -75,7 +75,7 @@ def get_argparser():
 
 def assert_args(args):
     """ Not yet implemented """
-    return
+    pass
 
 
 def set_new_strip_func(dataset_hparams, strip_func):
@@ -183,7 +183,8 @@ def run_pred(dataset,
              model_func,
              hparams,
              args,
-             logger):
+             logger,
+             overwrite=True):
     """
     Run prediction on a all entries of a SleepStudyDataset
 
@@ -216,6 +217,18 @@ def run_pred(dataset,
             logger.warn("Found no valid channel sets...")
 
         for i, (sub_folder_name, channels_to_load) in enumerate(channel_sets):
+            # Get paths
+            if sub_folder_name is not None:
+                out_dir_pred = os.path.join(out_dir, sub_folder_name)
+                os.makedirs(out_dir_pred, exist_ok=True)
+            else:
+                out_dir_pred = out_dir
+            out_path = os.path.join(out_dir_pred,
+                                    sleep_study_pair.identifier + "_PRED.npy")
+            if os.path.exists(out_path) and not overwrite:
+                logger("Skipping channel {} (file already exists, "
+                       "--overwrite not set)".format(channels_to_load))
+                continue
             # Load and predict on the set channels
             if channels_to_load:
                 logger(" -- Channels: {}".format(channels_to_load))
@@ -235,15 +248,7 @@ def run_pred(dataset,
                 ))
                 np.save(out_path, y)
 
-            if sub_folder_name is not None:
-                out_dir_pred = os.path.join(out_dir, sub_folder_name)
-                os.makedirs(out_dir_pred, exist_ok=True)
-            else:
-                out_dir_pred = out_dir
-
             # Save pred to disk
-            out_path = os.path.join(out_dir_pred,
-                                    sleep_study_pair.identifier + "_PRED.npy")
             logger("* Saving prediction array of shape {} to {}".format(
                 pred.shape, out_path
             ))
@@ -265,7 +270,7 @@ def run(args):
         out_dir = get_out_dir(args.out_dir, args.data_split)
     else:
         out_dir = args.out_dir
-    prepare_output_dir(out_dir, args.overwrite)
+    prepare_output_dir(out_dir, True)
     logger = get_logger(out_dir, args.overwrite, name="prediction_log")
     logger("Args dump: \n{}".format(vars(args)))
 
@@ -310,7 +315,8 @@ def run(args):
                  model_func=model_func,
                  hparams=hparams,
                  args=args,
-                 logger=logger)
+                 logger=logger,
+                 overwrite=args.overwrite)
 
 
 def entry_func(args=None):
