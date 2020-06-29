@@ -56,7 +56,7 @@ def _load_dense_array(array, period_length_sec, ann_to_class, sample_rate):
         # labels for sleep stages.
         ann_to_class = defaults.stage_string_to_class_int
     unique_labels = np.unique(array)
-    if np.any(~np.in1d(unique_labels, list(ann_to_class.values()))):
+    if np.any(~np.in1d(unique_labels, list(ann_to_class.keys()))):
         raise RuntimeError("Labels {} do not match annotation dict of {}. "
                            "If the annotation dict was inferred automatically,"
                            " consider manually setting one.".format(unique_labels,
