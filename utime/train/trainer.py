@@ -110,12 +110,11 @@ class Trainer(object):
                                 "'SparseCategoricalCrossentropy'. If "
                                 "you implemented a custom loss function, "
                                 "please raise an issue on GitHub.")
+            else:
+                # Masks out class 5
+                # TODO: make optional
+                losses[i] = ignore_class_wrapper(loss, self.model.n_classes, self.logger)
         metrics = init_metrics(metrics, self.logger, **kwargs)
-
-        # TODO
-        for i, loss in enumerate(losses):
-            losses[i] = ignore_class_wrapper(loss, self.model.n_classes,
-                                             self.logger)
 
         # Compile the model
         self.model.compile(optimizer=optimizer, loss=losses, metrics=metrics)
