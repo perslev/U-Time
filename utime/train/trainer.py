@@ -69,8 +69,8 @@ class Trainer(object):
         # May also be set from a script at a later time (before self.fit call)
         self.org_model = org_model
 
-    def compile_model(self, optimizer, optimizer_kwargs, loss, metrics,
-                      check_sparse=False, **kwargs):
+    def compile_model(self, optimizer, loss, metrics, reduction,
+                      check_sparse=False, optimizer_kwargs={}, loss_kwargs={}, **kwargs):
         """
         Compile the stored tf.keras Model instance stored in self.model
         Sets the loss function, optimizer and metrics
@@ -82,6 +82,7 @@ class Trainer(object):
                                        MultiPlanarUnet loss function
             metrics:          (list)   List of tf.keras.metrics or
                                        MultiPlanarUNet metrics.
+            reduction         TODO
             check_sparse:     TODO
             **kwargs:         (dict)   Key-word arguments passed to losses
                                        and/or metrics that accept such.
@@ -92,10 +93,23 @@ class Trainer(object):
         if check_sparse:
             ensure_sparse(metrics+losses)
 
-        # Initialize optimizer, loss(es) and metric(s) from tf.keras or
-        # MultiPlanarUNet
+        # Initialize optimizer, loss(es) and metric(s) from tf.keras or MultiPlanarUNet
         optimizer = init_optimizer(optimizer, self.logger, **optimizer_kwargs)
         losses = init_losses(losses, self.logger, **kwargs)
+        for i, loss in enumerate(losses):
+            try:
+                losses[i] = loss(reduction=reduction, **loss_kwargs)
+            except (ValueError, TypeError):
+                raise TypeError("All loss functions must currently be "
+                                "callable and accept the 'reduction' "
+                                "parameter specifying a "
+                                "tf.keras.losses.Reduction type. If you "
+                                "specified a keras loss function such as "
+                                "'sparse_categorical_crossentropy', change "
+                                "this to its corresponding loss class "
+                                "'SparseCategoricalCrossentropy'. If "
+                                "you implemented a custom loss function, "
+                                "please raise an issue on GitHub.")
         metrics = init_metrics(metrics, self.logger, **kwargs)
 
         # TODO

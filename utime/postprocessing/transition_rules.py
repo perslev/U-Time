@@ -35,12 +35,14 @@ def find_matches(scores, pattern):
     return np.where(np.all(strided == pattern, axis=1))[0]
 
 
-def apply_substitution_rules(scores, substitution_rules):
+def apply_substitution_rules(scores, substitution_rules, verbose=False):
     scores = scores.copy()
     for pattern, target in substitution_rules:
         inds = find_matches(scores, pattern)
         for ind in inds:
             scores[ind:ind+len(pattern)] = target
+        if verbose:
+            print(f"Applied rule {pattern}-->{target} at {len(inds)} indices")
     return scores
 
 

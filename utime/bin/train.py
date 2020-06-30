@@ -260,12 +260,14 @@ def run(args, gpu_mon):
 
     # Prepare a trainer object. Takes care of compiling and training.
     trainer = Trainer(model, org_model=org_model, logger=logger)
+
+    import tensorflow as tf
     trainer.compile_model(n_classes=hparams["build"].get("n_classes"),
+                          reduction=tf.keras.losses.Reduction.NONE,
                           **hparams["fit"])
 
     # Fit the model on a number of samples as specified in args
-    samples_pr_epoch = get_samples_per_epoch(train_seq,
-                                             args.max_train_samples_per_epoch)
+    samples_pr_epoch = get_samples_per_epoch(train_seq, args.max_train_samples_per_epoch)
 
     _ = trainer.fit(train=train_seq,
                     val=val_seq,
