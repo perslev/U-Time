@@ -29,11 +29,13 @@ def ignore_class_wrapper(loss_func, n_pred_classes, logger):
     TODO
     """
     def wrapper(true, pred):
+        true.set_shape(pred.get_shape()[:-1] + [1])
         true = tf.reshape(true, [-1])
         pred = tf.reshape(pred, [-1, n_pred_classes])
-        indicies = tf.squeeze(tf.where(tf.not_equal(true, n_pred_classes)))
-        true = tf.gather(true, indicies)
-        pred = tf.gather(pred, indicies)
+        mask = tf.where(tf.not_equal(true, n_pred_classes), tf.ones_like(true), tf.zeros_like(true))
+        mask = tf.cast(mask, tf.bool)
+        true = tf.boolean_mask(true, mask, axis=0)
+        pred = tf.boolean_mask(pred, mask, axis=0)
         return loss_func(true, pred)
     logger("Regarding loss func: {}. "
            "Model outputs {} classes; Ignoring class with "
@@ -111,9 +113,8 @@ class Trainer(object):
                                 "you implemented a custom loss function, "
                                 "please raise an issue on GitHub.")
             else:
-                # Masks out class 5
-                # TODO: make optional
-                losses[i] = ignore_class_wrapper(loss, self.model.n_classes, self.logger)
+                # Mask out class 5: TODO: Make optional
+                losses[i] = ignore_class_wrapper(losses[i], self.model.n_classes, self.logger)
         metrics = init_metrics(metrics, self.logger, **kwargs)
 
         # Compile the model
