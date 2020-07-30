@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from carbontracker.tracker import CarbonTracker
 from tensorflow.keras.callbacks import Callback
 from utime.utils import get_memory_usage
 from mpunet.utils import highlighted
@@ -291,3 +292,48 @@ class MaxTrainingTime(Callback):
                       "Total training length of {} minutes exceeded (now {}) "
                       "".format(self.max_minutes, train_time_m))
             self.model.stop_training = True
+
+
+class CarbonUsageTracking(Callback):
+    """
+    tf.keras Callback for the Carbontracker package.
+    See https://github.com/lfwa/carbontracker.
+    """
+    def __init__(self, epochs, add_to_logs=True, monitor_epochs=-1,
+                 devices_by_pid=True, **additional_tracker_kwargs):
+        """
+        Accepts parameters as per CarbonTracker.__init__
+        Sets other default values for key parameters.
+
+        Args:
+            add_to_logs: bool, Add total_energy_kwh and total_co2_g to the keras logs after each epoch
+            For other arguments, please refer to CarbonTracker.__init__
+        """
+        super().__init__()
+        self.tracker = None
+        self.add_to_logs = bool(add_to_logs)
+        self.parameters = {"epochs": epochs,
+                           "monitor_epochs": monitor_epochs,
+                           "devices_by_pid": devices_by_pid}
+        self.parameters.update(additional_tracker_kwargs)
+
+    def on_train_begin(self, logs={}):
+        """ Initialize the tracker. Devices should have active processes at this point """
+        self.tracker = CarbonTracker(**self.parameters)
+
+    def on_train_end(self, logs={}):
+        """ Ensure actual consumption is reported """
+        self.tracker.stop()
+
+    def on_epoch_begin(self, epoch, logs={}):
+        """ Start tracking this epoch """
+        self.tracker.epoch_start()
+
+    def on_epoch_end(self, epoch, logs={}):
+        """ End tracking this epoch """
+        self.tracker.epoch_end()
+        if self.add_to_logs:
+            energy_kwh = self.tracker.tracker.total_energy_per_epoch().sum()
+            co2eq_g = self.tracker._co2eq(energy_kwh)
+            logs["total_energy_kwh"] = round(energy_kwh, 6)
+            logs["total_co2_g"] = round(co2eq_g, 6)

@@ -17,7 +17,7 @@ from mpunet.train.utils import (ensure_sparse,
                                 init_losses,
                                 init_metrics,
                                 init_optimizer)
-from utime.callbacks import Validation, MemoryConsumption
+from utime.callbacks import Validation, MemoryConsumption, CarbonUsageTracking
 from utime.train.utils import get_steps
 
 
@@ -28,6 +28,7 @@ def ignore_class_wrapper(loss_func, n_pred_classes, logger):
 
     TODO
     """
+    @tf.function
     def wrapper(true, pred):
         true.set_shape(pred.get_shape()[:-1] + [1])
         true = tf.reshape(true, [-1])
@@ -208,6 +209,7 @@ class Trainer(object):
         callbacks.append(MemoryConsumption(max_gib=45,
                                            logger=self.logger))
         callbacks.append(LearningCurve(logger=self.logger))
+        callbacks.append(CarbonUsageTracking(epochs=n_epochs, add_to_logs=False))
         callbacks.append(DividerLine(self.logger))
 
         # Get initialized callback objects
