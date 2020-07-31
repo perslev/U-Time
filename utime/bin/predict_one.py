@@ -32,7 +32,7 @@ def get_argparser():
                         required=True,
                         help="A list of channels to use for prediction. "
                              "To predict on multiple channel groups, pass one string for "
-                             "each channel group with each channel in the group separated by a '+' sign. "
+                             "each channel group with each channel in the group separated by a '++' sign. "
                              "E.g. to predict on EEG1-EOG1 and EEG2-EOG2, pass EEG1+EOG1 EEG2+EOG2. Each group "
                              "will be used for prediction once, and the final results will be a majority vote "
                              "across all.")
@@ -103,10 +103,14 @@ def unpack_channel_groups(channels):
     TODO
     """
     channels_to_load, channel_groups = [], []
-    grouped = map(lambda chan: "+" in chan, channels)
+    if len(channels) == 1:
+        # Multiple groups may be split by "&&"
+        # Used e.g. if one string is passed to a docker container
+        channels = channels[0].split("&&")
+    grouped = map(lambda chan: "++" in chan, channels)
     if all(grouped):
         for channel in channels:
-            group = channel.split("+")
+            group = channel.split("++")
             channels_to_load.extend(group)
             channel_groups.append(group)
         # Remove duplicated while preserving order
