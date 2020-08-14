@@ -208,7 +208,7 @@ class Trainer(object):
         # Add various callbacks for plotting learning curves etc.
         callbacks.append(MemoryConsumption(max_gib=45, logger=self.logger))
         callbacks.append(LearningCurve(logger=self.logger))
-        callbacks.append(CarbonUsageTracking(epochs=n_epochs, add_to_logs=False))
+        # callbacks.append(CarbonUsageTracking(epochs=n_epochs, add_to_logs=False))
         callbacks.append(DividerLine(self.logger))
 
         # Get initialized callback objects
