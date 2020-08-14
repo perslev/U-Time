@@ -30,11 +30,11 @@ class SparseHypnogram(object):
                                                                  durations_sec,
                                                                  sleep_stages))
         if init_times_sec[0] != 0:
-            # Insert leading UNKNOWN class if hypnogram does not start at
+            # Insert leading OUT_OF_BOUNDS class if hypnogram does not start at
             # second 0
             init_times_sec.insert(0, 0)
             durations_sec.insert(0, init_times_sec[1])
-            sleep_stages.insert(0, defaults.UNKNOWN[1])
+            sleep_stages.insert(0, defaults.OUT_OF_BOUNDS[1])
         self.inits = np.array(init_times_sec, dtype=np.int32)
         self.durations = np.array(durations_sec, dtype=np.int32)
         self.stages = np.array(sleep_stages, dtype=np.uint8)
