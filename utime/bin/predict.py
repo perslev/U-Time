@@ -240,14 +240,13 @@ def run_pred(dataset,
                 # Save true to disk, only save once if multiple channel sets
                 # Note that we save the true values to the folder storing
                 # results for each channel if multiple channel sets
-                out_path = os.path.join(out_dir, sleep_study_pair.identifier + "_TRUE.npy")
+                true_out_path = os.path.join(out_dir, sleep_study_pair.identifier + "_TRUE.npy")
                 if len(org_pred_shape) == 3:
                     y = np.repeat(y, org_pred_shape[1])
                 logger("* Saving true array of shape {} to {}".format(
-                    y.shape, out_path
+                    y.shape, true_out_path
                 ))
-                np.save(out_path, y)
-
+                np.save(true_out_path, y)
             # Save pred to disk
             logger("* Saving prediction array of shape {} to {}".format(
                 pred.shape, out_path
