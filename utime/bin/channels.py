@@ -22,16 +22,16 @@ def run(subject_dir_pattern, psg_regex):
     if len(files) == 0:
         print("No subject dirs match pattern {}".format(subject_dir_pattern))
     else:
-        from utime.dataset import SleepStudyBase
+        from utime.dataset import SleepStudy
         print("Channels:")
         for subject_dir in files:
             psg_regex = psg_regex or None
             if not psg_regex and os.path.isfile(subject_dir):
                 subject_dir, psg_regex = os.path.split(subject_dir)
-            ss = SleepStudyBase(subject_dir=subject_dir,
-                                psg_regex=psg_regex,
-                                no_hypnogram=True,
-                                period_length_sec=30)
+            ss = SleepStudy(subject_dir=subject_dir,
+                            psg_regex=psg_regex,
+                            no_hypnogram=True,
+                            period_length_sec=30)
             header = read_psg_header(ss.psg_file_path)
             print(header['channel_names'],
                   header['sample_rate'], " Hz")
