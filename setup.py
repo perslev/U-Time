@@ -1,8 +1,4 @@
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
-
+from setuptools import setup, find_packages
 from utime import __version__
 
 with open('README.md') as readme_file:
