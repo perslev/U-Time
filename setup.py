@@ -23,9 +23,11 @@ setup(
     author_email='map@di.ku.dk',
     url='https://github.com/perslev/U-Time',
     license="LICENSE.txt",
-    packages=["utime"],
+    packages=find_packages(),
     package_dir={'utime':
                  'utime'},
+    include_package_data=True,
+    setup_requires=["setuptools_git>=0.3",],
     entry_points={
        'console_scripts': [
            'ut=utime.bin.ut:entry_func',
