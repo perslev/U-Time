@@ -221,7 +221,7 @@ def entry_func(args=None):
     parser = get_argparser()
     args = parser.parse_args(args)
     assert_args(args)
-    run(**vars(args), dump_args=args)
+    run(args, dump_args=args)
 
 
 if __name__ == "__main__":
