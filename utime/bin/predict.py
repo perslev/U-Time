@@ -40,6 +40,9 @@ def get_argparser():
     parser.add_argument("--channels", nargs='*', type=str, default=None,
                         help="A list of channels to use instead of those "
                              "specified in the parameter file.")
+    parser.add_argument("--majority", action="store_true",
+                        help="Output a majority vote across channel groups in addition "
+                             "to the individual channels.")
     parser.add_argument("--data_split", type=str, default="test_data",
                         help="Which split of data of those stored in the "
                              "hparams file should the evaluation be performed "
@@ -161,20 +164,108 @@ def get_datasets(hparams, args, logger):
     return datasets
 
 
-def predict_study(sleep_study_pair, seq, model, model_func, logger, args):
+def predict_study(sleep_study_pair, seq, model, model_func, logger, num_test_time_augment=0, no_argmax=False):
     # Predict
     with logger.disabled_in_context(), sleep_study_pair.loaded_in_context():
         y, pred = predict_on(study_pair=sleep_study_pair,
                              seq=seq,
                              model=model,
                              model_func=model_func,
-                             n_aug=args.num_test_time_augment,
+                             n_aug=num_test_time_augment,
                              argmax=False)
     org_pred_shape = pred.shape
     pred, y = pred.numpy().reshape(-1, 5), y.reshape(-1, 1)
-    if not args.no_argmax:
+    if not no_argmax:
         pred = pred.argmax(-1)
     return pred, y, org_pred_shape
+
+
+def get_save_path(out_dir, file_name, sub_folder_name=None):
+    # Get paths
+    if sub_folder_name is not None:
+        out_dir_pred = os.path.join(out_dir, sub_folder_name)
+    else:
+        out_dir_pred = out_dir
+    out_path = os.path.join(out_dir_pred, file_name)
+    return out_path
+
+
+def save_file(path, arr, argmax, logger):
+    path = os.path.abspath(path)
+    dir_ = os.path.split(path)[0]
+    os.makedirs(dir_, exist_ok=True)
+    if argmax:
+        arr = arr.argmax(-1)
+    logger("* Saving array of shape {} to {}".format(
+        arr.shape, path
+    ))
+    np.save(path, arr)
+
+
+def get_updated_majority_voted(majority_voted, pred):
+    if majority_voted is None:
+        majority_voted = pred.copy()
+    else:
+        majority_voted += pred
+    return majority_voted
+
+
+def run_pred_on_channels(sleep_study_pair, seq, model, model_func, logger, num_test_time_augment=0):
+    pred, y, org_pred_shape = predict_study(
+        sleep_study_pair=sleep_study_pair,
+        seq=seq,
+        model=model,
+        model_func=model_func,
+        logger=logger,
+        num_test_time_augment=num_test_time_augment,
+        no_argmax=True
+    )
+    if len(org_pred_shape) == 3:
+        y = np.repeat(y, org_pred_shape[1])
+    return pred, y
+
+
+def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_sets, logger, args):
+    majority_voted = None
+    path_mj = get_save_path(out_dir, sleep_study_pair.identifier + "_PRED.npy", "majority")
+    path_true = get_save_path(out_dir, sleep_study_pair.identifier + "_TRUE.npy", None)
+    for k, (sub_folder_name, channels_to_load) in enumerate(channel_sets):
+        # Get prediction out path
+        path_pred = get_save_path(out_dir, sleep_study_pair.identifier + "_PRED.npy", sub_folder_name)
+
+        # If not --overwrite set, and path exists, we skip it here
+        if os.path.exists(path_pred) and not args.overwrite:
+            logger("Skipping (channels={}) - already exists and --overwrite not set.".format(channels_to_load))
+            # Load and increment the majority_voted array before continue
+            majority_voted = get_updated_majority_voted(majority_voted, np.load(path_pred))
+            continue
+
+        # Load and predict on the set channels
+        if channels_to_load:
+            logger(" -- Channels: {}".format(channels_to_load))
+            sleep_study_pair.select_channels = channels_to_load
+
+        # Get the prediction and true values
+        pred, y = run_pred_on_channels(
+            sleep_study_pair=sleep_study_pair,
+            seq=seq,
+            model=model,
+            model_func=model_func,
+            logger=logger,
+            num_test_time_augment=args.num_test_time_augment
+        )
+        # Sum the predictions into the majority_voted array
+        majority_voted = get_updated_majority_voted(majority_voted, pred)
+
+        if args.save_true and not os.path.exists(path_true):
+            # Save true to disk, only save once if multiple channel sets
+            # Note that we save the true values to the folder storing
+            # results for each channel if multiple channel sets
+            save_file(path_true, arr=y, argmax=False, logger=logger)
+        # Save prediction
+        save_file(path_pred, arr=pred, argmax=not args.no_argmax, logger=logger)
+    if args.majority:
+        save_file(path_mj, arr=majority_voted, argmax=not args.no_argmax, logger=logger)
 
 
 def run_pred(dataset,
@@ -183,8 +274,7 @@ def run_pred(dataset,
              model_func,
              hparams,
              args,
-             logger,
-             overwrite=True):
+             logger):
     """
     Run prediction on a all entries of a SleepStudyDataset
 
@@ -204,9 +294,8 @@ def run_pred(dataset,
 
     # Predict on all samples
     for i, sleep_study_pair in enumerate(dataset):
-        logger("[{}/{}] Predicting on SleepStudyBase: {}".format(i+1,
-                                                             len(dataset),
-                                                             sleep_study_pair.identifier))
+        logger("[{}/{}] Predicting on SleepStudyBase: {}".format(i+1, len(dataset),
+                                                                 sleep_study_pair.identifier))
 
         # Get list of channel sets to predict on
         channel_sets = get_prediction_channel_sets(sleep_study_pair, dataset)
@@ -216,42 +305,16 @@ def run_pred(dataset,
         if len(channel_sets) == 0:
             logger.warn("Found no valid channel sets...")
 
-        for i, (sub_folder_name, channels_to_load) in enumerate(channel_sets):
-            # Get paths
-            if sub_folder_name is not None:
-                out_dir_pred = os.path.join(out_dir, sub_folder_name)
-                os.makedirs(out_dir_pred, exist_ok=True)
-            else:
-                out_dir_pred = out_dir
-            out_path = os.path.join(out_dir_pred,
-                                    sleep_study_pair.identifier + "_PRED.npy")
-            if os.path.exists(out_path) and not overwrite:
-                logger("Skipping channel {} (file already exists, "
-                       "--overwrite not set)".format(channels_to_load))
-                continue
-            # Load and predict on the set channels
-            if channels_to_load:
-                logger(" -- Channels: {}".format(channels_to_load))
-                sleep_study_pair.select_channels = channels_to_load
-            pred, y, org_pred_shape = predict_study(
-                sleep_study_pair, seq, model, model_func, logger, args
-            )
-            if args.save_true and i == 0:
-                # Save true to disk, only save once if multiple channel sets
-                # Note that we save the true values to the folder storing
-                # results for each channel if multiple channel sets
-                true_out_path = os.path.join(out_dir, sleep_study_pair.identifier + "_TRUE.npy")
-                if len(org_pred_shape) == 3:
-                    y = np.repeat(y, org_pred_shape[1])
-                logger("* Saving true array of shape {} to {}".format(
-                    y.shape, true_out_path
-                ))
-                np.save(true_out_path, y)
-            # Save pred to disk
-            logger("* Saving prediction array of shape {} to {}".format(
-                pred.shape, out_path
-            ))
-            np.save(out_path, pred)
+        run_pred_on_pair(
+            sleep_study_pair=sleep_study_pair,
+            seq=seq,
+            model=model,
+            model_func=model_func,
+            out_dir=out_dir,
+            channel_sets=channel_sets,
+            logger=logger,
+            args=args
+        )
 
 
 def run(args):
@@ -314,8 +377,7 @@ def run(args):
                  model_func=model_func,
                  hparams=hparams,
                  args=args,
-                 logger=logger,
-                 overwrite=args.overwrite)
+                 logger=logger)
 
 
 def entry_func(args=None):
