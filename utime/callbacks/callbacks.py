@@ -300,7 +300,7 @@ class CarbonUsageTracking(Callback):
     See https://github.com/lfwa/carbontracker.
     """
     def __init__(self, epochs, add_to_logs=True, monitor_epochs=-1,
-                 devices_by_pid=True, **additional_tracker_kwargs):
+                 epochs_before_pred=-1, devices_by_pid=True, **additional_tracker_kwargs):
         """
         Accepts parameters as per CarbonTracker.__init__
         Sets other default values for key parameters.
@@ -314,12 +314,9 @@ class CarbonUsageTracking(Callback):
         self.add_to_logs = bool(add_to_logs)
         self.parameters = {"epochs": epochs,
                            "monitor_epochs": monitor_epochs,
+                           "epochs_before_pred": epochs_before_pred,
                            "devices_by_pid": devices_by_pid}
         self.parameters.update(additional_tracker_kwargs)
-
-    def on_train_begin(self, logs={}):
-        """ Initialize the tracker. Devices should have active processes at this point """
-        self.tracker = CarbonTracker(**self.parameters)
 
     def on_train_end(self, logs={}):
         """ Ensure actual consumption is reported """
@@ -327,6 +324,9 @@ class CarbonUsageTracking(Callback):
 
     def on_epoch_begin(self, epoch, logs={}):
         """ Start tracking this epoch """
+        if self.tracker is None:
+            # At this point all CPUs should be discoverable
+            self.tracker = CarbonTracker(**self.parameters)
         self.tracker.epoch_start()
 
     def on_epoch_end(self, epoch, logs={}):
