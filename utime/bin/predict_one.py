@@ -155,6 +155,7 @@ def get_sleep_study(psg_path,
     channels_to_load, channel_groups = unpack_channel_groups(params['channels'])
     logger("Loading channels: {}".format(channels_to_load))
     logger("Channel groups: {}".format(channel_groups))
+    study.set_strip_func(**params['strip_func'], period_length_sec=params.get('period_length_sec', 30))
     study.select_channels = channels_to_load
     study.sample_rate = params['set_sample_rate']
     study.scaler = params['scaler']
