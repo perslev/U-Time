@@ -17,17 +17,22 @@ def read_edf_header(file_path, **kwargs):
         A dictionary of header information
     """
     from mne.io import read_raw_edf
-    with mne_no_log_context(), warnings.catch_warnings(record=True) as warns:
+    with mne_no_log_context(), warnings.catch_warnings(record=True) as _:
         warnings.filterwarnings('default')
         raw_edf = read_raw_edf(file_path, preload=False,
                                stim_channel=None, verbose=False)
     header = extract_header(raw_edf)
-    if warns:
-        duplicates = str(warns[0]).split("{")[-1].split("}")[0].replace("'", "").split(",")
-        duplicates = [d.strip() for d in duplicates]
-    else:
-        duplicates = []
-    header['duplicates'] = duplicates
+    # Manually read channel names as-are in file without renaming, truncations etc. that
+    # may be applied by MNE (as of v0.21) to ensure we exclude using the proper names.
+    with open(file_path, "rb") as in_f:
+        in_f.seek(252)
+        n_channels = int(in_f.read(4).decode().rstrip('\x00'))
+        channel_names = [in_f.read(16).strip().decode('latin-1') for _ in range(n_channels)]
+        # Ignore EDF TAL channels, as is done in MNE too (v0.21)
+        channel_names = [chan for chan in channel_names if "EDF Annotatio" not in chan]
+        assert len(channel_names) == header["n_channels"], "Manually loaded number of channels " \
+                                                           "does not match number read by MNE"
+        header["channel_names"] = channel_names
     return header
 
 

@@ -6,27 +6,43 @@ from utime.utils import mne_no_log_context
 from utime.errors import ChannelNotFoundError
 
 
-def extract_from_edf(psg_file_path, exclude_channels, header, **kwargs):
+def extract_from_edf(psg_file_path, header, include_channels, exclude_channels, **kwargs):
     """
     TODO
 
     Returns:
         pandas.DataFrame
     """
-    exclude_channels += header.get('duplicates', [])  # TODO: Make sure dups are not in include set
     from mne.io import read_raw_edf
-
-    exclude_channels += ['Respiratory Rate', 'Compumedics Body',
-                         'Pro Tech Positio', 'ProTechPositione',
-                         'Heart Rate Varia']
-
+    # Channels longer than 16 characters are truncated to length 16.
+    # Check no duplicates in include list
+    exclude_channels_short = [s[:16] for s in exclude_channels]
+    include_channels_short = [s[:16] for s in include_channels]
+    if len(set(include_channels_short)) != len(include_channels_short):
+        raise ValueError(f"Cannot load file {psg_file_path} with include_channels "
+                         f"{include_channels} as duplicate channel names occur. "
+                         f"This may be because two or more channel names of length > 16 "
+                         f"were expected, but those were shortened to their maximum length of 16 "
+                         f"by the EDF(+) format. Shortened channel names are: {include_channels_short}.")
+    if set(exclude_channels_short) & set(include_channels_short):
+        raise ValueError(f"Cannot load file {psg_file_path} with include_channels "
+                         f"{include_channels} and exclude channels {exclude_channels} "
+                         f"as one or more channel names occur in the exclude set that are also in the "
+                         f"include set. "
+                         f"This may be because two or more channel names of length > 16 "
+                         f"were truncated to the same channel name of the EDF format maximum length of 16 "
+                         f"Shortened channel names are (include): {include_channels_short} and "
+                         f"(exclude): {exclude_channels_short}.")
     with mne_no_log_context():
         edf = read_raw_edf(psg_file_path, preload=False,
                            stim_channel=None, verbose=False,
-                           exclude=exclude_channels)
+                           exclude=exclude_channels_short)
         # Update header with actually used sample rate
         header["sample_rate"] = float(edf.info['sfreq'])
-        return edf.to_data_frame()
+        df = edf.to_data_frame()
+        if "time" in df.columns:
+            df = df.drop(['time'], axis=1)
+        return df
 
 
 def extract_from_wfdb(wfdb_file_path, include_channels, header, **kwargs):
