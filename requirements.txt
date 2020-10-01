@@ -8,4 +8,4 @@ scikit_learn>=0.20.0
 mne>=0.21.0
 mpunet>=0.2.4
 carbontracker>=1.1.2
-# tensorflow-gpu>=2.0
+tensorflow-gpu>=2.1
