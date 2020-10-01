@@ -1,7 +1,6 @@
 import numpy as np
 import os
 import h5py
-from pandas import DataFrame
 from utime.utils import mne_no_log_context
 from utime.errors import ChannelNotFoundError
 
@@ -11,7 +10,7 @@ def extract_from_edf(psg_file_path, header, include_channels, exclude_channels, 
     TODO
 
     Returns:
-        pandas.DataFrame
+        ndarray, shape NxC
     """
     from mne.io import read_raw_edf
     # Channels longer than 16 characters are truncated to length 16.
@@ -39,10 +38,7 @@ def extract_from_edf(psg_file_path, header, include_channels, exclude_channels, 
                            exclude=exclude_channels_short)
         # Update header with actually used sample rate
         header["sample_rate"] = float(edf.info['sfreq'])
-        df = edf.to_data_frame()
-        if "time" in df.columns:
-            df = df.drop(['time'], axis=1)
-        return df
+        return edf.get_data().T
 
 
 def extract_from_wfdb(wfdb_file_path, include_channels, header, **kwargs):
@@ -50,7 +46,7 @@ def extract_from_wfdb(wfdb_file_path, include_channels, header, **kwargs):
     TODO
 
     Returns:
-        ndarray
+        ndarray, shape NxC
     """
     from wfdb.io import rdrecord
     rec = rdrecord(record_name=os.path.splitext(wfdb_file_path)[0],
@@ -70,18 +66,18 @@ def extract_from_pickle(pickle_file_path, header, include_channels, **kwargs):
                   of the channel to load within the subject directory.
 
     Returns:
-        pandas.DataFrame object
+        ndarray
     """
     import pickle
     with open(pickle_file_path, "rb") as in_f:
         chnl_dict = pickle.load(in_f)
     data_dir = header['data_dir']
-    data = {}
+    data = []
     for chnl in include_channels:
         path = os.path.join(data_dir, chnl_dict[chnl][0])
         dtype = os.path.splitext(path)[-1][1:]
-        data[chnl] = np.fromfile(path, dtype=np.dtype(dtype))
-    return DataFrame(data=data)
+        data.append(np.fromfile(path, dtype=np.dtype(dtype)))
+    return np.array(data).T
 
 
 def extract_from_h5(h5_file_path, include_channels, **kwargs):
@@ -89,13 +85,13 @@ def extract_from_h5(h5_file_path, include_channels, **kwargs):
     TODO
 
     Returns:
-        pandas.DataFrame object
+        ndarray
     """
-    data = {}
+    data = []
     with h5py.File(h5_file_path, "r") as h5_file:
         for chnl in include_channels:
-            data[chnl] = np.array(h5_file["channels"][chnl])
-    return DataFrame(data=data)
+            data.append(np.array(h5_file["channels"][chnl]))
+    return np.array(data).T
 
 
 _EXT_TO_LOADER = {
