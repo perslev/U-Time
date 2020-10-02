@@ -73,7 +73,7 @@ def extract_h5_header(h5_path, try_channel_dir_names=("channels", "signals", "ps
                 return _standardized_h5_header(psg_obj, channel_dir)
             except KeyError:
                 continue
-        raise KeyError(f"Could not read header from H5 archive '{h5_path}'. "
+        raise KeyError(f"Could not read header from H5 archive '{os.path.basename(h5_path)}'. "
                        f"The archive does not contain any group named one of "
                        f"'{try_channel_dir_names}'. Individual channel H5 datasets must descend from a "
                        f"root group with name in this particular list of possible values (e.g. a valid dataset would "
