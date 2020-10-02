@@ -195,7 +195,8 @@ def _standardized_h5_header(h5_file, channel_group_name="channels"):
         header["length"] = int(_get_unique_value(header["length"]))
     except ValueError as e:
         raise ValueError("Datasets stored in the specified H5 archive differ with respect to one or multiple of the "
-                         "following attributes: 'date', 'sampling_rate', 'length'.") from e
+                         "following attributes: 'date', 'sampling_rate', 'length'. "
+                         "All datasets must currently match with respect to those attributes.") from e
 
     # Get datetime date or set to None
     date = header["date"]
