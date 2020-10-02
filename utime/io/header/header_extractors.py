@@ -13,7 +13,8 @@ import os
 import warnings
 from utime.utils import mne_no_log_context
 from utime.io.header.header_standardizers import (_standardized_edf_header,
-                                                  _standardized_wfdb_header)
+                                                  _standardized_wfdb_header,
+                                                  _standardized_h5_header)
 
 
 def extract_edf_header(file_path):
@@ -58,22 +59,7 @@ def extract_wfdb_header(file_path):
     return _standardized_wfdb_header(header)
 
 
-def extract_dcsm_header(pickle_path):
-    """
-    Header reader function for .picle extension files.
-    Used only for the DCSM (private) dataset.
-
-    Returns:
-        A dictionary of header information
-    """
-    class DCSMDict(dict): pass  # We define a recognizably named type
-    import pickle
-    with open(pickle_path, "rb") as in_f:
-        signal_pairs = pickle.load(in_f)
-    return extract_header(DCSMDict(signal_pairs))
-
-
-def extract_h5_header(h5_path):
+def extract_h5_header(h5_path, try_channel_dir_names=("channels", "signals", "psg")):
     """
     Header reader function for .h5 extension files.
 
@@ -82,15 +68,24 @@ def extract_h5_header(h5_path):
     """
     import h5py
     with h5py.File(h5_path, "r") as psg_obj:
-        return extract_header(psg_obj)
+        for channel_dir in try_channel_dir_names:
+            try:
+                return _standardized_h5_header(psg_obj, channel_dir)
+            except KeyError:
+                continue
+        raise KeyError(f"Could not read header from H5 archive '{h5_path}'. "
+                       f"The archive does not contain any group named one of "
+                       f"'{try_channel_dir_names}'. Individual channel H5 datasets must descend from a "
+                       f"root group with name in this particular list of possible values (e.g. a valid dataset would "
+                       f"be stored at /channels/eeg/C3-M2, where /C3-M2 would not be valid.")
 
 
 _EXT_TO_LOADER = {
     "edf": extract_edf_header,
     "mat": extract_wfdb_header,
     "dat": extract_wfdb_header,
-    "pickle": extract_dcsm_header,
-    "h5": extract_h5_header
+    "h5": extract_h5_header,
+    "hdf5": extract_h5_header
 }
 
 

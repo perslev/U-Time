@@ -55,51 +55,27 @@ def extract_from_wfdb(wfdb_file_path, include_channels, header, **kwargs):
     return rec.p_signal
 
 
-def extract_from_pickle(pickle_file_path, header, include_channels, **kwargs):
-    """
-    TODO
-
-    Args:
-        ...
-        data_dir: A path to the subject directory storing the actual data.
-                  This is needed as the DCSM picle object only stores the name
-                  of the channel to load within the subject directory.
-
-    Returns:
-        ndarray
-    """
-    import pickle
-    with open(pickle_file_path, "rb") as in_f:
-        chnl_dict = pickle.load(in_f)
-    data_dir = header['data_dir']
-    data = []
-    for chnl in include_channels:
-        path = os.path.join(data_dir, chnl_dict[chnl][0])
-        dtype = os.path.splitext(path)[-1][1:]
-        data.append(np.fromfile(path, dtype=np.dtype(dtype)))
-    return np.array(data).T
-
-
-def extract_from_h5(h5_file_path, include_channels, **kwargs):
+def extract_from_h5(h5_file_path, include_channels, header, **kwargs):
     """
     TODO
 
     Returns:
         ndarray
     """
-    data = []
+    data = np.empty(shape=[len(include_channels), header["length"]], dtype=np.float32)
     with h5py.File(h5_file_path, "r") as h5_file:
-        for chnl in include_channels:
-            data.append(np.array(h5_file["channels"][chnl]))
-    return np.array(data).T
+        for i, channel in enumerate(include_channels):
+            channel_path = header["channel_paths"][channel]
+            data[i] = h5_file[channel_path]
+    return data.T
 
 
 _EXT_TO_LOADER = {
     "edf": extract_from_edf,
     "mat": extract_from_wfdb,
     "dat": extract_from_wfdb,
-    "pickle": extract_from_pickle,
-    "h5": extract_from_h5
+    "h5": extract_from_h5,
+    "hdf5": extract_from_h5
 }
 
 

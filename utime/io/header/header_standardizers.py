@@ -16,8 +16,10 @@ the following keys:
 Note: length gives the number of samples, divide by sample_rate to get length_sec
 """
 
-from datetime import datetime
 import numpy as np
+import h5py
+from datetime import datetime
+from collections import defaultdict
 
 
 def _assert_header(header):
@@ -34,7 +36,7 @@ def _assert_header(header):
         ("n_channels", [int]),
         ("channel_names", [list]),
         ("sample_rate", [int]),
-        ("date", [datetime, None]),
+        ("date", [datetime, type(None)]),
         ("length", [int])
     ]
     for field, valid_types in field_requirements:
@@ -114,50 +116,92 @@ def _standardized_wfdb_header(wfdb_record):
     return _assert_header(header)
 
 
-def _read_dcsm_dict_header(dict, **kwargs):
-    """
-    Header extraction function for DCSMDict objects.
-    The DCSMDict dictionary stores key-values pairs:
-       channel_name : (file_path, sample_rate)
-    Here, we extract the channel names and sample rates.
-    No date information is carried.
+def _traverse_h5_file(root_node, attributes=None):
+    attributes = dict((attributes or {}))
+    attributes.update(root_node.attrs)
+    results = {}
+    if isinstance(root_node, h5py.Dataset):
+        # Leaf node
+        attributes["length"] = len(root_node)
+        results[root_node.name] = attributes
+    else:
+        for key in root_node:
+            results.update(_traverse_h5_file(root_node[key], attributes))
+    return results
 
+
+def _get_unique_value(items):
+    """
+    Takes a list of items, checks that all are equal (in value, ==) and returns the unique value.
+    Returns None if the list is empty.
+    Raises ValueError if not all items are not equal.
+    Args:
+        items: List
     Returns:
-        A dictionary with header elements
+        The unique item in list
     """
-    sample_rates = np.array([v[1] for v in dict.values()])
-    if np.any(sample_rates != sample_rates[0]):
-        raise NotImplementedError("Cannot deal with non-identical sample rates"
-                                  " across channels.")
-    header = {
-        "n_channels": len(dict),
-        "channel_names": list(dict.keys()),
-        "sample_rate": sample_rates[0],
-        "date": None
-    }
-    return _assert_header(header)
+    if len(items) == 0:
+        return None
+    for item in items[1:]:
+        if item != items[0]:
+            raise ValueError(f"The input list '{items}' contains more than 1 unique value")
+    return items[0]
 
 
-def _read_h5_file(h5_file, **kwargs):
+def _standardized_h5_header(h5_file, channel_group_name="channels"):
     """
     Header extraction function for h5py.File objects.
     The object must:
       - Have an attribute 'sample_rate'
-      - Have a group named 'channels' which stores the data for all channels as
-        Dataset entries under the group
+      - Have a group named {channel_group_name} which stores the data for all channels as
+        Dataset entries under the group (can be nested in deeper groups too)
     Can have:
       - An attribute 'date' which gives a date string or unix timestamp integer
 
+    Currently raises an error if any attribute in ('date', 'sample_rate', 'length') are not equal among all
+    datasets in the archive.
+
+    All attributes may be set at any node, and will affect any non-attributed node deeper in the tree.
+    E.g. setting the 'sample_rate' attribute on the root note will have it affect all datasets, unless
+    the attribute is set on deeper nodes too in which case the later will overwrite the root attribute for
+    all its nested, un-attributed children.
+
     Returns:
-        A dictionary with header elements
+        Header information as dict
     """
-    d = h5_file.attrs.get("date")
-    if not isinstance(d, str) and (isinstance(d, int) or np.issubdtype(d, np.integer)):
-        d = datetime.fromtimestamp(d)
+    # Traverse the h5 archive for datasets and assigned attributes
+    h5_content = _traverse_h5_file(h5_file[channel_group_name], attributes=h5_file.attrs)
     header = {
-        "n_channels": len(h5_file["channels"]),
-        "channel_names": list(h5_file["channels"].keys()),
-        "sample_rate": h5_file.attrs["sample_rate"],
-        "date": d
+        "channel_names": [],
+        "channel_paths": {},  # will store channel_name: channel path entries
+        "sample_rate": [],
+        "date": [],
+        "length": []
     }
+    for channel_path, attributes in h5_content.items():
+        channel_name = channel_path.split("/")[-1]
+        header["channel_paths"][channel_name] = channel_path
+        header["channel_names"].append(channel_name)
+        header["sample_rate"].append(attributes.get("sample_rate"))
+        header["date"].append(attributes.get("date"))
+        header["length"].append(attributes.get("length"))
+    header["n_channels"] = len(h5_content)
+
+    # Ensure all dates, lengths and sample rate attributes are equal
+    # TODO: Remove this restriction at least for sample rates; requires handling at PSG loading time
+    try:
+        header["date"] = _get_unique_value(header["date"])
+        header["sample_rate"] = int(_get_unique_value(header["sample_rate"]))
+        header["length"] = int(_get_unique_value(header["length"]))
+    except ValueError as e:
+        raise ValueError("Datasets stored in the specified H5 archive differ with respect to one or multiple of the "
+                         "following attributes: 'date', 'sampling_rate', 'length'.") from e
+
+    # Get datetime date or set to None
+    date = header["date"]
+    if not isinstance(date, str) and (isinstance(date, int) or np.issubdtype(date, np.integer)):
+        date = datetime.utcfromtimestamp(date)
+    elif not isinstance(date, datetime):
+        date = None
+    header["date"] = date
     return _assert_header(header)
