@@ -1,14 +1,21 @@
 """
-A collection of lower level data loader for various data files such as EDF,
-EDF+, CSV, mat, numpy...
+A collection of functions for extracting a header of the following format:
+
+{
+    'n_channels': int,
+    'channel_names': list of strings,
+    'sample_rate': int
+    'date': datetime or None
+    'length_sec': float
+}
 """
 import os
 import warnings
 from utime.utils import mne_no_log_context
-from utime.io.extractors.header_extractors import extract_header
+from utime.io.header.header_standardizers import _standardized_edf_header
 
 
-def read_edf_header(file_path, **kwargs):
+def extract_edf_header(file_path, **kwargs):
     """
     Header reader function for .edf extension files.
     Redirects to mne.io.read_raw_edf.
@@ -21,7 +28,8 @@ def read_edf_header(file_path, **kwargs):
         warnings.filterwarnings('default')
         raw_edf = read_raw_edf(file_path, preload=False,
                                stim_channel=None, verbose=False)
-    header = extract_header(raw_edf)
+    header = _standardized_edf_header(raw_edf)
+
     # Manually read channel names as-are in file without renaming, truncations etc. that
     # may be applied by MNE (as of v0.21) to ensure we exclude using the proper names.
     with open(file_path, "rb") as in_f:
@@ -36,7 +44,7 @@ def read_edf_header(file_path, **kwargs):
     return header
 
 
-def read_wfdb_header(file_path, **kwargs):
+def extract_wfdb_header(file_path, **kwargs):
     """
     Header reader function for .dat and .mat WFDB extension files.
     Redirects to the wfdb.io.rdheader function.
@@ -48,7 +56,7 @@ def read_wfdb_header(file_path, **kwargs):
     return extract_header(rdheader(record_name=os.path.splitext(file_path)[0]))
 
 
-def open_dcsm_pickle(pickle_path, **kwargs):
+def extract_dcsm_header(pickle_path, **kwargs):
     """
     Header reader function for .picle extension files.
     Used only for the DCSM (private) dataset.
@@ -63,7 +71,7 @@ def open_dcsm_pickle(pickle_path, **kwargs):
     return extract_header(DCSMDict(signal_pairs))
 
 
-def read_h5_header(h5_path, **kwargs):
+def extract_h5_header(h5_path, **kwargs):
     """
     Header reader function for .h5 extension files.
 
@@ -76,17 +84,20 @@ def read_h5_header(h5_path, **kwargs):
 
 
 _EXT_TO_LOADER = {
-    "edf": read_edf_header,
-    "mat": read_wfdb_header,
-    "dat": read_wfdb_header,
-    "pickle": open_dcsm_pickle,
-    "h5": read_h5_header
+    "edf": extract_edf_header,
+    "mat": extract_wfdb_header,
+    "dat": extract_wfdb_header,
+    "pickle": extract_dcsm_header,
+    "h5": extract_h5_header
 }
 
 
-def read_psg_header(file_path):
+def extract_header(file_path):
     """
     Loads the header from a PSG-type file at path 'file_path'.
+
+    Returns:
+        dictionary of header information
     """
     fname = os.path.split(os.path.abspath(file_path))[-1]
     _, ext = os.path.splitext(fname)

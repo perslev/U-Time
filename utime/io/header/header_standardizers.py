@@ -1,13 +1,25 @@
 """
-A set of functions for extracting header information from PSG objects output
-from unet.io.extractors.psg_extractors.
+A set of functions for extracting header information from PSG objects
+Typically only used internally in from unet.io.header.header_extractors
+
+Each function takes some PSG or header-like object and returns a dictionary with at least
+the following keys:
+
+{
+    'n_channels': int,
+    'channel_names': list of strings,
+    'sample_rate': int
+    'date': datetime or None
+    'length_sec': float
+}
+
 """
 
 from datetime import datetime
 import numpy as np
 
 
-def read_mne_raw_edf_header(edf_obj, **kwargs):
+def _standardized_edf_header(raw_edf):
     """
     Header extraction function for RawEDF and Raw objects.
     Reads the number of channels, channel names and sample rate properties
@@ -21,14 +33,14 @@ def read_mne_raw_edf_header(edf_obj, **kwargs):
     # value, 4) whether a missing value should raise an error.
     header_map = [("n_channels", "nchan", int, True),
                   ("channel_names", "ch_names", list, True),
-                  ("sample_rate", "sfreq", float, True),
+                  ("sample_rate", "sfreq", int, True),
                   ("date", "meas_date", datetime.utcfromtimestamp, False)]
-    if isinstance(edf_obj.info["meas_date"], (tuple, list)):
-        assert edf_obj.info["meas_date"][1] == 0
-        edf_obj.info["meas_date"] = edf_obj.info["meas_date"][0]
+    if isinstance(raw_edf.info["meas_date"], (tuple, list)):
+        assert raw_edf.info["meas_date"][1] == 0
+        raw_edf.info["meas_date"] = raw_edf.info["meas_date"][0]
     header = {}
     for renamed, org, transform, raise_err in header_map:
-        value = edf_obj.info.get(org)
+        value = raw_edf.info.get(org)
         try:
             value = transform(value)
         except Exception as e:
@@ -36,10 +48,12 @@ def read_mne_raw_edf_header(edf_obj, **kwargs):
                 raise ValueError("Missing or invalid value in EDF for key {} "
                                  "- got {}".format(org, value)) from e
         header[renamed] = value
+    # Add record length in seconds
+    header["length_sec"] = len(raw_edf) / header['sample_rate']
     return header
 
 
-def read_wfdb_record_header(record_obj, **kwargs):
+def _read_wfdb_record_header(record_obj, **kwargs):
     """
     Header extraction function for WFDB Record objects.
     Reads the number of channels, channel names and sample rate properties
@@ -53,7 +67,7 @@ def read_wfdb_record_header(record_obj, **kwargs):
     # value, 4) whether a missing value should raise an error.
     header_map = [("n_channels", "n_sig", int, True),
                   ("channel_names", "sig_name", list, True),
-                  ("sample_rate", "fs", float, True),
+                  ("sample_rate", "fs", int, True),
                   ("date", "base_date", datetime.utcfromtimestamp, False)]
     header = {}
     for renamed, org, transform, raise_err in header_map:
@@ -68,7 +82,7 @@ def read_wfdb_record_header(record_obj, **kwargs):
     return header
 
 
-def read_dcsm_dict_header(dict, **kwargs):
+def _read_dcsm_dict_header(dict, **kwargs):
     """
     Header extraction function for DCSMDict objects.
     The DCSMDict dictionary stores key-values pairs:
@@ -91,7 +105,7 @@ def read_dcsm_dict_header(dict, **kwargs):
     }
 
 
-def read_h5_file(h5_file, **kwargs):
+def _read_h5_file(h5_file, **kwargs):
     """
     Header extraction function for h5py.File objects.
     The object must:
@@ -105,8 +119,7 @@ def read_h5_file(h5_file, **kwargs):
         A dictionary with header elements
     """
     d = h5_file.attrs.get("date")
-    if not isinstance(d, str) and (isinstance(d, int) or
-                                   np.issubdtype(d, np.integer)):
+    if not isinstance(d, str) and (isinstance(d, int) or np.issubdtype(d, np.integer)):
         d = datetime.fromtimestamp(d)
     return {
         "n_channels": len(h5_file["channels"]),
@@ -114,38 +127,3 @@ def read_h5_file(h5_file, **kwargs):
         "sample_rate": h5_file.attrs["sample_rate"],
         "date": d
     }
-
-
-_DATA_TYPE_NAME_TO_HEADER_LOADER = {
-    "RawEDF": read_mne_raw_edf_header,
-    "Record": read_wfdb_record_header,
-    "Raw": read_mne_raw_edf_header,
-    "DCSMDict": read_dcsm_dict_header,
-    "File": read_h5_file
-}
-
-
-def extract_header(psg_obj):
-    """
-    Extraxt header information from a 'PSG object' as returned by functions in
-    utime.io.extractors.psg_extractors.
-
-    Returns:
-        A header (dictionary) of information on the PSG sample
-    """
-    # Find the appropriate function to extract information from the given
-    # PSG object type
-    data_type_name = type(psg_obj).__name__
-    header_load_func = _DATA_TYPE_NAME_TO_HEADER_LOADER[data_type_name]
-
-    # Construct the header using the inferred function
-    header = header_load_func(psg_obj)
-
-    # Make sure sample rate is int
-    old_sr = header["sample_rate"]
-    int_sr = int(old_sr)
-    if int_sr != old_sr:
-        raise ValueError("Sample rate is a float value. Expected integer.")
-    header["sample_rate"] = int_sr
-
-    return header

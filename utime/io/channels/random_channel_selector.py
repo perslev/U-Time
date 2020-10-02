@@ -1,6 +1,6 @@
 import numpy as np
 from utime.io.channels import ChannelMontageTuple
-from utime.io.file_loaders import read_psg_header
+from utime.io.header import extract_header
 from utime.errors import ChannelNotFoundError
 
 
@@ -22,7 +22,7 @@ def filter_non_available_channels(channel_groups,
         raise ValueError("Must specify either 'psg_file_path' or "
                          "'available_channels'.")
     if available_channels is None:
-        available_channels = read_psg_header(psg_file_path)["channel_names"]
+        available_channels = extract_header(psg_file_path)["channel_names"]
     if not isinstance(available_channels, ChannelMontageTuple):
         available_channels = ChannelMontageTuple(available_channels)
     for i, channel_group in enumerate(channel_groups):
