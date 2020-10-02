@@ -9,3 +9,4 @@ mne>=0.21.0
 mpunet>=0.2.6
 carbontracker>=1.1.2
 tensorflow-gpu>=2.1.0
+wfdb>=3.1.1
