@@ -11,6 +11,7 @@ A collection of functions for extracting a header of the following format:
 """
 import os
 import warnings
+from utime.errors import H5ChannelRootError
 from utime.utils import mne_no_log_context
 from utime.io.header.header_standardizers import (_standardized_edf_header,
                                                   _standardized_wfdb_header,
@@ -73,11 +74,11 @@ def extract_h5_header(h5_path, try_channel_dir_names=("channels", "signals", "ps
                 return _standardized_h5_header(psg_obj, channel_dir)
             except KeyError:
                 continue
-        raise KeyError(f"Could not read header from H5 archive '{os.path.basename(h5_path)}'. "
-                       f"The archive does not contain any group named one of "
-                       f"'{try_channel_dir_names}'. Individual channel H5 datasets must descend from a "
-                       f"root group with name in this particular list of possible values (e.g. a valid dataset would "
-                       f"be stored at /channels/eeg/C3-M2, where /C3-M2 would not be valid.")
+        raise H5ChannelRootError(f"Could not read header from H5 archive '{os.path.basename(h5_path)}'. "
+                                 f"The archive does not contain any group named one of "
+                                 f"'{try_channel_dir_names}'. Individual channel H5 datasets must descend from a "
+                                 f"root group with name in this particular list of possible values (e.g. a valid "
+                                 f"dataset would be stored at /channels/eeg/C3-M2, where /C3-M2 would not be valid.")
 
 
 _EXT_TO_LOADER = {

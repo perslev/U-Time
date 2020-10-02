@@ -19,7 +19,8 @@ Note: length gives the number of samples, divide by sample_rate to get length_se
 import numpy as np
 import h5py
 from datetime import datetime
-from collections import defaultdict
+from utime.errors import (MissingHeaderFieldError, HeaderFieldTypeError,
+                          LengthZeroSignalError, H5VariableAttributesError)
 
 
 def _assert_header(header):
@@ -41,15 +42,15 @@ def _assert_header(header):
     ]
     for field, valid_types in field_requirements:
         if field not in header:
-            raise ValueError(f"Missing value '{field}' from header '{header}'. "
-                             "This could be an error in the code implementation. "
-                             "Please raise this issue on GitHub.")
+            raise MissingHeaderFieldError(f"Missing value '{field}' from header '{header}'. "
+                                          "This could be an error in the code implementation. "
+                                          "Please raise this issue on GitHub.")
         type_ = type(header[field])
         if type_ not in valid_types:
-            raise TypeError(f"Field {field} of type {type_} was not expected, expected one of {valid_types}")
+            raise HeaderFieldTypeError(f"Field {field} of type {type_} was not expected, expected one of {valid_types}")
     if header['length'] <= 0:
-        raise ValueError(f"Expected key 'length' to be a non-zero integer, "
-                         f"but header {header} has value {header['length']}")
+        raise LengthZeroSignalError(f"Expected key 'length' to be a non-zero integer, "
+                                    f"but header {header} has value {header['length']}")
     return header
 
 
@@ -79,8 +80,8 @@ def _standardized_edf_header(raw_edf):
             value = transform(value)
         except Exception as e:
             if raise_err:
-                raise ValueError("Missing or invalid value in EDF for key {} "
-                                 "- got {}".format(org, value)) from e
+                raise HeaderFieldTypeError("Missing or invalid value in EDF file for key {} "
+                                           "- got {}".format(org, value)) from e
         header[renamed] = value
     header["length"] = len(raw_edf)
     return _assert_header(header)
@@ -110,8 +111,8 @@ def _standardized_wfdb_header(wfdb_record):
             value = transform(value)
         except Exception as e:
             if raise_err:
-                raise ValueError("Missing or invalid value in WFDB for key {} "
-                                 "- got {}".format(org, value)) from e
+                raise HeaderFieldTypeError("Missing or invalid value in WFDB file for key {} "
+                                           "- got {}".format(org, value)) from e
         header[renamed] = value
     return _assert_header(header)
 
@@ -144,7 +145,7 @@ def _get_unique_value(items):
         return None
     for item in items[1:]:
         if item != items[0]:
-            raise ValueError(f"The input list '{items}' contains more than 1 unique value")
+            raise H5VariableAttributesError(f"The input list '{items}' contains more than 1 unique value")
     return items[0]
 
 
@@ -193,10 +194,10 @@ def _standardized_h5_header(h5_file, channel_group_name="channels"):
         header["date"] = _get_unique_value(header["date"])
         header["sample_rate"] = int(_get_unique_value(header["sample_rate"]))
         header["length"] = int(_get_unique_value(header["length"]))
-    except ValueError as e:
-        raise ValueError("Datasets stored in the specified H5 archive differ with respect to one or multiple of the "
-                         "following attributes: 'date', 'sampling_rate', 'length'. "
-                         "All datasets must currently match with respect to those attributes.") from e
+    except H5VariableAttributesError as e:
+        raise H5VariableAttributesError("Datasets stored in the specified H5 archive differ with respect to one or "
+                                        "multiple of the following attributes: 'date', 'sampling_rate', 'length'. "
+                                        "All datasets must currently match with respect to those attributes.") from e
 
     # Get datetime date or set to None
     date = header["date"]
