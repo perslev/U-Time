@@ -78,7 +78,8 @@ def extract_h5_header(h5_path, try_channel_dir_names=("channels", "signals", "ps
                                  f"The archive does not contain any group named one of "
                                  f"'{try_channel_dir_names}'. Individual channel H5 datasets must descend from a "
                                  f"root group with name in this particular list of possible values (e.g. a valid "
-                                 f"dataset would be stored at /channels/eeg/C3-M2, where /C3-M2 would not be valid.")
+                                 f"dataset would be stored at /channels/eeg/C3-M2, but a dataset stored at /C3-M2 "
+                                 f"would not be valid).")
 
 
 _EXT_TO_LOADER = {
