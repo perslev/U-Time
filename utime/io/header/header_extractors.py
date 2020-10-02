@@ -15,7 +15,7 @@ from utime.utils import mne_no_log_context
 from utime.io.header.header_standardizers import _standardized_edf_header
 
 
-def extract_edf_header(file_path, **kwargs):
+def extract_edf_header(file_path):
     """
     Header reader function for .edf extension files.
     Redirects to mne.io.read_raw_edf.
@@ -44,7 +44,7 @@ def extract_edf_header(file_path, **kwargs):
     return header
 
 
-def extract_wfdb_header(file_path, **kwargs):
+def extract_wfdb_header(file_path):
     """
     Header reader function for .dat and .mat WFDB extension files.
     Redirects to the wfdb.io.rdheader function.
@@ -56,7 +56,7 @@ def extract_wfdb_header(file_path, **kwargs):
     return extract_header(rdheader(record_name=os.path.splitext(file_path)[0]))
 
 
-def extract_dcsm_header(pickle_path, **kwargs):
+def extract_dcsm_header(pickle_path):
     """
     Header reader function for .picle extension files.
     Used only for the DCSM (private) dataset.
@@ -71,7 +71,7 @@ def extract_dcsm_header(pickle_path, **kwargs):
     return extract_header(DCSMDict(signal_pairs))
 
 
-def extract_h5_header(h5_path, **kwargs):
+def extract_h5_header(h5_path):
     """
     Header reader function for .h5 extension files.
 

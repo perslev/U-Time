@@ -10,13 +10,45 @@ the following keys:
     'channel_names': list of strings,
     'sample_rate': int
     'date': datetime or None
-    'length_sec': float
+    'length': int
 }
 
+Note: length gives the number of samples, divide by sample_rate to get length_sec
 """
 
 from datetime import datetime
 import numpy as np
+
+
+def _assert_header(header):
+    """
+    Checks that a standardized header:
+        1) contains the right field names
+        2) each value has an expected type
+        3) the 'length' value is greater than 0
+    Args:
+        header: dict
+    Returns: dict
+    """
+    field_requirements = [
+        ("n_channels", [int]),
+        ("channel_names", [list]),
+        ("sample_rate", [int]),
+        ("date", [datetime, None]),
+        ("length", [int])
+    ]
+    for field, valid_types in field_requirements:
+        if field not in header:
+            raise ValueError(f"Missing value '{field}' from header '{header}'. "
+                             "This could be an error in the code implementation. "
+                             "Please raise this issue on GitHub.")
+        type_ = type(header[field])
+        if type_ not in valid_types:
+            raise TypeError(f"Field {field} of type {type_} was not expected, expected one of {valid_types}")
+    if header['length'] <= 0:
+        raise ValueError(f"Expected key 'length' to be a non-zero integer, "
+                         f"but header {header} has value {header['length']}")
+    return header
 
 
 def _standardized_edf_header(raw_edf):
@@ -48,12 +80,11 @@ def _standardized_edf_header(raw_edf):
                 raise ValueError("Missing or invalid value in EDF for key {} "
                                  "- got {}".format(org, value)) from e
         header[renamed] = value
-    # Add record length in seconds
-    header["length_sec"] = len(raw_edf) / header['sample_rate']
-    return header
+    header["length"] = len(raw_edf)
+    return _assert_header(header)
 
 
-def _read_wfdb_record_header(record_obj, **kwargs):
+def _standardized_wfdb_header(wfdb_record):
     """
     Header extraction function for WFDB Record objects.
     Reads the number of channels, channel names and sample rate properties
@@ -68,10 +99,11 @@ def _read_wfdb_record_header(record_obj, **kwargs):
     header_map = [("n_channels", "n_sig", int, True),
                   ("channel_names", "sig_name", list, True),
                   ("sample_rate", "fs", int, True),
-                  ("date", "base_date", datetime.utcfromtimestamp, False)]
+                  ("date", "base_date", datetime.utcfromtimestamp, False),
+                  ("length", "sig_len", int, True)]
     header = {}
     for renamed, org, transform, raise_err in header_map:
-        value = getattr(record_obj, org, None)
+        value = getattr(wfdb_record, org, None)
         try:
             value = transform(value)
         except Exception as e:
@@ -79,7 +111,7 @@ def _read_wfdb_record_header(record_obj, **kwargs):
                 raise ValueError("Missing or invalid value in WFDB for key {} "
                                  "- got {}".format(org, value)) from e
         header[renamed] = value
-    return header
+    return _assert_header(header)
 
 
 def _read_dcsm_dict_header(dict, **kwargs):
@@ -97,12 +129,13 @@ def _read_dcsm_dict_header(dict, **kwargs):
     if np.any(sample_rates != sample_rates[0]):
         raise NotImplementedError("Cannot deal with non-identical sample rates"
                                   " across channels.")
-    return {
+    header = {
         "n_channels": len(dict),
         "channel_names": list(dict.keys()),
         "sample_rate": sample_rates[0],
         "date": None
     }
+    return _assert_header(header)
 
 
 def _read_h5_file(h5_file, **kwargs):
@@ -121,9 +154,10 @@ def _read_h5_file(h5_file, **kwargs):
     d = h5_file.attrs.get("date")
     if not isinstance(d, str) and (isinstance(d, int) or np.issubdtype(d, np.integer)):
         d = datetime.fromtimestamp(d)
-    return {
+    header = {
         "n_channels": len(h5_file["channels"]),
         "channel_names": list(h5_file["channels"].keys()),
         "sample_rate": h5_file.attrs["sample_rate"],
         "date": d
     }
+    return _assert_header(header)
