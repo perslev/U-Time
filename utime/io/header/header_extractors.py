@@ -12,7 +12,8 @@ A collection of functions for extracting a header of the following format:
 import os
 import warnings
 from utime.utils import mne_no_log_context
-from utime.io.header.header_standardizers import _standardized_edf_header
+from utime.io.header.header_standardizers import (_standardized_edf_header,
+                                                  _standardized_wfdb_header)
 
 
 def extract_edf_header(file_path):
@@ -53,7 +54,8 @@ def extract_wfdb_header(file_path):
         A dictionary of header information
     """
     from wfdb.io import rdheader
-    return extract_header(rdheader(record_name=os.path.splitext(file_path)[0]))
+    header = rdheader(record_name=os.path.splitext(file_path)[0])
+    return _standardized_wfdb_header(header)
 
 
 def extract_dcsm_header(pickle_path):
