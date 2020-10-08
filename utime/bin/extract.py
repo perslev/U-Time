@@ -12,7 +12,7 @@ from glob import glob
 import os
 from utime.errors import ChannelNotFoundError
 from utime.io.channels import ChannelMontageTuple, ChannelMontageCreator
-from utime.io.file_loaders import read_psg_header
+from utime.io.header import extract_header
 from mpunet.logging import Logger
 
 
@@ -69,7 +69,7 @@ def _extract(file_,
              args):
     from utime.io.high_level_file_loaders import load_psg
     from utime.utils.scriptutils import to_h5_file
-    channels_in_file = read_psg_header(file_)["channel_names"]
+    channels_in_file = extract_header(file_)["channel_names"]
 
     chan_creator = ChannelMontageCreator(existing_channels=channels_in_file,
                                          channels_required=channels,
@@ -78,8 +78,7 @@ def _extract(file_,
     logger("[*] Output channels: " + ", ".join(chan_creator.output_channels.names))
     logger("[*] Channels to load: " + ", ".join(chan_creator.channels_to_load.names))
     try:
-        psg, header = load_psg(file_,
-                               chan_creator.channels_to_load,
+        psg, header = load_psg(file_, chan_creator.channels_to_load,
                                check_num_channels=False)
     except ChannelNotFoundError as e:
         logger("\n-----\nCHANNEL ERROR ON FILE {}".format(file_))
