@@ -27,8 +27,8 @@ utime operates with the following notation on hypnogram encodings:
 """
 
 import numpy as np
-from utime import defaults
 from utime.hypnogram import SparseHypnogram
+from utime.hypnogram.formats import StartDurationStageFormat
 from utime.hypnogram.stage_mapper import create_variable_ann_to_class_int_dict
 
 
@@ -106,7 +106,7 @@ def dense_to_sparse(array, period_length_sec, allow_trim=False):
     end_time = len(array) * period_length_sec
 
     # Get array of init dense inds
-    start_inds = np.where(np.diff(array) != 0)[0] + 1
+    start_inds = np.where([array[i+1] != array[i] for i in range(len(array)-1)])[0] + 1  # find transition indices
     start_inds = np.concatenate([[0], start_inds])
 
     # Get init times (second)
@@ -186,6 +186,8 @@ def signal_dense_to_dense(array, sample_rate, period_length_sec, allow_trim=Fals
         'period_length_sec' seconds of input signal.
     """
     array = array.squeeze()
+    if sample_rate is None or period_length_sec is None:
+        raise ValueError("Must specify the 'sample_rate' and 'period_length_sec' parameters.")
     if array.ndim != 1:
         raise ValueError("Invalid dense array found of dim {} (expected 1)"
                          "".format(array.ndim))
@@ -210,6 +212,48 @@ def signal_dense_to_dense(array, sample_rate, period_length_sec, allow_trim=Fals
     # Make dense
     s = [period_length_sec * sample_rate, -1]
     return np.reshape(array, s, order="F")[0, :]
+
+
+def ndarray_to_ids_format(array, period_length_sec, sample_rate):
+    """
+    Loads flat ndarrays storing sleep stages and converts it to a
+    init-duration-stage format. Supports both 'dense' and 'signal dense' arrays
+    (see utime.hypnogram.utils for a description).
+
+    Will attempt to convert from 'signal dense' --> sparse, which will fail if
+    the array is already 'dense'. This will trigger converting dense --> sparse
+
+    Args:
+        array:              ndarray of shape [-1], integer type
+        period_length_sec:  Sleep 'epoch'/period length in seconds.
+        sample_rate:        The sample rate of the original data (needed for
+                            signal dense conversion).
+
+    Returns:
+        A StartDurationStageFormat object
+    """
+    array = array.squeeze()
+    if array.ndim == 1:
+        try:
+            # Assume the array is 'signal dense' - a ValueError will be thrown if
+            # this conversion fail, in which case we can assume the array is dense
+            inits, durs, stages = signal_dense_to_sparse(array,
+                                                         sample_rate,
+                                                         period_length_sec,
+                                                         allow_trim=True)
+        except ValueError:
+            # Dense already
+            inits, durs, stages = dense_to_sparse(array,
+                                                  period_length_sec,
+                                                  allow_trim=True)
+        # Create the SparseHypnogram from the sparse Start-Duration-Stage data
+        return StartDurationStageFormat((inits, durs, stages))
+    else:
+        raise NotImplementedError("Received non-flat numpy array of shape {}"
+                                  " for hypnogram data. Currently, a flat "
+                                  "array of label values must be passed. Are "
+                                  "the values stored in "
+                                  "one-hot encoding?".format(array.shape))
 
 
 def sparse_hypnogram_from_ids_format(ids_tuple, period_length_sec, ann_to_class):
@@ -239,66 +283,3 @@ def sparse_hypnogram_from_ids_format(ids_tuple, period_length_sec, ann_to_class)
                                  sleep_stages=ann_class_ints,
                                  period_length_sec=period_length_sec)
     return sparse_hyp, ann_to_class
-
-
-def sparse_hypnogram_from_array(array, period_length_sec, ann_to_class, sample_rate):
-    """
-    Loads flat ndarrays storing sleep stages and converts it to a
-    SparseHypnogram. Supports both 'dense' and 'signal dense' arrays
-    (see utime.hypnogram.utils for a description).
-
-    Will attempt to convert from 'signal dense' --> sparse, which will fail if
-    the array is already 'dense'. This will trigger converting dense --> sparse
-
-    Args:
-        array:              ndarray of shape [-1], integer type
-        period_length_sec:  Sleep 'epoch'/period length in seconds.
-        ann_to_class:       Dictionary mapping from labels in array to sleep
-                            stage integer value representations. Can be None,
-                            in which case annotations will be automatically
-                            inferred.
-        sample_rate:        The sample rate of the original data (needed for
-                            signal dense conversion).
-
-    Returns:
-        A SparseHypnogram object, annotation dict
-    """
-    array = array.squeeze()
-    if array.ndim == 1:
-        if array.dtype.type in (np.str_, np.string_):
-            # If string were passed, convert to integer representation
-            if ann_to_class is None:
-                ann_to_class = create_variable_ann_to_class_int_dict(array)
-            array = np.array([ann_to_class[a] for a in array])
-        if ann_to_class is None:
-            # We only need this to check that the labels match the default integer
-            # labels for sleep stages.
-            ann_to_class = defaults.stage_string_to_class_int
-        unique_labels = np.unique(array)
-        if np.any(~np.in1d(unique_labels, list(ann_to_class.keys()))):
-            raise RuntimeError("Labels {} do not match annotation dict of {}. "
-                               "If the annotation dict was inferred automatically,"
-                               " consider manually setting one.".format(unique_labels,
-                                                                        ann_to_class))
-
-        try:
-            # Assume the array is 'signal dense' - a ValueError will be thrown if
-            # this conversion fail, in which case we can assume the array is dense
-            inits, durs, stages = signal_dense_to_sparse(array,
-                                                         sample_rate,
-                                                         period_length_sec,
-                                                         allow_trim=True)
-        except ValueError:
-            # Dense already
-            inits, durs, stages = dense_to_sparse(array,
-                                                  period_length_sec,
-                                                  allow_trim=True)
-        # Create the SparseHypnogram from the sparse Start-Duration-Stage data
-        sparse_hypno = SparseHypnogram(inits, durs, stages, period_length_sec)
-        return sparse_hypno, ann_to_class
-    else:
-        raise NotImplementedError("Received non-flat numpy array of shape {}"
-                                  " for hypnogram data. Currently, a flat "
-                                  "array of label values must be passed. Are "
-                                  "the values stored in "
-                                  "one-hot encoding?".format(array.shape))
