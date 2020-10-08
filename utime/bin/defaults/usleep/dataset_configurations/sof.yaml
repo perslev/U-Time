@@ -1,0 +1,45 @@
+train_data:
+  data_dir: [LOCAL_PATH]/sof/views/fixed_split/train
+  period_length_sec: 30
+  identifier: "TRAIN"
+  psg_regex: .*[.]h5
+  hyp_regex: .*[.]ids
+
+val_data:
+  data_dir: [LOCAL_PATH]/sof/views/fixed_split/val
+  period_length_sec: 30
+  identifier: "VAL"
+  psg_regex: .*[.]h5
+  hyp_regex: .*[.]ids
+
+test_data:
+  data_dir: [LOCAL_PATH]/sof/views/fixed_split/test
+  period_length_sec: 30
+  identifier: "TEST"
+  psg_regex: .*[.]h5
+  hyp_regex: .*[.]ids
+
+set_sample_rate: 128
+
+load_time_channel_sampling_groups: [
+  [C3-A2, C4-A1],
+  [LOC-A2, ROC-A1]
+]
+
+sleep_stage_annotations:
+  W: 0
+  N1: 1
+  N2: 2
+  N3: 3
+  REM: 4
+  UNKNOWN: 5
+
+strip_func:
+  strip_func: strip_to_match
+
+quality_control_func:
+  quality_control_func: "clip_noisy_values"
+  min_max_times_global_iqr: 20
+  
+scaler: "RobustScaler"
+batch_wise_scaling: false

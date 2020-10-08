@@ -1,0 +1,47 @@
+train_data:
+  data_dir: [LOCAL_PATH]/sedf_sc/views/fixed_split/train
+  period_length_sec: 30
+  identifier: "TRAIN"
+  psg_regex: .*[.]h5
+  hyp_regex: .*[.]ids
+
+val_data:
+  data_dir: [LOCAL_PATH]/sedf_sc/views/fixed_split/val
+  period_length_sec: 30
+  identifier: "VAL"
+  psg_regex: .*[.]h5
+  hyp_regex: .*[.]ids
+
+test_data:
+  data_dir: [LOCAL_PATH]/sedf_sc/views/fixed_split/test
+  period_length_sec: 30
+  identifier: "TEST"
+  psg_regex: .*[.]h5
+  hyp_regex: .*[.]ids
+
+set_sample_rate: 128
+
+load_time_channel_sampling_groups: [
+  [Fpz-Cz, Pz-Oz],
+  [EOG]
+]
+
+sleep_stage_annotations:
+  Sleep stage W: 0
+  Sleep stage 1: 1
+  Sleep stage 2: 2
+  Sleep stage 3: 3
+  Sleep stage 4: 3
+  Sleep stage R: 4
+  Sleep stage ?: 5
+  Movement time: 5
+
+strip_func:
+  strip_func: strip_to_match
+
+quality_control_func:
+  quality_control_func: "clip_noisy_values"
+  min_max_times_global_iqr: 20
+  
+scaler: "RobustScaler"
+batch_wise_scaling: false

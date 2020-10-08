@@ -1,0 +1,32 @@
+test_data:
+  data_dir: [LOCAL_PATH]/dod/dod_h/
+  period_length_sec: 30
+  identifier: "TEST"
+  psg_regex: signals.h5
+  hyp_regex: hypnogram.npy
+  folder_regex: ^(?!h5).*$
+
+set_sample_rate: 128
+
+load_time_channel_sampling_groups: [
+  ['C3-M2', 'F4-M1', 'F3-F4', 'F3-M2', 'F4-O2', 'F3-O1', 'FP1-F3', 'FP1-M2', 'FP1-O1', 'FP2-F4', 'FP2-M1', 'FP2-O2'],
+  ['EOG1', 'EOG2']
+]
+
+sleep_stage_annotations:
+  0: 0
+  1: 1
+  2: 2
+  3: 3
+  4: 4
+  -1: 5
+
+strip_func:
+  strip_func: strip_to_match
+
+quality_control_func:
+  quality_control_func: "clip_noisy_values"
+  min_max_times_global_iqr: 20
+  
+scaler: "RobustScaler"
+batch_wise_scaling: false

@@ -1,0 +1,33 @@
+test_data:
+  data_dir: [LOCAL_PATH]/mass-c3/
+  period_length_sec: 30
+  identifier: "TEST"
+  psg_regex: .*-PSG.h5
+  hyp_regex: .*-HYP.ids
+  folder_regex: 01-.*
+
+set_sample_rate: 128
+
+load_time_channel_sampling_groups: [
+  ['Fp1-LER', 'Fp2-LER', 'F7-LER', 'F8-LER', 'F3-LER', 'F4-LER', 'T3-LER', 'T4-LER', 'C3-LER', 'C4-LER', 'T5-LER', 'T6-LER', 'P3-LER', 'P4-LER', 'O1-LER', 'O2-LER', 'Fz-LER', 'Cz-LER', 'Pz-LER', 'Oz-LER'],
+  ['EOG_left_horizontal', 'EOG_right_horizontal']
+]
+
+sleep_stage_annotations:
+  "Sleep stage W": 0
+  "Sleep stage 1": 1
+  "Sleep stage 2": 2
+  "Sleep stage 3": 3
+  "Sleep stage 4": 3
+  "Sleep stage R": 4
+  "Sleep stage ?": 5
+
+strip_func:
+  strip_func: strip_to_match
+
+quality_control_func:
+  quality_control_func: "clip_noisy_values"
+  min_max_times_global_iqr: 20
+  
+scaler: "RobustScaler"
+batch_wise_scaling: false

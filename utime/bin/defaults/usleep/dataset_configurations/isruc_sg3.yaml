@@ -1,0 +1,32 @@
+test_data:
+  data_dir: [LOCAL_PATH]/isruc_sg3
+  period_length_sec: 30
+  identifier: "TEST"
+  psg_regex: .*[.]h5
+  hyp_regex: .*[.]ids
+  folder_regex: sg3_subject.*
+
+set_sample_rate: 128
+
+load_time_channel_sampling_groups: [
+  ['F3-M2', 'C3-M2', 'O1-M2', 'F4-M1', 'C4-M1', 'O2-M1'],
+  ['E1-M2', 'E2-M1']
+]
+
+sleep_stage_annotations:
+  0: 0
+  1: 1
+  2: 2
+  3: 3
+  4: 4
+  5: 5
+
+strip_func:
+  strip_func: strip_to_match
+
+quality_control_func:
+  quality_control_func: "clip_noisy_values"
+  min_max_times_global_iqr: 20
+  
+scaler: "RobustScaler"
+batch_wise_scaling: false
