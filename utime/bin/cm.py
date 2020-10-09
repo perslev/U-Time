@@ -43,6 +43,8 @@ def get_argparser():
     parser.add_argument("--period_length_sec", type=int, default=30,
                         help="Used with --wake_trim_min to determine number of"
                              " periods to trim")
+    parser.add_argument("--ignore_classes", type=int, nargs="+", default=None,
+                        help="Optional space separated list of class integers to ignore.")
     return parser
 
 
@@ -93,9 +95,8 @@ def run(args):
     Run the script according to 'args' - Please refer to the argparser.
     """
     print("Looking for files...")
-    k = lambda x: os.path.split(os.path.split(x)[0])[-1]
-    true = sorted(glob(args.true_pattern), key=k)
-    pred = sorted(glob(args.pred_pattern), key=k)
+    true = sorted(glob(args.true_pattern))
+    pred = sorted(glob(args.pred_pattern))
     if not true:
         raise OSError("Did not find any 'true' files matching "
                       "pattern {}".format(args.true_pattern))
@@ -120,7 +121,7 @@ def run(args):
         print("PAIRS:\n{}".format(pairs))
     # Load the pairs
     print("Loading {} pairs...".format(len(pairs)))
-    l = lambda x: [np.load(f)["arr_0"] for f in x]
+    l = lambda x: [np.load(f)["arr_0"] if os.path.splitext(f)[-1] == "npy" else np.load(f) for f in x]
     np_pairs = list(map(l, pairs))
     for i, (p1, p2) in enumerate(np_pairs):
         if len(p1) != len(p2):
@@ -134,7 +135,11 @@ def run(args):
                              args.wake_trim_min,
                              args.period_length_sec)
     true, pred = concatenate_true_pred_pairs(pairs=np_pairs)
-    cm = confusion_matrix(true, pred)
+    if args.ignore_classes:
+        labels = (set(np.unique(true)) | set(np.unique(pred))) - set(args.ignore_classes)
+    else:
+        labels = None
+    cm = confusion_matrix(true, pred, labels=labels)
     if args.normalized:
         cm = cm.astype(np.float64)
         cm /= cm.sum(axis=1, keepdims=True)
