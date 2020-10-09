@@ -24,9 +24,9 @@ TODO.
 On a Linux machine with at least 1 CUDA enabled GPU available and `Anaconda` installed, run the following two commands to create your `u-sleep` environment and setup the U-Time software package:
 
 ```
-$ conda env create --file u-sleep/environment.yaml
-$ conda activate u-sleep
-(u-sleep) $ pip install -e u-sleep
+conda env create --file u-sleep/environment.yaml
+conda activate u-sleep
+pip install -e u-sleep
 ```
 
 This installation process may take up to 10 minutes to complete.
@@ -37,33 +37,33 @@ In this following we will demonstrate how to launch a short training session of 
 First, we create a project directory that will store all of our data for this demo. The `ut init_project` command will create a folder and populate it with a set of default hyperparameter values:
 
 ```
-(u-sleep) $ ut init_project --name demo --model usleep_demo
+ut init_project --name demo --model usleep_demo
 ```
 
 Entering the newly created project directory we will find a folder storing hyperparameters:
 
 ```
-(u-sleep) $ cd demo
-(u-sleep) $ ls
+cd demo
+ls
 > hyperparameters
 ```
 
 We will download 10 PSG studies from the public sleep databases [Sleep-EDF](https://doi.org/10.13026/C2X676) and [DCSM](https://sid.erda.dk/wsgi-bin/ls.py?share_id=fUH3xbOXv8) using the `ut fetch` command:
 
 ```
-(u-sleep) $ ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 10
-(u-sleep) $ ut fetch --dataset dcsm --out_dir data/dcsm --N_first 10
+ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 10
+ut fetch --dataset dcsm --out_dir data/dcsm --N_first 10
 ```
 
 The raw data has now been downloaded. We split each dataset into train ()validation/test splits using the `ut cv_split` command:
 
 ```
-(u-sleep) $ ut cv_split --data_dir data/sedf_sc/ \
-                        --subject_dir_pattern 'SC*' \
-                        --CV 1 \
-                        --validation_fraction 0.10 \
-                        --test_fraction 0.15 \
-                        --subject_matching_regex 'SC4(\d{2}).*'
+ut cv_split --data_dir data/sedf_sc/ \
+            --subject_dir_pattern 'SC*' \
+            --CV 1 \
+            --validation_fraction 0.10 \
+            --test_fraction 0.15 \
+            --subject_matching_regex 'SC4(\d{2}).*'
 ```
 
 *Please be aware that if you modify any of the above commands to e.g. use different output directory names, you will need to modify paths in dataset hyperparameter files stored under `hyperparameters/dataset_configurations` as appropriate before proceding with the next steps.*
@@ -71,37 +71,36 @@ The raw data has now been downloaded. We split each dataset into train ()validat
 Run the following command to prepare the data for training:
 
 ```
-(u-sleep) $ ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_data
+ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_data
 ```
 
 Start training:
 
 ```
-(u-sleep) $ ut train --num_GPUs=1 --preprocessed
+ut train --num_GPUs=1 --preprocessed
 ```
 
 Predict on the testing sets using all channel combinations and compute majority votes:
 
 ```
-(u-sleep) $ ut predict --num_GPUs=1 \
-                       --data_split test_data \
-                       --strip_func strip_to_match \
-                       --one_shot \
-                       --save_true \
-                       --majority \
-                       --out_dir predictions
+ut predict --num_GPUs=1 \
+           --data_split test_data \
+           --strip_func strip_to_match \
+           --one_shot \
+           --save_true \
+           --majority \
+           --out_dir predictions
 ```
 
 Print a global confusion matrix (computed across all subjects) for dataset `sedf_sc`:
 
 ```
-(u-sleep) $ ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
-                  --pred 'predictions/test_data/sedf_sc/majority/*PRED.npy' \
-                  --ignore 5 \
-                  --round 2 \
-                  --wake_trim_min 30
+ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
+      --pred 'predictions/test_data/sedf_sc/majority/*PRED.npy' \
+      --ignore 5 \
+      --round 2 \
+      --wake_trim_min 30
 ```
-
 
 ## Full Reproduction of U-Sleep
 TODO.
