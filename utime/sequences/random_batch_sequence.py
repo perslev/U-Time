@@ -90,11 +90,8 @@ class RandomBatchSequence(BatchSequence):
         single call.
 
         Returns:
-            X, a [data_per_prediction, n_channels] ndarray if margin == 0, else
-               a list of len margin*2+1 of [data_per_prediction, n_channels]
-               ndarrays if margin > 0
-            y, integer label value if margin == 0 else a list of len margin*2+1
-               of integer label values if margin >0
+            X, ndarray of shape [margin*2+1, data_per_period, n_channels]
+            y, ndarray of shape [margin*2+1, 1] class labels
         """
         with self.dataset_queue.get_random_study() as sleep_study:
             # Get random period idx

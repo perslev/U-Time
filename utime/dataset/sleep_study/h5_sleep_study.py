@@ -229,14 +229,15 @@ class H5SleepStudy(AbstractBaseSleepStudy):
 
     def get_periods_by_idx(self, start_idx, end_idx):
         """
-        TODO
+        Returns [N periods = end_idx - start_idx + 1] periods of data
 
         Args:
-            start_idx:
-            end_idx:
+            start_idx: int, start index to extract
+            end_idx: int, end index to extract
 
         Returns:
-
+            X: ndarray of shape [N periods, data_per_period, num_channels]
+            y: ndarray of shape [N, 1]
         """
         n_periods = end_idx-start_idx+1
         channels = self._get_sample_channels()
@@ -245,7 +246,7 @@ class H5SleepStudy(AbstractBaseSleepStudy):
         for i, chan in enumerate(channels):
             x[..., i] = self.psg[chan][start_idx:end_idx+1]
         y = self.hypnogram[start_idx:end_idx+1]
-        return x, self.translate_labels(y)
+        return x, self.translate_labels(y).reshape(-1, 1)
 
     def get_psg_period_at_sec(self, second):
         """
@@ -372,7 +373,7 @@ class H5SleepStudy(AbstractBaseSleepStudy):
             channel_inds: list, list of channel indices to extract from
 
         Returns:
-            A Pandas DataFrame view or numpy view
+            X: ndarray of shape [N periods, data_per_period, C]
         """
         start_idx, end_idx = self._second_to_idx(start), self._second_to_idx(end)
         return self.get_periods_by_idx(start_idx, end_idx)[0]  # TODO, reads labels for no reason

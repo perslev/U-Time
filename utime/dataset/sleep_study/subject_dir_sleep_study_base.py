@@ -3,7 +3,8 @@ Implements the SleepStudyBase class which represents a sleep study (PSG)
 """
 
 import os
-
+import numpy as np
+from utime import defaults
 from utime.dataset.utils import find_psg_and_hyp
 from utime.dataset.sleep_study.abc_sleep_study import AbstractBaseSleepStudy
 
@@ -99,20 +100,25 @@ class SubjectDirSleepStudyBase(AbstractBaseSleepStudy):
         Get a range of period of {X, y} data by indices
         Period starting at second 0 is index 0.
 
+        Returns [N periods = end_idx - start_idx + 1] periods
+
         Args:
             start_idx (int): Index of first period to return
             end_idx   (int): Index of last period to return (inclusive)
 
         Returns:
-            X: A list of ndarrays each of shape
-               [self.data_per_period, self.n_channels]
-            y: A list of ndarrays each of shape [1]
+            X: ndarray of shape [N periods, self.data_per_period, C]
+            y: ndarray of shape [N periods, 1]
         """
-        Xs, ys = [], []
-        for idx in range(start_idx, end_idx+1):
-            X, y = self.get_period_by_idx(idx)
-            Xs.append(X), ys.append(y)
-        return Xs, ys
+        indices = list(range(start_idx, end_idx+1))
+        x = np.empty(shape=[len(indices), self.data_per_period, len(self.select_channels)],
+                     dtype=defaults.psg_dtype)
+        y = np.empty(shape=[len(indices), 1], dtype=defaults.hyp_dtype)
+        for i, idx in enumerate(indices):
+            x_period, y_period = self.get_period_by_idx(idx)
+            x[i] = x_period
+            y[i] = y_period
+        return x, y
 
     def get_psg_period_at_sec(self, second):
         """

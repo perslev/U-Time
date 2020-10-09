@@ -359,9 +359,8 @@ class BatchSequence(BaseSequence):
                                    self.margin
 
         Returns:
-            X, list of length margin*2+1 shape [data_per_period, n_channels]
-               ndarrays
-            y, list of margin*2+1 class labels
+            X, ndarray of shape [margin*2+1, data_per_period, n_channels]
+            y, ndarray of shape [margin*2+1, 1] class labels
         """
         margin = margin or self.margin
         n_periods = sleep_study.n_periods
