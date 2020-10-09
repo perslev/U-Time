@@ -210,10 +210,13 @@ def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
         val_seq = [get_batch_sequence(dataset_queue=d,
                                       n_classes=n_classes,
                                       **hparams['fit']) for d in val_dataset_queues]
-    # Wrap sequencers in MultiSequence object which creates batches by sampling
-    # across its stores individual sequencers
-    train_seq = MultiSequence(train_seqs, hparams['fit']['batch_size'],
-                              logger=train_seqs[0].logger)
+    if len(train_seqs) > 1:
+        # Wrap sequencers in MultiSequence object which creates batches by sampling
+        # across its stores individual sequencers
+        train_seq = MultiSequence(train_seqs, hparams['fit']['batch_size'],
+                                  logger=train_seqs[0].logger)
+    else:
+        train_seq = train_seqs[0]
     if val_seq:
         assert len(val_seq) == len(train_seqs)
         val_seq = ValidationMultiSequence(val_seq, logger=train_seq.logger)
