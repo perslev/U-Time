@@ -1,7 +1,8 @@
+import tensorflow as tf
+import numpy as np
 from utime.sequences.base_sequence import _BaseSequence
 from mpunet.logging import ScreenLogger
 from utime.errors import NotLoadedError
-import numpy as np
 
 
 def _assert_comparable_sequencers(sequencers):
@@ -102,7 +103,6 @@ class MultiSequence(_BaseSequence):
             return 10000
 
     def __call__(self):
-        import tensorflow as tf
         def tensor_iter():
             """ Iterates the dataset, converting numpy arrays to tensors """
             while True:
@@ -163,7 +163,7 @@ class MultiSequence(_BaseSequence):
                 # Fall back to RandomBatchSequence
                 xx, yy = sequence.get_random_period()
             X[i] = xx
-            y[i] = np.expand_dims(np.asarray(yy).ravel(), -1)
+            y[i] = yy
         return self.sequences[0].process_batch(X, y)
 
 
