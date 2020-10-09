@@ -6,7 +6,6 @@ objects.
 
 import numpy as np
 from utime.sequences import BatchSequence
-from memory_profiler import profile
 
 
 class BalancedRandomBatchSequence(BatchSequence):

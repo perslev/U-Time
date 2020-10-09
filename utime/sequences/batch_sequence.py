@@ -8,7 +8,6 @@ See docstring below.
 import numpy as np
 from utime.sequences.base_sequence import BaseSequence, requires_all_loaded
 from utime.errors import MarginError
-from memory_profiler import profile
 
 
 def _infer_n_classes(n_classes, queue):
@@ -334,7 +333,6 @@ class BatchSequence(BaseSequence):
             for batch in ss.to_batch_generator(batch_size=batch_size):
                 yield self.process_batch(*batch)
 
-    #@profile
     def get_period(self, sleep_study, period_idx, allow_shift_at_border=True,
                    return_shifted_idx=False, margin=False):
         """

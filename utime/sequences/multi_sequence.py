@@ -2,8 +2,6 @@ from utime.sequences.base_sequence import _BaseSequence
 from mpunet.logging import ScreenLogger
 from utime.errors import NotLoadedError
 import numpy as np
-from memory_profiler import profile
-import gc
 
 
 def _assert_comparable_sequencers(sequencers):
