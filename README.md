@@ -1,15 +1,32 @@
-# U-Time
+# U-Sleep
 
-Implementation of the U-Time model for time-series segmentation as described 
-in:
+This repository stores code for training and evaluating the U-Sleep sleep staging model. The U-Sleep repository builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published in [[1]](#u-time). In the following, we will use the term *U-Sleep* to denote the recilient high frequency sleep staging model, and *u-time* to denote this repository of code used to train and evaluate U-Sleep.
 
-Mathias Perslev, Michael Hejselbak Jensen, Sune Darkner, Poul Jørgen Jennum, 
-and Christian Igel. U-Time: A Fully Convolutional Network for Time Series 
-Segmentation Applied to Sleep Staging. Advances in Neural Information 
-Processing Systems (NeurIPS 2019)
+## Contents
 
-Pre-print version: 
-https://arxiv.org/abs/1910.11162
+- [Overview](#overview)
+- [System Requirements](#system-requirements)
+- [Installation Guide](#installation-guide)
+- [Demo](#demo)
+- [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep)
+- [U-Time and U-Sleep Citations](#citations)
+
+
+## Overview
+## System Requirements
+## Installation Guide
+On a Linux machine with at least 1 CUDA enabled GPU available and `Anaconda` installed, run the following command to create your `u-sleep` environment:
+
+```
+conda env create --file environment.yaml
+```
+
+This instllation process may take up to 10 minutes to complete.
+
+## Demo
+In this following we will demonstrate how to launch a short training session of U-Sleep on a significantly limited subset of the datasets used in [[2]](#U-Sleep).
+
+## Full Reproduction of U-Sleep
 
 
 ## TLDR: An end-to-end example
@@ -57,3 +74,29 @@ ut predict --folder_regex '../datasets/sleep-EDF-153/SC400[1-2]E0' \
            --data_per_prediction 384 \
            --one_shot
 </pre>
+
+
+## Citations
+
+If you found U-Time and/or U-Sleep useful in your scientific study, please consider citing the paper(s):
+
+#### [1] U-Time
+
+```
+@incollection{NIPS2019_8692,
+	title = {U-Time: A Fully Convolutional Network for Time Series Segmentation Applied to Sleep Staging},
+	author = {Perslev, Mathias and Jensen, Michael and Darkner, Sune and Jennum, Poul J\o rgen and Igel, Christian},
+	booktitle = {Advances in Neural Information Processing Systems 32},
+	editor = {H. Wallach and H. Larochelle and A. Beygelzimer and F. d\textquotesingle Alch\'{e}-Buc and E. Fox and R. Garnett},
+	pages = {4415--4426},
+	year = {2019},
+	publisher = {Curran Associates, Inc.},
+	url = {http://papers.nips.cc/paper/8692-u-time-a-fully-convolutional-network-for-time-series-segmentation-applied-to-sleep-staging.pdf}
+}
+```
+
+#### [2] U-Sleep
+
+```
+[IN REVIEW]
+```
