@@ -2,8 +2,7 @@ import h5py
 import atexit
 import os
 import re
-from utime.dataset.sleep_study_dataset.abc_sleep_study_dataset import \
-    AbstractBaseSleepStudyDataset
+from utime.dataset.sleep_study_dataset.abc_sleep_study_dataset import AbstractBaseSleepStudyDataset
 from utime.dataset.sleep_study import H5SleepStudy
 from mpunet.logging.default_logger import ScreenLogger
 

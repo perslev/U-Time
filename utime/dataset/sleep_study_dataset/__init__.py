@@ -1,3 +1,2 @@
 from .sleep_study_dataset import SleepStudyDataset
-from .h5_sleep_study_dataset import H5SleepStudyDataset
 from .single_h5_dataset import SingleH5Dataset
