@@ -15,16 +15,67 @@ This repository stores code for training and evaluating the U-Sleep sleep stagin
 ## Overview
 ## System Requirements
 ## Installation Guide
-On a Linux machine with at least 1 CUDA enabled GPU available and `Anaconda` installed, run the following command to create your `u-sleep` environment:
+On a Linux machine with at least 1 CUDA enabled GPU available and `Anaconda` installed, run the following two commands to create your `u-sleep` environment and setup the U-Time software package:
 
-```
-conda env create --file environment.yaml
+```console
+$ conda env create --file u-sleep/environment.yaml
+$ pip install -e u-sleep
+$ conda activate u-sleep
 ```
 
-This instllation process may take up to 10 minutes to complete.
+This installation process may take up to 10 minutes to complete.
 
 ## Demo
 In this following we will demonstrate how to launch a short training session of U-Sleep on a significantly limited subset of the datasets used in [[2]](#U-Sleep).
+
+First, we create a project directory that will store all of our data for this demo. The `ut init_project` command will create a folder and populate it with a set of default hyperparameter values:
+
+```console
+(u-sleep) $ ut init_project --name demo --model usleep_demo
+```
+
+Entering the newly created project directory we will find a folder storing hyperparameters:
+
+```console
+(u-sleep) $ cd demo
+(u-sleep) $ ls
+> hyperparameters
+```
+
+We will download 10 PSG studies from the public sleep databases [Sleep-EDF](https://doi.org/10.13026/C2X676) and [DCSM](https://sid.erda.dk/wsgi-bin/ls.py?share_id=fUH3xbOXv8) using the `ut fetch` command:
+
+```console
+(u-sleep) $ ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 10
+(u-sleep) $ ut fetch --dataset dcsm --out_dir data/dcsm --N_first 10
+```
+
+The raw data has now been downloaded. We split each dataset into train ()validation/test splits using the `ut cv_split` command:
+
+```console
+(u-sleep) $ ut cv_split --data_dir data/sedf_sc/ \
+						--subject_dir_pattern 'SC*' \
+						--CV 1 \
+						--validation_fraction 0.10 \
+						--test_fraction 0.15 \
+						--subject_matching_regex 'SC4(\d{2}).*'
+```
+
+*Please be aware that if you modify any of the above commands to e.g. use different output directory names, you will need to modify paths in dataset hyperparameter files stored under `hyperparameters/dataset_configurations` as appropriate before proceding with the next steps.*
+
+Run the following command to prepare the data for training:
+
+```console
+(u-sleep) $ ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_data
+```
+
+Start training:
+
+```console
+(u-sleep) $ ut train --num_GPUs=0 --preprocessed
+```
+
+
+
 
 ## Full Reproduction of U-Sleep
 

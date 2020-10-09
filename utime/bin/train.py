@@ -9,7 +9,6 @@ import numpy as np
 from argparse import ArgumentParser
 import os
 from utime import defaults
-from memory_profiler import profile
 
 
 def get_argparser():

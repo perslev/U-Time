@@ -1,7 +1,6 @@
 from .elastic_deformation import elastic_transform
 from utime.utils import exactly_one_specified
 import numpy as np
-from memory_profiler import profile
 
 
 class Augmenter(object):
@@ -382,7 +381,6 @@ class ChannelDropout(Augmenter):
         super().__init__(self.drop_channels, apply_prob, aug_weight)
         self.drop_fraction = drop_fraction
 
-    #@profile
     def drop_channels(self, x, y):
         n_channels = x.shape[-1]
         n_to_drop = max(int(n_channels * self.drop_fraction), 1)
@@ -437,7 +435,6 @@ class RegionalErase(RegionalAugmenter):
                          max_region_fraction, apply_prob, log_sample,
                          aug_weight)
 
-    #@profile
     def random_erase(self, x, y):
         x, org_shape = self.reshape_x(x)
         x_length = len(x)

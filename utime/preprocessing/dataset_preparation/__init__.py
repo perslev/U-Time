@@ -2,11 +2,11 @@
 Support for additional datasets will be added over time
 """
 
-from .sleep_edf_153 import download_sleep_edf_153
+from .sedf_sc import download_sedf_sc
 
 
 DOWNLOAD_FUNCS = {
-    "sleep-EDF-153": download_sleep_edf_153
+    "sedf_sc": download_sedf_sc
 }
 
 
@@ -15,7 +15,7 @@ def no_processing(*args, **kwargs):
 
 
 PREPROCESS_FUNCS = {
-    "sleep-EDF-153": no_processing
+    "sedf_sc": no_processing
 }
 
 

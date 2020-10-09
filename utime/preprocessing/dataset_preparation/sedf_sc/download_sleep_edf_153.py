@@ -48,7 +48,7 @@ def download_and_validate(file_name, md5, out_path):
                          f"(please restart download)")
 
 
-def download_sleep_edf_153(out_dataset_folder, N_first=None):
+def download_sedf_sc(out_dataset_folder, N_first=None):
     """ Download the sleep-EDF-153 dataset """
     checksums, file_names = get_checksums_and_file_names()
     zipped = list(zip(file_names, checksums))
