@@ -1,3 +1,5 @@
+import tensorflow as tf
+import numpy as np
 from tensorflow.keras.utils import Sequence
 from multiprocessing import current_process
 from mpunet.logging import ScreenLogger
@@ -6,7 +8,6 @@ from utime.preprocessing.scaling import apply_scaling, assert_scaler
 from utime.utils import assert_all_loaded
 from utime.errors import NotLoadedError
 from functools import wraps
-import numpy as np
 
 
 def requires_all_loaded(method):
@@ -59,6 +60,15 @@ class _BaseSequence(Sequence):
     def periods_per_pair(self):
         """ Returns a list of n_periods for each stored pair """
         return self._periods_per_pair
+
+    def __call__(self):
+        """
+        Returns an iterator that iterates the dataset indefinitely, converting numpy arrays to tensors
+        """
+        while True:
+            for i in range(len(self)):
+                x, y = self.__getitem__(i)  # index does not matter
+                yield (tf.convert_to_tensor(x), tf.convert_to_tensor(y))
 
     def __getitem__(self, idx):
         raise NotImplemented

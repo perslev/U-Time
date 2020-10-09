@@ -1,4 +1,3 @@
-import tensorflow as tf
 import numpy as np
 from utime.sequences.base_sequence import _BaseSequence
 from mpunet.logging import ScreenLogger
@@ -101,15 +100,6 @@ class MultiSequence(_BaseSequence):
             # Queued data - return some reasonably large number, does not
             # matter as batches are normally randomly selected anyway.
             return 10000
-
-    def __call__(self):
-        def tensor_iter():
-            """ Iterates the dataset, converting numpy arrays to tensors """
-            while True:
-                x, y = self[0]  # index does not matter
-                yield (tf.convert_to_tensor(x),
-                       tf.convert_to_tensor(y))
-        return tensor_iter()
 
     @property
     def batch_shape(self):
