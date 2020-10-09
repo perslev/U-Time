@@ -1,5 +1,6 @@
 __version__ = "0.0.2"
 import os
+import numpy as np
 
 
 class _Defaults:
@@ -32,6 +33,10 @@ class _Defaults:
         self.pre_processed_hparams_name = 'pre_proc_hparams.yaml'
         self.dataset_conf_dir = "dataset_configurations"
         self.pre_processed_data_conf_dir = "preprocessed"
+
+        # Default dtypes
+        self.psg_dtype = np.float32
+        self.hyp_dtype = np.uint8
 
     @property
     def vectorized_stage_colors(self):
