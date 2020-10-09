@@ -60,9 +60,6 @@ class _BaseSequence(Sequence):
         """ Returns a list of n_periods for each stored pair """
         return self._periods_per_pair
 
-    def __call__(self, *args, **kwargs):
-        return self
-
     def __getitem__(self, idx):
         raise NotImplemented
 
