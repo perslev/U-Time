@@ -26,7 +26,7 @@ def get_argparser():
     parser = ArgumentParser(description='TODO')  # TODO
     parser.add_argument("--out_path", type=str, required=True,
                         help="Path to output h5 archive")
-    parser.add_argument("--datasets", type=str, required=True, nargs='*',
+    parser.add_argument("--dataset_splits", type=str, required=True, nargs='*',
                         help="Dataset splits (e.g. train_data) to preprocess "
                              "and save; space-separated list.")
     parser.add_argument("--overwrite", action='store_true',
@@ -132,7 +132,7 @@ def run(args):
 
     # Initialize and load (potentially multiple) datasets
     datasets = get_splits_from_all_datasets(hparams,
-                                            splits_to_load=args.datasets,
+                                            splits_to_load=args.dataset_splits,
                                             logger=logger,
                                             return_data_hparams=True)
 
