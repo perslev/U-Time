@@ -62,7 +62,7 @@ class RandomBatchSequence(BatchSequence):
                     "    N classes:       {}{}".format(" ({})".format(self.identifier) if self.identifier else "",
                                                        type(self.dataset_queue),
                                                        self.batch_shape,
-                                                       len(self.pairs),
+                                                       len(self.dataset_queue),
                                                        self.margin,
                                                        self.augmenters,
                                                        self.augmentation_enabled,
