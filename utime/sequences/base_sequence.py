@@ -1,6 +1,7 @@
 from tensorflow.keras.utils import Sequence
 from multiprocessing import current_process
 from mpunet.logging import ScreenLogger
+from utime import defaults
 from utime.preprocessing.scaling import apply_scaling, assert_scaler
 from utime.utils import assert_all_loaded
 from utime.errors import NotLoadedError
@@ -94,8 +95,8 @@ class _BaseSequence(Sequence):
 
         """
         x_shape, y_shape = self.get_batch_shapes()
-        x = np.empty(shape=x_shape, dtype=np.float32)
-        y = np.empty(shape=y_shape, dtype=np.uint8)
+        x = np.empty(shape=x_shape, dtype=defaults.psg_dtype)
+        y = np.empty(shape=y_shape, dtype=defaults.hyp_dtype)
         return x, y
 
     def seed(self):
@@ -379,11 +380,11 @@ class BaseSequence(_BaseSequence):
         # Cast and reshape arrays
         if not isinstance(X, np.ndarray) or not isinstance(y, np.ndarray):
             raise ValueError("Expected numpy array inputs.")
-        X = np.squeeze(X).astype(np.float32)
+        X = np.squeeze(X).astype(defaults.psg_dtype)
 
         if self.n_channels == 1:
             X = np.expand_dims(X, -1)
-        y = np.expand_dims(y.astype(np.uint8).squeeze(), -1)
+        y = np.expand_dims(y.astype(defaults.hyp_dtype).squeeze(), -1)
 
         expected_dim = len(self.batch_shape)
         if X.ndim == expected_dim-1:

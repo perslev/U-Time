@@ -3,10 +3,10 @@ Implements the SleepStudyBase class which represents a sleep study (PSG)
 """
 
 import numpy as np
+from utime import errors, defaults
 from utime.dataset.sleep_study.abc_sleep_study import AbstractBaseSleepStudy
 from utime.io.channels import ChannelMontageTuple
 from utime.io.high_level_file_loaders import get_org_include_exclude_channel_montages
-from utime import errors
 
 
 class H5SleepStudy(AbstractBaseSleepStudy):
@@ -136,9 +136,6 @@ class H5SleepStudy(AbstractBaseSleepStudy):
         """
         return list(self.psg[self.select_channels[0]].shape) + [len(self.psg)]
 
-    def get_psg_dtype(self):
-        return self.psg[self.select_channels[0]].dtype
-
     def get_full_psg(self):
         """
         TODO
@@ -147,7 +144,7 @@ class H5SleepStudy(AbstractBaseSleepStudy):
 
         """
         raise NotImplementedError
-        psg = np.empty(shape=self.get_psg_shape(), dtype=self.get_psg_dtype())
+        psg = np.empty(shape=self.get_psg_shape(), dtype=defaults.psg_dtype)
         for i, c in enumerate(self.select_channels):
             psg[i] = self.psg[c]
         return psg
@@ -244,7 +241,7 @@ class H5SleepStudy(AbstractBaseSleepStudy):
         n_periods = end_idx-start_idx+1
         channels = self._get_sample_channels()
         x = np.empty(shape=[n_periods, self.data_per_period, len(channels)],
-                     dtype=self.get_psg_dtype())
+                     dtype=defaults.psg_dtype)
         for i, chan in enumerate(channels):
             x[..., i] = self.psg[chan][start_idx:end_idx+1]
         y = self.hypnogram[start_idx:end_idx+1]
