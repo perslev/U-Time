@@ -19,8 +19,8 @@ On a Linux machine with at least 1 CUDA enabled GPU available and `Anaconda` ins
 
 ```console
 $ conda env create --file u-sleep/environment.yaml
-$ pip install -e u-sleep
 $ conda activate u-sleep
+(u-sleep) $ pip install -e u-sleep
 ```
 
 This installation process may take up to 10 minutes to complete.
@@ -71,10 +71,30 @@ Run the following command to prepare the data for training:
 Start training:
 
 ```console
-(u-sleep) $ ut train --num_GPUs=0 --preprocessed
+(u-sleep) $ ut train --num_GPUs=1 --preprocessed
 ```
 
+Predict on the testing sets using all channel combinations and compute majority votes:
 
+```console
+(u-sleep) $ ut predict	--num_GPUs=1 \
+						--data_split test_data \
+						--strip_func strip_to_match \
+						--one_shot \
+						--save_true \
+						--majority \
+						--out_dir predictions
+```
+
+Print a global confusion matrix (computed across all subjects) for dataset `sedf_sc`:
+
+```console
+(u-sleep) $ ut cm	--true 'predictions/test_data/sedf_sc/*TRUE.npy' \
+					--pred 'predictions/test_data/sedf_sc/majority/*PRED.npy' \
+					--ignore 5 \
+					--round 2 \
+					--wake_trim_min 30
+```
 
 
 ## Full Reproduction of U-Sleep
