@@ -136,7 +136,7 @@ def run(args):
                              args.period_length_sec)
     true, pred = concatenate_true_pred_pairs(pairs=np_pairs)
     if args.ignore_classes:
-        labels = (set(np.unique(true)) | set(np.unique(pred))) - set(args.ignore_classes)
+        labels = list((set(np.unique(true)) | set(np.unique(pred))) - set(args.ignore_classes))
     else:
         labels = None
     cm = confusion_matrix(true, pred, labels=labels)
