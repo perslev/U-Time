@@ -135,10 +135,10 @@ def run(args):
                              args.wake_trim_min,
                              args.period_length_sec)
     true, pred = concatenate_true_pred_pairs(pairs=np_pairs)
+    labels = None
     if args.ignore_classes:
+        print("OBS: Ignoring class(es): {}".format(args.ignore_classes))
         labels = list((set(np.unique(true)) | set(np.unique(pred))) - set(args.ignore_classes))
-    else:
-        labels = None
     cm = confusion_matrix(true, pred, labels=labels)
     if args.normalized:
         cm = cm.astype(np.float64)
