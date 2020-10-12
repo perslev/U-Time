@@ -26,7 +26,7 @@ On a Linux machine with at least 1 CUDA enabled GPU available and `Anaconda` ins
 ```
 conda env create --file u-sleep/environment.yaml
 conda activate u-sleep
-pip install -e u-sleep
+pip install u-sleep
 ```
 
 This installation process may take up to 10 minutes to complete.
@@ -37,7 +37,7 @@ In this following we will demonstrate how to launch a short training session of 
 First, we create a project directory that will store all of our data for this demo. The `ut init_project` command will create a folder and populate it with a set of default hyperparameter values:
 
 ```
-ut init_project --name demo --model usleep_demo
+ut init --name demo --model usleep_demo
 ```
 
 Entering the newly created project directory we will find a folder storing hyperparameters:
@@ -51,8 +51,8 @@ ls
 We will download 10 PSG studies from the public sleep databases [Sleep-EDF](https://doi.org/10.13026/C2X676) and [DCSM](https://sid.erda.dk/wsgi-bin/ls.py?share_id=fUH3xbOXv8) using the `ut fetch` command:
 
 ```
-ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 10
-ut fetch --dataset dcsm --out_dir data/dcsm --N_first 10
+ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 12
+ut fetch --dataset dcsm --out_dir data/dcsm --N_first 12
 ```
 
 The raw data has now been downloaded. We split each dataset into train ()validation/test splits using the `ut cv_split` command:
@@ -63,7 +63,8 @@ ut cv_split --data_dir data/sedf_sc/ \
             --CV 1 \
             --validation_fraction 0.10 \
             --test_fraction 0.15 \
-            --subject_matching_regex 'SC4(\d{2}).*'
+            --subject_matching_regex 'SC4(\d{2}).*' \
+            --seed 123
 ```
 
 *Please be aware that if you modify any of the above commands to e.g. use different output directory names, you will need to modify paths in dataset hyperparameter files stored under `hyperparameters/dataset_configurations` as appropriate before proceding with the next steps.*
@@ -77,7 +78,7 @@ ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_
 Start training:
 
 ```
-ut train --num_GPUs=1 --preprocessed
+ut train --num_GPUs=1 --preprocessed --seed 123
 ```
 
 Predict on the testing sets using all channel combinations and compute majority votes:
