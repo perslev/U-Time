@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from collections import defaultdict
 from utime.utils import exactly_one_specified
-from utime import defaults
+from utime import Defaults
 
 
 class SparseHypnogram(object):
@@ -34,7 +34,7 @@ class SparseHypnogram(object):
             # second 0
             init_times_sec.insert(0, 0)
             durations_sec.insert(0, init_times_sec[1])
-            sleep_stages.insert(0, defaults.OUT_OF_BOUNDS[1])
+            sleep_stages.insert(0, Defaults.OUT_OF_BOUNDS[1])
         self.inits = np.array(init_times_sec, dtype=np.int32)
         self.durations = np.array(durations_sec, dtype=np.int32)
         self.stages = np.array(sleep_stages, dtype=np.uint8)

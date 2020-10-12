@@ -2,7 +2,7 @@ import numpy as np
 from mpunet.logging import ScreenLogger
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
-from utime import defaults
+from utime import Defaults
 
 
 class AbstractBaseSleepStudy(ABC):
@@ -27,7 +27,7 @@ class AbstractBaseSleepStudy(ABC):
         self.annotation_dict = annotation_dict
         self.no_hypnogram = no_hypnogram
         self.period_length_sec = period_length_sec or \
-            defaults.get_default_period_length(self.logger)
+            Defaults.get_default_period_length(self.logger)
 
         # Hidden attributes controlled in property functions to limit setting
         # of these values to the load() function
@@ -385,7 +385,7 @@ class AbstractBaseSleepStudy(ABC):
         from utime.visualization.psg_plotting import plot_period
         period_sec = period_sec or self.period_idx_to_sec(period_idx)
         x, y = self.get_period_at_sec(period_sec)
-        plot_period(X=x, y=defaults.class_int_to_stage_string[y],
+        plot_period(X=x, y=Defaults.get_class_int_to_stage_string()[y],
                     channel_names=self.select_channels,
                     init_second=period_sec,
                     sample_rate=self.sample_rate,
@@ -411,7 +411,7 @@ class AbstractBaseSleepStudy(ABC):
             raise ValueError("Periods to plot must be consecutive.")
         x, y = zip(*map(self.get_period_at_sec, period_secs))
         plot_periods(X=x,
-                     y=[defaults.class_int_to_stage_string[y_] for y_ in y],
+                     y=[Defaults.get_class_int_to_stage_string()[y_] for y_ in y],
                      channel_names=self.select_channels,
                      init_second=period_secs[0],
                      sample_rate=self.sample_rate,

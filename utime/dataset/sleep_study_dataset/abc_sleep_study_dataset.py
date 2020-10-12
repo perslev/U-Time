@@ -1,6 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
-from utime import defaults
+from utime import Defaults
 from mpunet.logging import ScreenLogger
 
 
@@ -34,7 +34,7 @@ class AbstractBaseSleepStudyDataset(ABC):
         self._pairs = pairs or []
         self._misc = {}  # May store arbitrary properties for this dataset
         self.period_length_sec = (period_length_sec or
-                                  defaults.get_default_period_length(self.logger))
+                                  Defaults.get_default_period_length(self.logger))
 
         # Get list of subject folders in the data_dir according to folder_regex
         if len(np.unique([p.identifier for p in self.pairs])) != len(self.pairs):

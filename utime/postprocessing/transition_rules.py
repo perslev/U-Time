@@ -1,5 +1,5 @@
 import numpy as np
-from utime import defaults
+from utime import Defaults
 from numpy.lib.stride_tricks import as_strided
 
 
@@ -19,7 +19,7 @@ TRIPLET_RULES = [
 
 
 def get_translated_triplet_rules(translation_map=None):
-    translation_map = translation_map or defaults.stage_string_to_class_int
+    translation_map = translation_map or Defaults.get_stage_string_to_class_int()
     translation_map = np.vectorize(translation_map.get)
     new_map = []
     for s1, s2 in TRIPLET_RULES:
@@ -49,7 +49,7 @@ def apply_substitution_rules(scores, substitution_rules, verbose=False):
 def replace_before_with(scores, before_stage, replace, to, stage_string_to_class_int_map=None):
     scores = scores.copy()
     if isinstance(before_stage, str):
-        stage_map = stage_string_to_class_int_map or defaults.stage_string_to_class_int
+        stage_map = stage_string_to_class_int_map or Defaults.get_stage_string_to_class_int()
         before_stage, replace, to = map(lambda s: stage_map[s], (before_stage, replace, to))
     first_appearence = np.where(scores == before_stage)[0]
     if len(first_appearence):

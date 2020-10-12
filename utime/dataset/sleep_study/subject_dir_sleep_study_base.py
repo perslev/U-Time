@@ -4,7 +4,7 @@ Implements the SleepStudyBase class which represents a sleep study (PSG)
 
 import os
 import numpy as np
-from utime import defaults
+from utime import Defaults
 from utime.dataset.utils import find_psg_and_hyp
 from utime.dataset.sleep_study.abc_sleep_study import AbstractBaseSleepStudy
 
@@ -112,8 +112,8 @@ class SubjectDirSleepStudyBase(AbstractBaseSleepStudy):
         """
         indices = list(range(start_idx, end_idx+1))
         x = np.empty(shape=[len(indices), self.data_per_period, len(self.select_channels)],
-                     dtype=defaults.psg_dtype)
-        y = np.empty(shape=[len(indices), 1], dtype=defaults.hyp_dtype)
+                     dtype=Defaults.PSG_DTYPE)
+        y = np.empty(shape=[len(indices), 1], dtype=Defaults.HYP_DTYPE)
         for i, idx in enumerate(indices):
             x_period, y_period = self.get_period_by_idx(idx)
             x[i] = x_period

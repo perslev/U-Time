@@ -5,7 +5,7 @@ A set of utility functions used across multiple scripts in utime.bin
 import os
 from utime.utils.utils import ensure_list_or_tuple
 from mpunet.logging.default_logger import ScreenLogger
-from utime import defaults
+from utime import Defaults
 
 
 def assert_project_folder(project_folder, evaluation=False):
@@ -21,16 +21,16 @@ def assert_project_folder(project_folder, evaluation=False):
     import os
     import glob
     project_folder = os.path.abspath(project_folder)
-    if not os.path.exists(defaults.get_hparams_path(project_folder)):
+    if not os.path.exists(Defaults.get_hparams_path(project_folder)):
         # Folder must contain a 'hparams.yaml' file in all cases.
-        raise RuntimeError("Folder {} is not a valid DeepSleep project folder."
+        raise RuntimeError("Folder {} is not a valid project folder."
                            " Must contain a 'hparams.yaml' "
                            "file.".format(project_folder))
     if evaluation:
         # Folder must contain a 'model' subfolder storing saved model files
         model_path = os.path.join(project_folder, "model")
         if not os.path.exists(model_path):
-            raise RuntimeError("Folder {} is not a valid DeepSleep project "
+            raise RuntimeError("Folder {} is not a valid project "
                                "folder. Must contain a 'model' "
                                "subfolder.".format(project_folder))
         # There must be a least 1 model file (.h5) in the folder
