@@ -44,13 +44,14 @@ def plot_hypnogram(hyp_array,
         true_hyp_array:    ndarray, shape [N] (optional, default=None)
         seconds_per_epoch: integer, default=30
         annotation_dict:   dict, integer -> stage string mapping
+        show_f1_scores:    bool, annotate the figure with f1 scores, only if true_hyp_array is set
         order:             list-like of strings, order of sleep stages on plot y-axis
 
     Returns:
         fig, axes
     """
     rows = 1 if true_hyp_array is None else 2
-    hight = 3 if true_hyp_array is None else (4 + show_f1_scores)
+    hight = 3 if true_hyp_array is None else 4
     fig, axes = plt.subplots(nrows=rows, figsize=(10, hight), sharex=True, sharey=True)
     if not isinstance(axes, (list, np.ndarray)):
         axes = [axes]
@@ -60,42 +61,65 @@ def plot_hypnogram(hyp_array,
     reordered_hyp_array = get_reordered_hypnogram(hyp_array, annotation_dict, order)
 
     x_hours = np.array([seconds_per_epoch * i for i in range(len(hyp_array))]) / 3600
-    axes[0].step(x_hours, reordered_hyp_array, where='post', color="black", label="Predicted hypnogram")
+    axes[0].step(x_hours, reordered_hyp_array, where='post', color="black", label="Predicted")
 
     # Set ylabels
     for ax in axes:
         ax.set_yticks(range(len(order)))
         ax.set_yticklabels(order)
-        ax.set_ylabel("Sleep Stage", size=16, labelpad=12)
         ax.tick_params(axis='both', which='major', labelsize=14)
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+    if true_hyp_array is not None:
+        fig.text(x=0.02, y=0.56, s="Sleep Stage", ha="center", va="center", fontdict={"size": 16}, rotation=90)
+    else:
+        axes[0].set_ylabel("Sleep Stage", labelpad=12, size=16)
     axes[-1].set_xlabel("Time (hours)", size=16, labelpad=12)
     axes[-1].set_xlim(0, x_hours[-1])
 
     fig.tight_layout()
     if true_hyp_array is not None:
         reordered_true = get_reordered_hypnogram(true_hyp_array, annotation_dict, order)
-        axes[1].step(x_hours, reordered_true, where='post', color="darkred", label="Expert's hypnogram")
+        axes[1].step(x_hours, reordered_true, where='post', color="darkred", label="Expert")
 
-        fig_top = 0.88
         if show_f1_scores:
             from sklearn.metrics import f1_score
             str_to_int_map = {value: key for key, value in annotation_dict.items()}
             f1s = f1_score(true_hyp_array, hyp_array, labels=[str_to_int_map[w] for w in reversed(order)], average=None)
             f1s = [round(l, 2) for l in (list(f1s) + [np.mean(f1s)])]
             f1_labels = list(reversed(order)) + ["Mean"]
-            fig.text(
-                x=0.5,
-                y=0.88,
-                s="   |   ".join([f"{stage}: {value}" for stage, value in zip(f1_labels, f1s)]),
-                ha="center",
-                va="bottom",
-                fontdict={"alpha": 0.75}
-            )
-            fig_top = 0.86
 
+            # Plot title
+            fig.text(
+                x=0.845,
+                y=0.66,
+                s="F1-scores",
+                ha="left",
+                va="top",
+                fontdict={"alpha": 1, "size": 14}
+            )
+            for i, (stage, value) in enumerate(zip(f1_labels, f1s)):
+                # Plot stage
+                fig.text(
+                    x=0.845,
+                    y=0.58-(0.05*i),
+                    s=f"{stage}",
+                    ha="left",
+                    va="top",
+                    fontdict={"alpha": 1, "size": 14}
+                )
+                # Plot score
+                fig.text(
+                    x=0.9475,
+                    y=0.58-(0.05*i),
+                    s="{:.2f}".format(value),
+                    ha="left",
+                    va="top",
+                    fontdict={"alpha": 1, "size": 14}
+                )
         lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
         lines, labels = [sum(l, []) for l in zip(*lines_labels)]
-        l = fig.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, 1.01), ncol=2, fontsize=14)
+        l = fig.legend(lines, labels, loc='right', bbox_to_anchor=(1.01, 0.89), ncol=1, fontsize=14)
         l.get_frame().set_linewidth(0)
-        fig.subplots_adjust(hspace=0.1, top=fig_top)
+        fig.subplots_adjust(hspace=0.13, right=0.81, left=0.10)
     return fig, axes
