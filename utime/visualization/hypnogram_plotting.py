@@ -34,6 +34,7 @@ def plot_hypnogram(hyp_array,
                    seconds_per_epoch=30,
                    annotation_dict=None,
                    show_f1_scores=True,
+                   wake_trim_min=None,
                    order=("N3", "N2", "N1", "REM", "W")):
     """
     Plot a ndarray hypnogram of integers, 'hyp_array', optionally on top of an expert annotated hypnogram
@@ -45,6 +46,8 @@ def plot_hypnogram(hyp_array,
         seconds_per_epoch: integer, default=30
         annotation_dict:   dict, integer -> stage string mapping
         show_f1_scores:    bool, annotate the figure with f1 scores, only if true_hyp_array is set
+        wake_trim_min:     None or integer, if set a number of max minutes before/proceeding the first/last
+                           non-wake sleep stage in TRUE array to consider/'zoom' in on.
         order:             list-like of strings, order of sleep stages on plot y-axis
 
     Returns:
@@ -58,9 +61,21 @@ def plot_hypnogram(hyp_array,
 
     # Map classes to default string classes
     annotation_dict = annotation_dict or Defaults.get_class_int_to_stage_string()
-    reordered_hyp_array = get_reordered_hypnogram(hyp_array, annotation_dict, order)
+    str_to_int_map = {value: key for key, value in annotation_dict.items()}
 
+    # Define range in hours
     x_hours = np.array([seconds_per_epoch * i for i in range(len(hyp_array))]) / 3600
+
+    if wake_trim_min and true_hyp_array is not None:
+        trim = int((60/seconds_per_epoch) * wake_trim_min)
+        inds = np.where(true_hyp_array != str_to_int_map["W"])[0]
+        start = max(0, inds[0] - trim)
+        end = inds[-1] + trim
+        hyp_array = hyp_array[start:end]
+        true_hyp_array = true_hyp_array[start:end]
+        x_hours = x_hours[start:end]
+
+    reordered_hyp_array = get_reordered_hypnogram(hyp_array, annotation_dict, order)
     axes[0].step(x_hours, reordered_hyp_array, where='post', color="black", label="Predicted")
 
     # Set ylabels
@@ -84,7 +99,6 @@ def plot_hypnogram(hyp_array,
 
         if show_f1_scores:
             from sklearn.metrics import f1_score
-            str_to_int_map = {value: key for key, value in annotation_dict.items()}
             f1s = f1_score(true_hyp_array, hyp_array, labels=[str_to_int_map[w] for w in reversed(order)], average=None)
             f1s = [round(l, 2) for l in (list(f1s) + [np.mean(f1s)])]
             f1_labels = list(reversed(order)) + ["Mean"]
