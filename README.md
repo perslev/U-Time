@@ -34,7 +34,7 @@ This installation process may take up to 10 minutes to complete.
 ## Demo
 In this following we will demonstrate how to launch a short training session of U-Sleep on a significantly limited subset of the datasets used in [[2]](#usleep_ref).
 
-First, we create a project directory that will store all of our data for this demo. The `ut init_project` command will create a folder and populate it with a set of default hyperparameter values:
+First, we create a project directory that will store all of our data for this demo. The `ut init` command will create a folder and populate it with a set of default hyperparameter values:
 
 ```
 ut init --name demo --model usleep_demo
@@ -48,16 +48,19 @@ ls
 > hyperparameters
 ```
 
-We will download 10 PSG studies from the public sleep databases [Sleep-EDF](https://doi.org/10.13026/C2X676) and [DCSM](https://sid.erda.dk/wsgi-bin/ls.py?share_id=fUH3xbOXv8) using the `ut fetch` command:
+We will download 12 PSG studies from the public sleep databases [Sleep-EDF](https://doi.org/10.13026/C2X676) and [DCSM](https://sid.erda.dk/wsgi-bin/ls.py?share_id=fUH3xbOXv8) using the `ut fetch` command.
+Note that depending on your internet speed and the current load on each of the two servers, downloading may take anywhere from 5 minutes to multiple hours:
 
 ```
 ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 12
 ut fetch --dataset dcsm --out_dir data/dcsm --N_first 12
 ```
 
-The raw data has now been downloaded. We split each dataset into train ()validation/test splits using the `ut cv_split` command:
+The raw data has now been downloaded. We split each dataset into fixed train/validation/test splits using the `ut cv_split` command. 
+The command must be invoked twice each with a unique set of parameters specifying the naming convention used in each dataset:
 
 ```
+# Split dataset SEDF-SC
 ut cv_split --data_dir data/sedf_sc/ \
             --subject_dir_pattern 'SC*' \
             --CV 1 \
@@ -65,7 +68,18 @@ ut cv_split --data_dir data/sedf_sc/ \
             --test_fraction 0.15 \
             --subject_matching_regex 'SC4(\d{2}).*' \
             --seed 123
+            
+# Split dataset DCSM
+ut cv_split --data_dir data/dcsm/ \
+            --subject_dir_pattern 'tp*' \
+            --CV 1 \
+            --validation_fraction 0.10 \
+            --test_fraction 0.15 \
+            --seed 123
 ```
+
+Note that the splitting of SEDF-SC is performed on a per-subject basis. All PSG records from the same subject will be placed into the same dataset split. 
+This is not needed for DCSM as all recordings are of unique subjects.
 
 *Please be aware that if you modify any of the above commands to e.g. use different output directory names, you will need to modify paths in dataset hyperparameter files stored under `hyperparameters/dataset_configurations` as appropriate before proceding with the next steps.*
 
@@ -75,13 +89,15 @@ Run the following command to prepare the data for training:
 ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_data
 ```
 
-Start training:
+We may now start training by invoking the `ut train` command. Note that many optimization hyperparameters have been pre-specified and are located in the `hyperparameters/hparams.yaml` 
+file of your project directory. In this demo, we are going to run only a very short training session, but feel free to modify any parameters in the `hparams.yaml` file as you see fit:
 
 ```
 ut train --num_GPUs=1 --preprocessed --seed 123
 ```
 
-Predict on the testing sets using all channel combinations and compute majority votes:
+Following training, a set of candidate models will be available in the folder `models`. Using the best one observed (highest validation mean F1 score), 
+we may predict on the testing sets of both `SEDF-SC` and `DCSM` using all channel combinations as well as compute majority votes by invoking the following `ut predict` command:
 
 ```
 ut predict --num_GPUs=1 \
@@ -93,7 +109,8 @@ ut predict --num_GPUs=1 \
            --out_dir predictions
 ```
 
-Print a global confusion matrix (computed across all subjects) for dataset `sedf_sc`:
+The predicted hypnograms are now available under directory `predictions/test_data`. 
+Finally, let us print a global confusion matrix (computed across all subjects) for dataset `sedf_sc`:
 
 ```
 ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
@@ -101,7 +118,17 @@ ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
       --ignore 5 \
       --round 2 \
       --wake_trim_min 30
+      
+>
+>
+>
+>
+>
+>
 ```
+
+If you got the output above, congratulations! 
+You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
 
 ## Full Reproduction of U-Sleep
 TODO.
