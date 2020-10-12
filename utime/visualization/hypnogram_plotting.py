@@ -90,7 +90,7 @@ def plot_hypnogram(hyp_array,
     else:
         axes[0].set_ylabel("Sleep Stage", labelpad=12, size=16)
     axes[-1].set_xlabel("Time (hours)", size=16, labelpad=12)
-    axes[-1].set_xlim(0, x_hours[-1])
+    axes[-1].set_xlim(x_hours[0], x_hours[-1])
 
     fig.tight_layout()
     if true_hyp_array is not None:
