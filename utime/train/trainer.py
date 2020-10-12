@@ -17,7 +17,7 @@ from mpunet.train.utils import (ensure_sparse,
                                 init_losses,
                                 init_metrics,
                                 init_optimizer)
-from utime.callbacks import Validation, MemoryConsumption, CarbonUsageTracking
+from utime.callbacks import Validation, MemoryConsumption
 from utime.train.utils import get_steps
 
 
@@ -172,7 +172,6 @@ class Trainer(object):
              train_samples_per_epoch,
              verbose=1,
              init_epoch=0,
-             use_multiprocessing=False,
              **unused):
         """
         Args:
@@ -234,7 +233,7 @@ class Trainer(object):
             epochs=n_epochs,
             callbacks=callbacks,
             initial_epoch=init_epoch,
-            use_multiprocessing=False,  # TODO
+            use_multiprocessing=False,
             workers=3,
             max_queue_size=10,
             shuffle=False,  # Determined by the chosen Sequence class
