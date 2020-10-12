@@ -20,7 +20,7 @@ def get_checksums_and_file_names(path):
 
 
 def _download(out_dataset_folder, server_url, checksums_path, N_first=None):
-    """ Download the sleep-EDF-153 dataset """
+    """ Download a sleep-EDF dataset """
     checksums, file_names = get_checksums_and_file_names(checksums_path)
     zipped = list(zip(file_names, checksums))
     N_first = int(N_first*2) if N_first is not None else len(file_names)
@@ -38,6 +38,7 @@ def _download(out_dataset_folder, server_url, checksums_path, N_first=None):
 
 
 def download_sedf_sc(out_dataset_folder, N_first=None):
+    """ Download the Sleep-EDF sleep-cassette (153 records) dataset """
     _download(
         out_dataset_folder=out_dataset_folder,
         server_url=_SERVER_URL_SC,
@@ -47,6 +48,7 @@ def download_sedf_sc(out_dataset_folder, N_first=None):
 
 
 def download_sedf_st(out_dataset_folder, N_first=None):
+    """ Download the Sleep-EDF sleep-telemetry (44 records) dataset """
     _download(
         out_dataset_folder=out_dataset_folder,
         server_url=_SERVER_URL_ST,
