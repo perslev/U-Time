@@ -2,11 +2,12 @@
 Support for additional datasets will be added over time
 """
 
-from .sedf_sc import download_sedf_sc
+from .sedf import download_sedf_sc, download_sedf_st
 
 
 DOWNLOAD_FUNCS = {
-    "sedf_sc": download_sedf_sc
+    "sedf_sc": download_sedf_sc,
+    "sedf_st": download_sedf_st
 }
 
 
@@ -15,7 +16,8 @@ def no_processing(*args, **kwargs):
 
 
 PREPROCESS_FUNCS = {
-    "sedf_sc": no_processing
+    "sedf_sc": no_processing,
+    "sedf_st": no_processing
 }
 
 
