@@ -1,5 +1,6 @@
 import os
-from utime.preprocessing.dataset_preparation.utils import download_and_validate
+from utime.preprocessing.dataset_preparation.utils import (download_and_validate,
+                                                           get_checksums_and_file_names)
 
 # Get path to current module file
 _FILE_PATH = os.path.split(__file__)[0]
@@ -11,12 +12,6 @@ _CHECKSUM_FILE_SC = "{}/sedf_sc_checksums.txt".format(_FILE_PATH)
 # SEDF-ST globals
 _SERVER_URL_ST = "https://physionet.org/physiobank/database/sleep-edfx/sleep-telemetry"
 _CHECKSUM_FILE_ST = "{}/sedf_sc_checksums.txt".format(_FILE_PATH)
-
-
-def get_checksums_and_file_names(path):
-    """ Reads the local checksums file """
-    with open(path) as in_f:
-        return zip(*[l.strip(" \n\r").split(" ") for l in in_f.readlines()])
 
 
 def _download(out_dataset_folder, server_url, checksums_path, N_first=None):
