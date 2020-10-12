@@ -50,7 +50,7 @@ def plot_hypnogram(hyp_array,
         fig, axes
     """
     rows = 1 if true_hyp_array is None else 2
-    hight = 3 if true_hyp_array is None else (6 + show_f1_scores)
+    hight = 3 if true_hyp_array is None else (4 + show_f1_scores)
     fig, axes = plt.subplots(nrows=rows, figsize=(10, hight), sharex=True, sharey=True)
     if not isinstance(axes, (list, np.ndarray)):
         axes = [axes]
@@ -76,7 +76,7 @@ def plot_hypnogram(hyp_array,
         reordered_true = get_reordered_hypnogram(true_hyp_array, annotation_dict, order)
         axes[1].step(x_hours, reordered_true, where='post', color="darkred", label="Expert's hypnogram")
 
-        fig_top = 0.92
+        fig_top = 0.88
         if show_f1_scores:
             from sklearn.metrics import f1_score
             str_to_int_map = {value: key for key, value in annotation_dict.items()}
@@ -85,17 +85,17 @@ def plot_hypnogram(hyp_array,
             f1_labels = list(reversed(order)) + ["Mean"]
             fig.text(
                 x=0.5,
-                y=0.92,
+                y=0.88,
                 s="   |   ".join([f"{stage}: {value}" for stage, value in zip(f1_labels, f1s)]),
                 ha="center",
-                va="center",
+                va="bottom",
                 fontdict={"alpha": 0.75}
             )
-            fig_top = 0.90
+            fig_top = 0.86
 
         lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
         lines, labels = [sum(l, []) for l in zip(*lines_labels)]
-        l = fig.legend(lines, labels, loc='center', bbox_to_anchor=(0.5, 0.96), ncol=2, fontsize=14)
+        l = fig.legend(lines, labels, loc='upper center', bbox_to_anchor=(0.5, 1.01), ncol=2, fontsize=14)
         l.get_frame().set_linewidth(0)
         fig.subplots_adjust(hspace=0.1, top=fig_top)
     return fig, axes
