@@ -6,9 +6,9 @@ ut init).
 """
 
 import numpy as np
-from argparse import ArgumentParser
 import os
-from utime import defaults
+import utime
+from argparse import ArgumentParser
 
 
 def get_argparser():
@@ -186,12 +186,12 @@ def run(args, gpu_mon):
 
     # Settings depending on --preprocessed flag.
     if args.preprocessed:
-        yaml_path = defaults.get_pre_processed_hparams_path(project_dir)
+        yaml_path = utime.Defaults.get_pre_processed_hparams_path(project_dir)
         dataset_func = get_h5_train_and_val_datasets
         train_queue_type = 'eager'
         val_queue_type = 'eager'
     else:
-        yaml_path = defaults.get_hparams_path(project_dir)
+        yaml_path = utime.Defaults.get_hparams_path(project_dir)
         dataset_func = get_train_and_val_datasets
         train_queue_type = args.train_queue_type
         val_queue_type = args.val_queue_type

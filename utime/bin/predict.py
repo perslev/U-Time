@@ -14,7 +14,7 @@ from utime.bin.evaluate import (set_gpu_vis, predict_on, get_logger,
                                 prepare_output_dir, get_and_load_model,
                                 get_and_load_one_shot_model, get_sequencer,
                                 get_out_dir)
-from utime import defaults
+from utime import Defaults
 
 readline.parse_and_bind('tab: complete')
 
@@ -338,7 +338,7 @@ def run(args):
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(defaults.get_hparams_path(project_dir), logger)
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir), logger)
     hparams["build"]["data_per_prediction"] = args.data_per_prediction
     if args.channels:
         hparams["select_channels"] = args.channels

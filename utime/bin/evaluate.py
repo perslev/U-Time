@@ -7,7 +7,7 @@ import os
 import readline
 import numpy as np
 from argparse import ArgumentParser
-from utime import defaults
+from utime import Defaults
 
 readline.parse_and_bind('tab: complete')
 
@@ -490,7 +490,7 @@ def run(args):
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(defaults.get_hparams_path(project_dir), logger)
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir), logger)
     if args.channels:
         hparams["select_channels"] = args.channels
         hparams["channel_sampling_groups"] = None

@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from utime.bin.evaluate import (set_gpu_vis,
                                 get_and_load_one_shot_model,
                                 get_logger)
-from utime import defaults
+from utime import Defaults
 from pprint import pformat
 from collections import namedtuple
 
@@ -184,7 +184,7 @@ def run(args, return_prediction=False, dump_args=None):
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(defaults.get_hparams_path(project_dir), logger,
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir), logger,
                           no_version_control=True)
 
     # Get the sleep study

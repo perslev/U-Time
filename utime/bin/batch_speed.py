@@ -7,7 +7,7 @@ ut init).
 
 from argparse import ArgumentParser
 import os
-from utime import defaults
+from utime import Defaults
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -83,11 +83,11 @@ def run(args):
 
     # Settings depending on --preprocessed flag.
     if args.preprocessed:
-        yaml_path = defaults.get_pre_processed_hparams_path(project_dir)
+        yaml_path = Defaults.get_pre_processed_hparams_path(project_dir)
         dataset_func = get_h5_train_and_val_datasets
         train_queue_type = 'eager'
     else:
-        yaml_path = defaults.get_hparams_path(project_dir)
+        yaml_path = Defaults.get_hparams_path(project_dir)
         dataset_func = get_train_and_val_datasets
         train_queue_type = args.train_queue_type
 

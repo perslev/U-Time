@@ -16,7 +16,7 @@ import h5py
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from utime import defaults
+from utime import Defaults
 
 
 def get_argparser():
@@ -126,7 +126,7 @@ def run(args):
     logger("Args dump: {}".format(vars(args)))
 
     # Load hparams
-    hparams = YAMLHParams(defaults.get_hparams_path(project_dir),
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir),
                           logger=logger,
                           no_version_control=True)
 
@@ -147,7 +147,7 @@ def run(args):
             exit(0)
 
     # Create dataset hparams output directory
-    out_dir = defaults.get_pre_processed_data_configurations_dir(project_dir)
+    out_dir = Defaults.get_pre_processed_data_configurations_dir(project_dir)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
 
@@ -164,7 +164,7 @@ def run(args):
                 hparams.set_value(subdir='datasets', name=name,
                                   value=hparams_out_path, overwrite=True)
                 # Save the hyperparameters to the pre-processed main hparams
-                hparams.save_current(defaults.get_pre_processed_hparams_path(
+                hparams.save_current(Defaults.get_pre_processed_hparams_path(
                     project_dir
                 ))
 
