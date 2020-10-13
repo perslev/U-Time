@@ -194,9 +194,9 @@ ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
 >>>  mean     0.21       0.30          0.16 
 ```
 
-If you received an output similar to the, congratulations! You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
+If you received an output *similar* to the above, congratulations! You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
 
-Two important notes: 
+Please note that:
 * If you ran the above code on a GPU, you may not obtain the exact same numbers listed here, even if you specified the --seed arguments. This is because some operations are non-deterministic when evaluated on a GPU.
 
 * The performance of the obtained demo model is very low and not suitable for actual sleep staging. The reason is that we trained U-Sleep on a very limited set of data and for a very limited number of epochs.
