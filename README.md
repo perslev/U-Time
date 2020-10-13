@@ -1,6 +1,6 @@
 # U-Sleep
 
-This repository contains the official implementation behind the resilient high-frequency sleep staging system, *U-Sleep*.
+Official implementation of the *U-Sleep* model for resilient high-frequency sleep staging.
 
 ## Contents
 
