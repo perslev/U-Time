@@ -80,10 +80,27 @@ ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 6
 ut fetch --dataset dcsm --out_dir data/dcsm --N_first 6
 ```
 
-The raw data has now been downloaded. 
+The raw data that we will consider in this demo has now been downloaded. 
+Our `demo` project folder now has roughly the following structure:
+
+```
+└─ demo
+   ├─ hyperparameters
+   └─ data
+      ├─ dcsm
+      │  ├─ tp005f7e68_a084_46bb_9f0a_b6a084155a1c
+      │  │  ├─ hypnogram.ids
+      │  │  └─ psg.h5
+      │  ├─ ...
+      └─ sedf_sc
+         ├─ SC4001E0
+         │  ├─ SC4001E0-PSG.edf
+         │  └─ SC4001EC-Hypnogram.edf
+         ├─ ...
+```
 
 #### Dataset splitting
-We split each dataset into fixed train/validation/test splits using the `ut cv_split` command. 
+Before proceeding to train the U-Sleep model we split each dataset into fixed train/validation/test splits using the `ut cv_split` command. 
 The command must be invoked twice each with a unique set of parameters specifying the naming conventions of dataset:
 
 ```
