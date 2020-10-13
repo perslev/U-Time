@@ -1,6 +1,6 @@
 # U-Sleep
 
-This repository stores code for training and evaluating the U-Sleep sleep staging model. The U-Sleep repository builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published in [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the recilient high frequency sleep staging model, and *u-time* to denote this repository of code used to train and evaluate U-Sleep.
+The U-Sleep repository stores code for training and evaluating the U-Sleep sleep staging model. This repository builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model currently in review [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate U-Sleep.
 
 ## Contents
 
@@ -9,11 +9,19 @@ This repository stores code for training and evaluating the U-Sleep sleep stagin
 - [Installation Guide](#installation-guide)
 - [Demo](#demo)
 - [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep)
-- [U-Time and U-Sleep Citations](#citations)
+- [U-Time and U-Sleep References](#references)
 
 
 ## Overview
-TODO.
+This document describes the U-Time software package developed for and used to create the free and public sleep staging system `U-Sleep` [[2]](#usleep_ref).
+U-Sleep is a fully convolutional deep neural network for automated sleep staging. A single instance of the model may be trained to perform accurate and resilient sleep staging 
+across a wide range of clinical populations and polysomnography (PSG) acquisition protocols.
+
+In the following we will introduce the software behind U-Sleep. Please note that:
+
+* If you are interested to re-implement, extend, or train U-Sleep yourself e.g. on other datasets, you are at the right place!
+* If you are looking to use our pre-trained U-Sleep model for automated sleep staging, please refer to https://sleep.ai.ku.dk and follow the introduction steps.
+
 
 ## System Requirements
 **Hardware Requirements:** TODO
@@ -34,6 +42,13 @@ This installation process may take up to 10 minutes to complete.
 ## Demo
 In this following we will demonstrate how to launch a short training session of U-Sleep on a significantly limited subset of the datasets used in [[2]](#usleep_ref).
 
+#### Requirements
+- Completion of the steps outlined in the [Installation Guide](#installation-guide).
+- This demo takes approximately `30 minutes` to complete on a typical computer and network connection. The majority of this time is spend downloading the required data from public databases. This step may take significantly longer depending on current database traffic.
+- Approximately `11 GiB` of available disk-space on your computer.
+
+
+#### Preparing a project directory
 First, we create a project directory that will store all of our data for this demo. The `ut init` command will create a folder and populate it with a set of default hyperparameter values:
 
 ```
@@ -48,15 +63,20 @@ ls
 > hyperparameters
 ```
 
-We will download 12 PSG studies from the public sleep databases [Sleep-EDF](https://doi.org/10.13026/C2X676) and [DCSM](https://sid.erda.dk/wsgi-bin/ls.py?share_id=fUH3xbOXv8) using the `ut fetch` command.
+#### Download public PSG data
+We will download 6 PSG studies from the public sleep databases [Sleep-EDF](https://doi.org/10.13026/C2X676) and [DCSM](https://sid.erda.dk/wsgi-bin/ls.py?share_id=fUH3xbOXv8) using the `ut fetch` command.
+You will need approximately `10 GiB` of free hard-disk space to store the downloaded files.
 Note that depending on your internet speed and the current load on each of the two servers, downloading may take anywhere from 5 minutes to multiple hours:
 
 ```
-ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 12
-ut fetch --dataset dcsm --out_dir data/dcsm --N_first 12
+ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 6
+ut fetch --dataset dcsm --out_dir data/dcsm --N_first 6
 ```
 
-The raw data has now been downloaded. We split each dataset into fixed train/validation/test splits using the `ut cv_split` command. 
+The raw data has now been downloaded. 
+
+#### Dataset splitting
+We split each dataset into fixed train/validation/test splits using the `ut cv_split` command. 
 The command must be invoked twice each with a unique set of parameters specifying the naming convention used in each dataset:
 
 ```
@@ -83,12 +103,15 @@ This is not needed for DCSM as all recordings are of unique subjects.
 
 *Please be aware that if you modify any of the above commands to e.g. use different output directory names, you will need to modify paths in dataset hyperparameter files stored under `hyperparameters/dataset_configurations` as appropriate before proceding with the next steps.*
 
+#### Data pre-processing
 Run the following command to prepare the data for training:
 
 ```
 ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_data
 ```
 
+
+#### Training the model
 We may now start training by invoking the `ut train` command. Note that many optimization hyperparameters have been pre-specified and are located in the `hyperparameters/hparams.yaml` 
 file of your project directory. In this demo, we are going to run only a very short training session, but feel free to modify any parameters in the `hparams.yaml` file as you see fit:
 
@@ -98,6 +121,9 @@ ut train --num_GPUs=1 --preprocessed --seed 123
 
 Following training, a set of candidate models will be available in the folder `models`. Using the best one observed (highest validation mean F1 score), 
 we may predict on the testing sets of both `SEDF-SC` and `DCSM` using all channel combinations as well as compute majority votes by invoking the following `ut predict` command:
+
+
+#### Predicting and evaluating on the test sets
 
 ```
 ut predict --num_GPUs=1 \
@@ -118,24 +144,39 @@ ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
       --ignore 5 \
       --round 2 \
       --wake_trim_min 30
-      
->
->
->
->
->
->
+
+>>>  Looking for files...
+>>>  Loading 2 pairs...
+>>>  OBS: Wake trimming of 30 minutes (period length 30 sec)
+>>>  OBS: Ignoring class(es): [5]
+>>>  
+>>>  Raw Confusion Matrix:
+>>>  
+>>>          Pred 0  Pred 1  Pred 2  Pred 3  Pred 4
+>>>  True 0       0       0      39     212       0
+>>>  True 1       0       0     185      93       0
+>>>  True 2       0       0     899      48       0
+>>>  True 3       0       0     100     114       0
+>>>  True 4       0       0     290      52       0
+>>>  
+>>>  Raw Metrics:
+>>>  
+>>>             F1  Precision  Recall/Sens.
+>>>  Class 0  0.00       0.00          0.00
+>>>  Class 1  0.00       0.00          0.00
+>>>  Class 2  0.73       0.95          0.59
+>>>  Class 3  0.31       0.53          0.22
+>>>  Class 4  0.00       0.00          0.00
+>>>  mean     0.21       0.30          0.16 
 ```
 
-If you got the output above, congratulations! 
-You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
+If you received the output above, congratulations! You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
+
 
 ## Full Reproduction of U-Sleep
 TODO.
 
-## Citations
-
-If you found U-Time and/or U-Sleep useful in your scientific study, please consider citing the paper(s):
+## References
 
 #### <a name="utime_ref"> [1] U-Time
 
@@ -155,5 +196,9 @@ If you found U-Time and/or U-Sleep useful in your scientific study, please consi
 #### <a name="usleep_ref"> [2] U-Sleep
 
 ```
-[IN REVIEW]
+*[in review]*
+Title:         U-Sleep: Resilient High-Frequency Sleep Staging
+Authors:       Mathias Perslev (1), Sune Darkner (1), Lykke Kempfner (2), Miki Nikolic (2), Poul Jørgen Jennum (2) & Christian Igel (1)
+Affiliations:  (1) Department of Computer Science, University of Copenhagen, Denmark
+               (2) Danish Center for Sleep Medicine, Rigshospitalet, Glostrup, Denmark
 ```
