@@ -37,8 +37,9 @@ __CB_csv: &CSV
 datasets:
   # Add dataset IDs --> relative paths here
 
-  #### For testing purposes, we consider just a single dataset here
+  #### For testing purposes, we consider just a few datasets here
   sedf_sc: dataset_configurations/sedf_sc.yaml
+  dcsm: dataset_configurations/dcsm.yaml
 
 build:
   #
