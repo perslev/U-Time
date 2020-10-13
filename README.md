@@ -1,6 +1,6 @@
 # U-Sleep
 
-The U-Sleep repository stores code for training and evaluating the U-Sleep sleep staging model. This repository builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model currently in review [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate U-Sleep.
+Code for configuring, training and evaluating the resilient, high-frequnecy sleep staging model, *U-Sleep*.
 
 ## Contents
 
@@ -17,11 +17,18 @@ This document describes the U-Time software package developed for and used to cr
 U-Sleep is a fully convolutional deep neural network for automated sleep staging. A single instance of the model may be trained to perform accurate and resilient sleep staging 
 across a wide range of clinical populations and polysomnography (PSG) acquisition protocols.
 
-In the following we will introduce the software behind U-Sleep. Please note that:
+This software allows simultaneous training of U-Sleep across any number of PSG datasets using on-the-fly random selection of input channel configurations. It features a command-line interface for initializing, training and evaluating models without needing to modify the underlying codebase.
+
+
+#### Pre-trained U-Sleep
+In the following we will introduce the software behind U-Sleep in greater detail. Please note that:
 
 * If you are interested to re-implement, extend, or train U-Sleep yourself e.g. on other datasets, you are at the right place!
 * If you are looking to use our pre-trained U-Sleep model for automated sleep staging, please refer to https://sleep.ai.ku.dk and follow the introduction steps.
 
+
+#### U-Time and U-Sleep - What's the Difference?
+This repository stores code for training and evaluating the `U-Sleep` sleep staging model. It builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model currently in review [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate the U-Sleep model.
 
 ## System Requirements
 **Hardware Requirements:** TODO
@@ -77,7 +84,7 @@ The raw data has now been downloaded.
 
 #### Dataset splitting
 We split each dataset into fixed train/validation/test splits using the `ut cv_split` command. 
-The command must be invoked twice each with a unique set of parameters specifying the naming convention used in each dataset:
+The command must be invoked twice each with a unique set of parameters specifying the naming conventions of dataset:
 
 ```
 # Split dataset SEDF-SC
@@ -98,8 +105,8 @@ ut cv_split --data_dir data/dcsm/ \
             --seed 123
 ```
 
-Note that the splitting of SEDF-SC is performed on a per-subject basis. All PSG records from the same subject will be placed into the same dataset split. 
-This is not needed for DCSM as all recordings are of unique subjects.
+Note that the splitting of `SEDF-SC` is performed on a per-subject basis. All PSG records from the same subject will be placed into the same dataset split. 
+This is not needed for `DCSM` as all recordings are of unique subjects.
 
 *Please be aware that if you modify any of the above commands to e.g. use different output directory names, you will need to modify paths in dataset hyperparameter files stored under `hyperparameters/dataset_configurations` as appropriate before proceding with the next steps.*
 
@@ -170,11 +177,18 @@ ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
 >>>  mean     0.21       0.30          0.16 
 ```
 
-If you received the output above, congratulations! You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
+If you received an output similar to the, congratulations! You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
+
+Two important notes: 
+* If you ran the above code on a GPU, you may not obtain the exact same numbers listed here, even if you specified the --seed arguments. This is because some operations are non-deterministic when evaluated on a GPU.
+
+* The performance of the obtained demo model is very low and not suitable for actual sleep staging. The reason is that we trained U-Sleep on a very limited set of data and for a very limited number of epochs.
+Please refer to the [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep) section for details on how to prepare and train a complete version of U-Sleep.
 
 
 ## Full Reproduction of U-Sleep
 TODO.
+
 
 ## References
 
