@@ -7,7 +7,12 @@ a U-Time project directory, loading all selected files with specified:
     - channel selection
     - re-sampling
 
-Should be called form within a U-Time project directory
+Loaded (and processed) files according to those settings are then saved to a single H5 archive for all
+specified datasets and dataset splits.
+
+The produced, pre-processed H5 archive of data may be consumed by the 'ut train' script setting flag --preprocessed.
+
+This script should be called form within a U-Time project directory
 """
 
 import numpy as np
