@@ -51,7 +51,7 @@ def get_argparser():
                              "validation in each split. In a 5-CV setting with"
                              " N=100 and val_frac=0.20, each split will have "
                              "N_train=60, N_val=20 and N_test=20 "
-                             "subjects/records")
+                             "subjects/records (default={})".format(_DEFAULT_VAL_FRACTION))
     parser.add_argument("--max_validation_subjects", type=int, required=False,
                         help="(Optional) specify a maximum number of subjects"
                              " to use for validation. That is, only up to "
@@ -60,7 +60,8 @@ def get_argparser():
                              "dictates a larger number should be used.")
     parser.add_argument("--test_fraction", type=float,
                         default=_DEFAULT_TEST_FRACTION,
-                        help="Fraction of data size used for test if CV=1.")
+                        help="Fraction of data size used for test if CV=1. "
+                             "(default={})".format(_DEFAULT_TEST_FRACTION))
     parser.add_argument("--max_test_subjects", type=int, required=False,
                         help="(Optional) specify a maximum number of subjects"
                              " to use for testing. That is, only up to "
