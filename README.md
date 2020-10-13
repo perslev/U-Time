@@ -1,6 +1,6 @@
 # U-Sleep
 
-Code for configuring, training and evaluating the resilient, high-frequnecy sleep staging model, *U-Sleep*.
+This repository contains the official implementation behind the resilient high-frequency sleep staging system, *U-Sleep*.
 
 ## Contents
 
