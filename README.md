@@ -13,7 +13,7 @@ Official implementation of the *U-Sleep* model for resilient high-frequency slee
 
 
 ## Overview
-This document describes the U-Time software package developed for and used to create the free and public sleep staging system `U-Sleep` [[2]](#usleep_ref).
+This document describes the official software package developed for and used to create the free and public sleep staging system `U-Sleep` [[2]](#usleep_ref).
 U-Sleep is a fully convolutional deep neural network for automated sleep staging. A single instance of the model may be trained to perform accurate and resilient sleep staging 
 across a wide range of clinical populations and polysomnography (PSG) acquisition protocols.
 
