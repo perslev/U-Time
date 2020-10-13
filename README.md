@@ -65,7 +65,7 @@ ut cv_split --data_dir data/sedf_sc/ \
             --subject_dir_pattern 'SC*' \
             --CV 1 \
             --validation_fraction 0.10 \
-            --test_fraction 0.15 \
+            --test_fraction 0.25 \
             --subject_matching_regex 'SC4(\d{2}).*' \
             --seed 123
             
@@ -74,7 +74,7 @@ ut cv_split --data_dir data/dcsm/ \
             --subject_dir_pattern 'tp*' \
             --CV 1 \
             --validation_fraction 0.10 \
-            --test_fraction 0.15 \
+            --test_fraction 0.25 \
             --seed 123
 ```
 
