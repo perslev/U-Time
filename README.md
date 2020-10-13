@@ -197,7 +197,8 @@ ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
 If you received an output *similar* to the above, congratulations! You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
 
 Please note that:
-* If you ran the above code on a GPU, you may not obtain the exact same numbers listed here, even if you specified the --seed arguments. This is because some operations are non-deterministic when evaluated on a GPU.
+* If you ran the above code on a GPU, you may not obtain the exact same numbers listed here, even if you specified the --seed arguments. This is because some computations used during the training of U-Sleep are fundamentally non-deterministic when evaluated on a GPU. 
+However, predicting using a trained U-Sleep model will give deterministic outputs.
 
 * The performance of the obtained demo model is very low and not suitable for actual sleep staging. The reason is that we trained U-Sleep on a very limited set of data and for a very limited number of epochs.
 Please refer to the [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep) section for details on how to prepare and train a complete version of U-Sleep.
