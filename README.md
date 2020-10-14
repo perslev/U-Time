@@ -159,7 +159,7 @@ ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_
 
 The `ut preprocess` script loads and processes all datasets as described by the parameters set in `hyperparameters/hparams.yaml` and all dataset-specific files in the folder `hyperparameters/dataset_configurations`.
 Specifically, it loads the needed channels (ignoring the rest), re-samples, scales and clips the data, maps hypnogram stages to interger representations used internally during training and finally saves the processed data to an HDF5 archive.
-When training, data may be streamed directly from this archive to significantly reducing the required system memory, as the dataset need not be loaded all at ones.
+When training, data may be streamed directly from this archive to significantly reduce the required system memory.
 
 It is also possible to skip this step all together and either **1)** load all data needed for training up front, or **2)** stream and apply preprocessing on-the-fly during training as shown in the [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep) section below.
 
