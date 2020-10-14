@@ -234,7 +234,40 @@ Please refer to the [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep
 
 
 ## Full Reproduction of U-Sleep
-TODO.
+The [Demo](#demo) above in principle describes all steps needed to reproduce U-Sleep as reported in [[2]](#usleep_ref). 
+The main - and significant - difference is that in order to reproduce the full model, you will need to 1) be able to access 2) download and 3) preprocess all the required datasets. You may also need a computer with more resources as described in [System Requirements](#system-requirements). 
+
+
+#### Prepare the datasets
+We did our best to make this process as easy as possible. You should take the following steps:
+
+1) Carefully read (at least) the *Methods* and supplementary *Datasets* sections of our paper [[2]](#usleep_ref) to familiarize yourself with the datasets, preprocessing, training pipeline and more.
+2) Download all datasets from the [National Sleep Research Resource](https://sleepdata.org), [PhysioNet](https://sleepdata.org) or other sleep repositories as described in the Supplementary Material's *Dataset* section. Datasets require you to apply for access, while others are publicly available. Some datasets may be easily downloaded using the `ut fetch` command. Please invoke `ut fetch --help` to see an up-to-date list of which datasets may be downloaded this way.
+3) Place all downloaded data into a single folder `[LOCAL_PATH]` with 1 sub-folder for each dataset.
+4) Run `ut extract`, `ut extract_hypno`, and `ut cv_split` on all datasets as specified for each dataset separately in files under the folder `resources/usleep_dataset_pred` (also found [here]()). These commands will extract and place data into a folder-structure and format that U-Time accepts, as well as split the data into subsets.
+5) (optional) The `ut extract` command will select the relevant channels, re-sample them to 128 Hz and store the data in HDF5 archives. The original data will not be deleted per default. If you have limited hard-drive space, consider removing the old files before processing the next dataset.
+6) Initialize a U-Sleep project: `ut init --name u-sleep --model u-sleep`.
+7) For each dataset configuration file in `u-sleep/hyperparameters/dataset_configurations/` replace the string [LOCAL_PATH] with the `[LOCAL_PATH]` of your data.
+
+
+#### Train the model
+If you have 40+ GiB system memory available, train U-Sleep using the following command:
+
+```
+ut train --num_GPUs 1 --max_loaded_per_dataset 40 --num_access_before_reload 32 --train_queue_type limitation --val_queue_type lazy --max_train_samples_per_epoch 1000000
+```
+
+On systems with less memory, you may either 1) reduce the `--max_loaded_per_dataset` parameter from the current `40` to a lower value (this will keep fewer PSG records in the active memory pool, which will reduce randomness when selecting records), or 2) preprocess the data and stream data during training (as demonstrated in the Demo above) by invoking the following two commands (replacing [LOCAL_PATH] as applicable):
+
+```
+ut preprocess --out_path '[LOCAL_PATH]/processed_data.h5' --dataset_splits train_data val_data
+ut train --num_GPUs 1 --preprocessed --max_train_samples_per_epoch 1000000
+```
+
+This will apply all preprocessing, create a data archive suitable for streaming, and train U-Sleep using samples loaded on-the-fly from disk.
+
+Due to the vast size of the dataset considered, training U-Sleep with the default parameters may take very long. 
+We suggest increasing the learning rate (from the current `1e-7` to e.g. `1e-6`) unless you are looking to re-create U-Sleep under the exact conditions considered in [[2]](#usleep_ref).
 
 
 ## References
