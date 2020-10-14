@@ -246,7 +246,7 @@ We did our best to make this process as easy as possible. You should take the fo
 3) Place all downloaded data into a single folder `[LOCAL_PATH]` with 1 sub-folder for each dataset.
 4) Run `ut extract`, `ut extract_hypno`, and `ut cv_split` on all datasets as specified for each dataset separately in files under the folder `resources/usleep_dataset_pred` of this repository (also found [here](https://sid.erda.dk/wsgi-bin/ls.py?share_id=HE5nA4Xs37)). These commands will extract and place data into a folder-structure and format that U-Time accepts, as well as split the data into subsets.
 5) (optional) The `ut extract` command will select the relevant channels, re-sample them to 128 Hz and store the data in HDF5 archives. The original data will not be deleted by default. If you have limited hard-drive space, consider removing the old files before processing the next dataset.
-6) Initialize a U-Sleep project: `ut init --name u-sleep --model u-sleep`.
+6) Initialize a U-Sleep project: `ut init --name u-sleep --model usleep`.
 7) For each dataset configuration file in `u-sleep/hyperparameters/dataset_configurations/` replace the string [LOCAL_PATH] with the `[LOCAL_PATH]` of your data.
 
 
