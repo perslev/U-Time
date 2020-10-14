@@ -177,21 +177,21 @@ ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
 >>>  Raw Confusion Matrix:
 >>>  
 >>>          Pred 0  Pred 1  Pred 2  Pred 3  Pred 4
->>>  True 0       0       0      39     212       0
->>>  True 1       0       0     185      93       0
->>>  True 2       0       0     899      48       0
->>>  True 3       0       0     100     114       0
->>>  True 4       0       0     290      52       0
+>>>  True 0       0       0      17     234       0
+>>>  True 1       0       0     132     146       0
+>>>  True 2       0       0     790     157       0
+>>>  True 3       0       0      25     189       0
+>>>  True 4       0       0     243      99       0
 >>>  
 >>>  Raw Metrics:
 >>>  
 >>>             F1  Precision  Recall/Sens.
 >>>  Class 0  0.00       0.00          0.00
 >>>  Class 1  0.00       0.00          0.00
->>>  Class 2  0.73       0.95          0.59
->>>  Class 3  0.31       0.53          0.22
+>>>  Class 2  0.73       0.65          0.83
+>>>  Class 3  0.36       0.23          0.88
 >>>  Class 4  0.00       0.00          0.00
->>>  mean     0.21       0.30          0.16 
+>>>  mean     0.22       0.18          0.34 
 ```
 
 If you received an output *similar* to the above, congratulations! You have successfully installed, configured, trained and evaluated a U-Sleep model on two different datasets.
