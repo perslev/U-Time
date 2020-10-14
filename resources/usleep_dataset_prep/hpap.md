@@ -5,7 +5,7 @@
 ut extract --file_regex '[LOCAL_PATH]/homepap/polysomnography/edfs/lab/*/*.edf' --out_dir '[LOCAL_PATH]/processed/homepap/' --channels F4-M1 C4-M1 O2-M1 C3-M2 F3-M2 O1-M2 E1-M2 E2-M1 E1 E2  --resample 128
 ```
 
-####Extract hypno command
+#### Extract hypno command
 ```
 ut extract_hypno --file_regex '[LOCAL_PATH]/homepap/polysomnography/annotations-events-nsrr/lab/*/*.xml' --out_dir '[LOCAL_PATH]/processed/homepap/'
 ```

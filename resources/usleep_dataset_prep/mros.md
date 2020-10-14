@@ -5,7 +5,7 @@
 ut extract --file_regex '[LOCAL_PATH]/mros/polysomnography/edfs/visit*/*.edf' --out_dir '[LOCAL_PATH]/processed/mros/' --resample 128 --channels C3-M2 C4-M1 E1-M2 E2-M1
 ```
 
-####Extract hypno command
+#### Extract hypno command
 ```
 ut extract_hypno --file_regex '[LOCAL_PATH]/mros/polysomnography/annotations-events-nsrr/visit*/*.xml' --out_dir '[LOCAL_PATH]/processed/mros/'
 ```

@@ -5,7 +5,7 @@
 ut extract --file_regex '[LOCAL_PATH]/mesa/polysomnography/edfs/*.edf' --out_dir '[LOCAL_PATH]/processed/mesa/' --resample 128 --channels EEG1 EEG2 EEG3 EOG-L EOG-R --rename Fz-Cz Cz-Oz C4-M1 E1-FPz E2-FPz
 ```
 
-####Extract hypno command
+#### Extract hypno command
 ```
 ut extract_hypno --file_regex '[LOCAL_PATH]/mesa/polysomnography/annotations-events-nsrr/*.xml' --out_dir '[LOCAL_PATH]/processed/mesa/'
 ```

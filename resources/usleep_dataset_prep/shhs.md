@@ -5,7 +5,7 @@
 ut extract --file_regex '[LOCAL_PATH]/shhs/polysomnography/edfs/shhs*/*.edf' --out_dir '[LOCAL_PATH]/processed/shhs/' --channels 'EEG' 'EEG(sec)' 'EOG(L)' 'EOG(R)' --resample 128 --rename_channels 'C4-A1' 'C3-A2' 'EOG(L)-PG1' 'EOG(R)-PG1'
 ```
 
-####Extract hypno command
+#### Extract hypno command
 ```
 ut extract --file_regex '[LOCAL_PATH]/shhs/polysomnography/annotations-events-nsrr/shhs*/*.xml' --out_dir '[LOCAL_PATH]/processed/shhs/'
 ```

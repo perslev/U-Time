@@ -5,7 +5,7 @@
 ut extract --file_regex '[LOCAL_PATH]/ccshs/polysomnography/edfs/*.edf' --out_dir '[LOCAL_PATH]/processed/ccshs/' --resample 128 --channels C3-A2 C4-A1 LOC-A2 ROC-A1
 ```
 
-####Extract hypno command
+#### Extract hypno command
 ```
 ut extract_hypno --file_regex '[LOCAL_PATH]/ccshs/polysomnography/annotations-events-nsrr/*.xml' --out_dir '[LOCAL_PATH]/processed/ccshs/'
 ```

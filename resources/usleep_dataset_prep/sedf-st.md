@@ -5,7 +5,7 @@
 ut extract --file_regex '[LOCAL_PATH]/sleep-edf-extended/ST*/*PSG.edf' --out_dir '[LOCAL_PATH]/processed/sedf-st/' --resample 128 --channels 'EEG Fpz-Cz' 'EEG Pz-Oz' 'EOG horizontal' --rename Fpz-Cz Pz-Oz EOG
 ```
 
-####Extract hypno command
+#### Extract hypno command
 ```
 ut extract_hypno --file_regex '[LOCAL_PATH]/sleep-edf-extended/ST*/*Hypnogram.edf' --out_dir '[LOCAL_PATH]/processed/sedf-st/'
 ```
