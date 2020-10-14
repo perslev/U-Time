@@ -172,7 +172,7 @@ file of your project directory. In this demo, we are going to run only a very sh
 ut train --num_GPUs=1 --preprocessed --seed 123
 ```
 
-Following training, a set of candidate models will be available in the folder `models`. Using the best one observed (highest validation mean F1 score), 
+Following training, a set of candidate models will be available in the folder `model`. Using the best one observed (highest validation mean F1 score), 
 we may predict on the testing sets of both `SEDF-SC` and `DCSM` using all channel combinations as well as compute majority votes by invoking the following `ut predict` command:
 
 
@@ -189,7 +189,7 @@ ut predict --num_GPUs=1 \
 ```
 
 The predicted hypnograms are now available under directory `predictions/test_data`. 
-Finally, let us print a global confusion matrix (computed across all subjects) for dataset `sedf_sc`:
+Finally, let us print a global confusion matrix (computed across all subjects) for dataset `sedf_sc` (replace `sedf_sc` -> `dcsm` for DCSM evaluation):
 
 ```
 ut cm --true 'predictions/test_data/sedf_sc/*TRUE.npy' \
