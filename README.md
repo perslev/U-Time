@@ -13,7 +13,7 @@ Official implementation of the *U-Sleep* model for resilient high-frequency slee
 
 
 ## Overview
-This document describes the official software package developed for and used to create the free and public sleep staging system `U-Sleep` [[2]](#usleep_ref).
+This document describes the official software package developed for and used to create the free and public sleep staging system *U-Sleep* [[2]](#usleep_ref).
 U-Sleep is a fully convolutional deep neural network for automated sleep staging. A single instance of the model may be trained to perform accurate and resilient sleep staging 
 across a wide range of clinical populations and polysomnography (PSG) acquisition protocols.
 
@@ -24,16 +24,40 @@ This software allows simultaneous training of U-Sleep across any number of PSG d
 In the following we will introduce the software behind U-Sleep in greater detail. Please note that:
 
 * If you are interested to re-implement, extend, or train U-Sleep yourself e.g. on other datasets, you are at the right place!
-* If you are looking to use our pre-trained U-Sleep model for automated sleep staging, please refer to https://sleep.ai.ku.dk and follow the introduction steps.
+* If you are looking to use our pre-trained U-Sleep model for automated sleep staging, please refer to https://sleep.ai.ku.dk and follow the displayed guide.
 
 
 #### U-Time and U-Sleep - What's the Difference?
-This repository stores code for training and evaluating the `U-Sleep` sleep staging model. It builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model currently in review [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate the U-Sleep model.
+This repository stores code for training and evaluating the *U-Sleep* sleep staging model. It builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model currently in review [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate the U-Sleep model.
 
 ## System Requirements
-**Hardware Requirements:** TODO
+**Minimal Hardware Requirements**
 
-**Software Requirements:** TODO
+Using an already trained U-Sleep model for sleep staging may typically be done on any modern laptop (subject to the software requirements listed below).
+
+For training U-Sleep models from scratch, however, we highly recommend using a Linux based computer with at least the following hardware specifications:
+
+* 4+ CPU cores
+* 8+ GiB RAM
+* Significant physical storage space*
+* 1 CUDA enabled GPU (please refer to [https://developer.nvidia.com/cuda-gpus](https://developer.nvidia.com/cuda-gpus) for a detailed list).
+
+It is possible to train the model on smaller machines, and without GPUs, but doing so may take considerable time. Likewise, more resources will speed up training. If the considered dataset exceeds the system memory (e.g. the 8 GiB of RAM suggested above), data must be preprocessed and streamed from disk as demonstrated in the [Demo](#demo) section below. On larger machines, one may benefit from maintaining a larger pool of data loaded in memory. For instance, we trained U-Sleep [[2]](#usleep_ref) using 8 CPU cores, 1 GPU and 40 GiB of RAM, please refer to the [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep) section below.
+
+*The required hard-disk space depends on the number and sizes of datasets considered. For a [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep) approximately 4 TiB of available storage is needed.
+
+**Software Requirements:**
+
+* (preferably) A computer with a Linux operating system installed. The software has also been tested on MacOS Catalina (10.15.6), but supports only CPU-based training and prediction.
+* [Anaconda](https://www.anaconda.com) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html), v4.5 or higher, 64-bit.
+
+If you are going to train a U-Sleep model yourself from scratch, we highly recommend doing so on a GPU. In order to use the `U-Time` package with a GPU, the `tensorflow-gpu` (v2.1) library is required. For this, the following additional software is required on your system:
+
+* [NVIDIA GPU drivers](https://www.nvidia.com/drivers) v418.x or higher.
+* [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive) v10.1.
+* [cuDNN SDK](https://developer.nvidia.com/cudnn) v7.6.
+
+Please refer to [https://www.tensorflow.org/install/gpu](https://www.tensorflow.org/install/gpu) for additional details. You do not need to install TensorFlow yourself (see [Installation Guide](#installation-guide) below), but the above software must be installed before proceeding.
 
 ## Installation Guide
 On a Linux machine with at least 1 CUDA enabled GPU available and `Anaconda` installed, run the following two commands to create your `u-sleep` environment and setup the U-Time software package:
@@ -72,8 +96,7 @@ ls
 
 #### Download public PSG data
 We will download 6 PSG studies from the public sleep databases [Sleep-EDF](https://doi.org/10.13026/C2X676) and [DCSM](https://sid.erda.dk/wsgi-bin/ls.py?share_id=fUH3xbOXv8) using the `ut fetch` command.
-You will need approximately `10 GiB` of free hard-disk space to store the downloaded files.
-Note that depending on your internet speed and the current load on each of the two servers, downloading may take anywhere from 5 minutes to multiple hours:
+You will need approximately `10 GiB` of free hard-disk space to store the downloaded files. Depending on your internet speed and the current load on each of the two servers, downloading may take anywhere from 5 minutes to multiple hours:
 
 ```
 ut fetch --dataset sedf_sc --out_dir data/sedf_sc --N_first 6
