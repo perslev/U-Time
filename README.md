@@ -157,9 +157,15 @@ Run the following command to prepare the data for training:
 ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_data
 ```
 
+The `ut preprocess` script loads and processes all datasets as described by the parameters set in `hyperparameters/hparams.yaml` and all dataset-specific files in the folder `hyperparameters/dataset_configurations`.
+Specifically, it loads the needed channels (ignoring the rest), re-samples, scales and clips the data, maps hypnogram stages to interger representations used internally during training and finally saves the processed data to an HDF5 archive.
+When training, data may be streamed directly from this archive to significantly reducing the required system memory, as the dataset need not be loaded all at ones.
+
+It is also possible to skip this step all together and either **1)** load all data needed for training up front, or **2)** stream and apply preprocessing on-the-fly during training as shown in the [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep) section below.
+
 
 #### Training the model
-We may now start training by invoking the `ut train` command. Note that many optimization hyperparameters have been pre-specified and are located in the `hyperparameters/hparams.yaml` 
+We may now start training by invoking the `ut train` command. A default set of optimization hyperparameters have been pre-specified and are located in the `hyperparameters/hparams.yaml` 
 file of your project directory. In this demo, we are going to run only a very short training session, but feel free to modify any parameters in the `hparams.yaml` file as you see fit:
 
 ```
