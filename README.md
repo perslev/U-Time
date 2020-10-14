@@ -60,12 +60,12 @@ If you are going to train a U-Sleep model yourself from scratch, we highly recom
 Please refer to [https://www.tensorflow.org/install/gpu](https://www.tensorflow.org/install/gpu) for additional details. You do not need to install TensorFlow yourself (see [Installation Guide](#installation-guide) below), but the above software must be installed before proceeding.
 
 ## Installation Guide
-On a Linux machine with at least 1 CUDA enabled GPU available and `Anaconda` installed, run the following two commands to create your `u-sleep` environment and setup the U-Time software package:
+On a Linux machine with at least 1 CUDA enabled GPU available and `anaconda` or `miniconda` installed, run the following two commands to create a conda environment named `u-sleep` and setup the U-Time software package:
 
 ```
-conda env create --file u-sleep/environment.yaml
+conda env create --file U-Time/environment.yaml
 conda activate u-sleep
-pip install u-sleep
+pip install U-Time
 ```
 
 This installation process may take up to 10 minutes to complete.
