@@ -3,8 +3,8 @@ import numpy as np
 
 def _get_tp_rel_sel_from_cm(cm):
     tp = np.diagonal(cm)
-    rel = np.sum(cm, axis=0)
-    sel = np.sum(cm, axis=1)
+    sel = np.sum(cm, axis=0)
+    rel = np.sum(cm, axis=1)
     return tp, rel, sel
 
 
