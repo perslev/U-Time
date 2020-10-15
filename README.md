@@ -48,7 +48,7 @@ It is possible to train the model on smaller machines, and without GPUs, but doi
 
 **Software Requirements:**
 
-* (preferably) A computer with a Linux operating system installed. The software has also been tested on MacOS Catalina (10.15.6), but supports only CPU-based training and prediction.
+* A computer with a Linux operating system installed. We have developed and tested the software for Red Hat Enterprise (v7.8) and Ubuntu (v18.04) servers, but any modern distribution should work. The software has also been tested on MacOS Catalina (10.15.6), but supports only CPU-based training and prediction.
 * [Anaconda](https://www.anaconda.com) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html), v4.5 or higher, 64-bit.
 
 If you are going to train a U-Sleep model yourself from scratch, we highly recommend doing so on a GPU. In order to use the `U-Time` package with a GPU, the `tensorflow-gpu` (v2.1) library is required. For this, the following additional software is required on your system:
@@ -166,11 +166,14 @@ It is also possible to skip this step all together and either **1)** load all da
 
 #### Training the model
 We may now start training by invoking the `ut train` command. A default set of optimization hyperparameters have been pre-specified and are located in the `hyperparameters/hparams.yaml` 
-file of your project directory. In this demo, we are going to run only a very short training session, but feel free to modify any parameters in the `hparams.yaml` file as you see fit:
+file of your project directory. In this demo, we are going to run only a very short training session, but feel free to modify any parameters in the `hparams.yaml` file as you see fit.
+Run the following command:
 
 ```
 ut train --num_GPUs=1 --preprocessed --seed 123
 ```
+
+You may replace the `--num_GPUs=1` parameter in the above command with `--num_GPUs=0` if you do not have a GPU available, and wish to train on the CPU. Training on CPU may take up to 30 minutes.
 
 Following training, a set of candidate models will be available in the folder `model`. Using the best one observed (highest validation mean F1 score), 
 we may predict on the testing sets of both `SEDF-SC` and `DCSM` using all channel combinations as well as compute majority votes by invoking the following `ut predict` command:
