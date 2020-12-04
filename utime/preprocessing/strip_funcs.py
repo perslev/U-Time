@@ -183,7 +183,10 @@ def strip_to_match(psg, hyp, sample_rate, class_int=None, check_lengths=False):
             # PSG is shorter than hyp, and hyp seems to be 'correct', pad PSG
             psg = end_pad_psg(psg, hyp, sample_rate, pad_value=0.0)
         else:
-            strip_hyp_to_match_psg_len(psg, hyp, sample_rate)
+            # Trim PSG first to ensure length divisible by period_length_sec*sampl_rate
+            psg, _ = trim_psg_trailing(psg, sample_rate, hyp.period_length_sec)
+            hyp = strip_hyp_to_match_psg_len(psg, hyp, sample_rate)
+            psg_length_sec = psg.shape[0] / sample_rate
     if psg_length_sec > hyp.total_duration:  # Note total_dur. is a property
         psg = strip_psg_to_match_hyp_len(psg, hyp, sample_rate)
     if check_lengths and not assert_equal_length(psg, hyp, sample_rate):
