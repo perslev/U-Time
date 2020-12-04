@@ -99,7 +99,9 @@ def plot_hypnogram(hyp_array,
 
         if show_f1_scores:
             from sklearn.metrics import f1_score
-            f1s = f1_score(true_hyp_array, hyp_array, labels=[str_to_int_map[w] for w in reversed(order)], average=None)
+            labels = [str_to_int_map[w] for w in reversed(order)]
+            mask = np.isin(true_hyp_array.flatten(), np.array(labels).flatten())
+            f1s = f1_score(true_hyp_array[mask], hyp_array[mask], labels=labels, average=None)
             f1s = [round(l, 2) for l in (list(f1s) + [np.mean(f1s)])]
             f1_labels = list(reversed(order)) + ["Mean"]
 
