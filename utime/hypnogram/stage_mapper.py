@@ -97,7 +97,7 @@ def standardize_stage_string(stage_string):
         match = matches[0]
         print("[OBS]: Mapping variable stage string '{:s}' to stage '{}' "
               "(class int {})".format(stage_string, match,
-                                      Defaults.stage_string_to_class_int[match]))
+                                      Defaults.get_stage_string_to_class_int()[match]))
         return match
     elif n_matches == 0:
         raise_match_error(ss, "Found no valid matches.")
