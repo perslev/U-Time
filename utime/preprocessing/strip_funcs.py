@@ -100,6 +100,36 @@ def strip_psg_to_match_hyp_len(psg, hyp, sample_rate, check_lengths=False):
     return psg[:-idx_to_strip]
 
 
+def end_pad_psg(psg, hyp, sample_rate, pad_value=0.0,
+                check_lengths=False):
+    """
+    TODO
+
+    Args:
+        psg:
+        hyp:
+        sample_rate:
+        pad_value:
+        check_lengths:
+
+    Returns:
+
+    """
+    n_seconds = hyp.total_duration - psg.shape[0]/sample_rate
+    if n_seconds < 0:
+        raise StripError("Hypnogram should be longer than PSG for "
+                         "'end_pad_psg' to make sense. Got a negative time "
+                         "difference of {} seconds.".format(n_seconds))
+    n_inserts = int(n_seconds * sample_rate)
+    padded_psg = np.empty(shape=[psg.shape[0] + n_inserts, psg.shape[1]],
+                          dtype=psg.dtype)
+    padded_psg[:len(psg)] = psg
+    padded_psg[len(psg):] = pad_value
+    if check_lengths and not assert_equal_length(padded_psg, hyp, sample_rate):
+        raise _STRIP_ERR
+    return padded_psg
+
+
 def strip_hyp_to_match_psg_len(psg, hyp, sample_rate, check_lengths=False):
     """
     Strips a (longer) hypnogram to match the length of a (shorter) PSG
