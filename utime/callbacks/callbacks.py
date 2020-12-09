@@ -46,6 +46,7 @@ class Validation(Callback):
         self.IDs = val_sequence.IDs
         self.print_round = 3
         self.log_round = 4
+        self._supports_tf_logs = True  # ensures correct logs passed from tf.keras
 
     def predict(self):
         def eval(queue, steps, TPs, relevant, selected, id_, lock):
@@ -78,8 +79,7 @@ class Validation(Callback):
         metrics = self.model.metrics
         metrics_names = self.model.metrics_names
         self.model.reset_metrics()
-        assert "loss" in metrics_names and metrics_names.index("loss") == 0
-        assert len(metrics_names)-1 == len(metrics)
+        assert len(metrics_names) == len(metrics)
 
         # Prepare arrays for CM summary stats
         TPs, relevant, selected, metrics_results = {}, {}, {}, {}
@@ -111,14 +111,15 @@ class Validation(Callback):
                     print(s, end="\r", flush=True)
                 pred = self.model.predict_on_batch(X)
                 # Put values in the queue for counting
-                count_queue.put([pred.numpy(), y])
+                count_queue.put([pred, y])
+
                 # Run all metrics
                 for metric in metrics:
-                    metric(y, pred)
+                    metric.update_state(y, pred)
 
             # Compute mean metrics for the dataset
             metrics_results[id_] = {}
-            for metric, name in zip(metrics, metrics_names[1:]):
+            for metric, name in zip(metrics, metrics_names):
                 metrics_results[id_][name] = metric.result().numpy()
             self.model.reset_metrics()
             pool.shutdown()
@@ -183,7 +184,7 @@ class Validation(Callback):
         print_string = val_results.round(self.print_round).to_string()
         self.logger(print_string.replace("NaN", "---") + "\n")
 
-    def on_epoch_end(self, epoch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
         self.logger("\n")
         # Predict and get CM
         TPs, relevant, selected, metrics = self.predict()
