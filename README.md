@@ -15,7 +15,7 @@ https://proceedings.neurips.cc/paper/2019/file/57bafb2c2dfeefba931bb03a835b1fa9-
 This codebase is live and may gradually diverge from the version described in the above paper.
 Please see to the following [repository tag](https://github.com/perslev/U-Time/releases/tag/paper_version) if you are interested in the original paper implementation.
 
-## TLDR: An end-to-end example
+## An end-to-end example
 <pre>
 <b># Clone repo and install</b>
 git clone https://github.com/perslev/U-Time
