@@ -211,8 +211,8 @@ def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     for i, (start_sec, dur) in enumerate(zip(inits_to_drop, durs_to_drop)):
         end_sec = start_sec + dur
         # Convert to indices
-        start_idx = start_sec * sample_rate
-        end_idx = end_sec * sample_rate
+        start_idx = int(start_sec * sample_rate)
+        end_idx = int(end_sec * sample_rate)
         inds_to_remove.extend(range(start_idx, min(len(psg), end_idx)))
 
     # Drop PSG on inds
