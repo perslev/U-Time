@@ -1,8 +1,4 @@
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
-
+from setuptools import setup, find_packages
 from utime import __version__
 
 with open('README.md') as readme_file:
@@ -26,6 +22,8 @@ setup(
     packages=["utime"],
     package_dir={'utime':
                  'utime'},
+    include_package_data=True,
+    setup_requires=["setuptools_git>=0.3",],
     entry_points={
        'console_scripts': [
            'ut=utime.bin.ut:entry_func',
@@ -34,7 +32,7 @@ setup(
     install_requires=requirements,
     classifiers=['Environment :: Console',
                  'Operating System :: POSIX',
-                 'Programming Language :: Python :: 3.6',
-                 'Programming Language :: Python :: 3.7'
+                 'Programming Language :: Python :: 3.7',
+                 'Programming Language :: Python :: 3.8'
                  'License :: OSI Approved :: MIT License']
 )
