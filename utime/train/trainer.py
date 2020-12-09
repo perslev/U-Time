@@ -12,9 +12,11 @@ from mpunet.callbacks import (init_callback_objects, remove_validation_callbacks
 from mpunet.logging import ScreenLogger
 from mpunet.callbacks import (DividerLine, LearningCurve)
 from mpunet.utils import ensure_list_or_tuple
-from mpunet.train.utils import (ensure_sparse, init_losses, init_metrics)
+from mpunet.train.utils import (ensure_sparse, init_losses,
+                                init_metrics, init_optimizer)
 from utime.callbacks import Validation
 from utime.train.utils import get_steps
+from utime.evaluation.utils import ignore_class_wrapper
 
 
 class Trainer(object):
@@ -44,7 +46,15 @@ class Trainer(object):
         # May also be set from a script at a later time (before self.fit call)
         self.org_model = org_model
 
-    def compile_model(self, optimizer, optimizer_kwargs, loss, metrics, **kwargs):
+    def compile_model(self,
+                      optimizer,
+                      loss,
+                      metrics,
+                      reduction,
+                      check_sparse=False,
+                      optimizer_kwargs={},
+                      loss_kwargs={},
+                      **kwargs):
         """
         Compile the stored tf.keras Model instance stored in self.model
         Sets the loss function, optimizer and metrics
@@ -56,21 +66,43 @@ class Trainer(object):
                                        mpunet loss function
             metrics:          (list)   List of tf.keras.metrics or
                                        mpunet metrics.
+            reduction                  TODO
+            check_sparse               TODO
+            optimizer_kwargs           TODO
+            loss_kwargs                TODO
             **kwargs:         (dict)   Key-word arguments passed to losses
                                        and/or metrics that accept such.
         """
         # Make sure sparse metrics and loss are specified as sparse
         metrics = ensure_list_or_tuple(metrics)
         losses = ensure_list_or_tuple(loss)
-        ensure_sparse(metrics+losses)
+        if check_sparse:
+            ensure_sparse(metrics+losses)
 
-        # Initialize optimizer
-        optimizer = optimizers.__dict__[optimizer]
-        optimizer = optimizer(**optimizer_kwargs)
-
-        # Initialize loss(es) and metrics from tf.keras or mpunet
+        # Initialize optimizer, loss(es) and metric(s) from tf.keras or mpunet
+        optimizer = init_optimizer(optimizer, self.logger, **optimizer_kwargs)
         losses = init_losses(losses, self.logger, **kwargs)
         metrics = init_metrics(metrics, self.logger, **kwargs)
+        for i, loss in enumerate(losses):
+            try:
+                losses[i] = loss(reduction=reduction, **loss_kwargs)
+            except (ValueError, TypeError):
+                raise TypeError("All loss functions must currently be "
+                                "callable and accept the 'reduction' "
+                                "parameter specifying a "
+                                "tf.keras.losses.Reduction type. If you "
+                                "specified a keras loss function such as "
+                                "'sparse_categorical_crossentropy', change "
+                                "this to its corresponding loss class "
+                                "'SparseCategoricalCrossentropy'. If "
+                                "you implemented a custom loss function, "
+                                "please raise an issue on GitHub.")
+            else:
+                # Mask out potential class 5 ("UNKNOWN" e.g.)
+                # TODO: Make optional
+                losses[i] = ignore_class_wrapper(losses[i],
+                                                 self.model.n_classes,
+                                                 self.logger)
 
         # Compile the model
         self.model.compile(optimizer=optimizer, loss=losses, metrics=metrics)

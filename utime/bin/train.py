@@ -105,6 +105,7 @@ def run(args, gpu_mon):
         gpu_mon: (GPUMonitor) Initialized mpunet GPUMonitor object
     """
     assert_args(args)
+    import tensorflow as tf
     from mpunet.logging import Logger
     from utime.train import Trainer
     from utime.hyperparameters import YAMLHParams
@@ -172,6 +173,7 @@ def run(args, gpu_mon):
     # Prepare a trainer object. Takes care of compiling and training.
     trainer = Trainer(model, org_model=org_model, logger=logger)
     trainer.compile_model(n_classes=hparams["build"].get("n_classes"),
+                          reduction=tf.keras.losses.Reduction.NONE,
                           **hparams["fit"])
 
     # Fit the model on a number of samples as specified in args
