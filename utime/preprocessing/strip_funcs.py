@@ -184,12 +184,35 @@ def strip_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     Remove class 'class_int' if leading or trailing, then strip to match
     See drop_class function for argument description.
     """
-    strip_class_leading_and_trailing(psg, hyp, class_int, sample_rate)
-    strip_to_match(psg, hyp, class_int=class_int, sample_rate=sample_rate)
-    if check_lengths and not assert_equal_length(psg, hyp, sample_rate):
-        raise _STRIP_ERR
-    return psg, hyp
+    raise DeprecationWarning("'strip_class' is no longer a supported strip "
+                             "function. Use 'drop_class' with "
+                             "strip_only=True instead.")
 
+
+def convert_to_strip_mask(bool_mask):
+    """
+    Takes a bool list/array where True represents a class to drop; returns
+    a bool array where True entries that have a False entry to the left or
+    right in the list, and that are not in the first or last position in the
+    list, are replaced by False.
+
+    In other words, this function removes any True entries that are not part of
+    a segment of potentially multiple Trues that connect to the first or last
+    entry in the list.
+
+    In:  [True, True, False, True,  True,  False, True, True]
+    Out: [True, True, False, False, False, False, True, True]
+                               *      *
+    """
+    def false_index(arr):
+        for i, elem in enumerate(arr):
+            if not elem:
+                return i
+    bool_mask = np.array(bool_mask, dtype=np.bool, copy=True)
+    forward_false_idx = false_index(bool_mask)
+    backward_false_idx = false_index(bool_mask[::-1])
+    bool_mask[forward_false_idx:-backward_false_idx] = False
+    return bool_mask
 
 def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     """
