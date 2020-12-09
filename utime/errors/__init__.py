@@ -15,6 +15,21 @@ class ChannelNotFoundError(CouldNotLoadError):
         super(ChannelNotFoundError, self).__init__(*args, **kwargs)
 
 
+class H5ChannelRootError(KeyError): pass
+
+
+class H5VariableAttributesError(ValueError): pass
+
+
+class MissingHeaderFieldError(KeyError): pass
+
+
+class HeaderFieldTypeError(TypeError): pass
+
+
+class LengthZeroSignalError(ValueError): pass
+
+
 class NotLoadedError(ResourceWarning): pass
 
 
