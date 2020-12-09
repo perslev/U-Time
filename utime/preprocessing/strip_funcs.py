@@ -302,6 +302,31 @@ def drop_class(psg, hyp, class_int, sample_rate, check_lengths=False):
     return psg, hyp
 
 
+def trim_psg_trailing(psg, sample_rate, period_length_sec, hyp=None, class_int=None, check_lengths=None):
+    """
+    Trims the length of an input PSG array so that it is evenly divisible by a number
+        i = sample_rate * period_length_sec
+
+    Does not consider any of the following arguments (ignored):
+        hyp, class_int, check_lengths
+
+    Args:
+        psg: array, shape [N, C] where N is the number of samples and C the number of channels
+        sample_rate: The sample rate in 1/s of the input PSG
+        period_length_sec: Length in seconds of 1 segment in the PSG
+        hyp: Ignored
+        class_int: Ignored
+        check_lengths: Ignored
+
+    Returns:
+        PSG, hyp/None
+    """
+    i = sample_rate * period_length_sec
+    if len(psg) % i != 0:
+        psg = psg[:-int(len(psg) % i)]
+    return psg, hyp
+
+
 def assert_equal_length(psg, hyp, sample_rate):
     """ Return True if the PSG and HYP have equal lengths in seconds """
     return psg.shape[0] / sample_rate == hyp.total_duration
