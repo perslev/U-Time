@@ -16,7 +16,7 @@ https://arxiv.org/abs/1910.11162
 <pre>
 <b># Clone repo and install</b>
 git clone https://github.com/perslev/U-Time
-pip3 install -e U-Time
+pip3 install U-Time
 
 <b># Obtain a public sleep staging dataset</b>
 ut fetch --dataset sleep-EDF-153 --out_dir datasets/sleep-EDF-153
