@@ -166,6 +166,12 @@ def strip_to_match(psg, hyp, sample_rate, class_int=None, check_lengths=False):
 
     See drop_class function for argument description.
     """
+    # Drop out of bounds segments
+    psg, hyp = drop_class(psg, hyp,
+                          sample_rate=sample_rate,
+                          class_int=defaults.OUT_OF_BOUNDS[1],
+                          strip_only=True,
+                          call_strip_to_match=False)
     psg_length_sec = psg.shape[0] / sample_rate
     if class_int and hyp.total_duration > psg_length_sec:
         # Remove trailing class integer
