@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras.utils import Sequence
 from multiprocessing import current_process
 from mpunet.logging import ScreenLogger
@@ -44,6 +45,15 @@ class _BaseSequence(Sequence):
         self._all_loaded = None
         self._periods_per_pair = None
         self._cum_periods_per_pair = None
+
+    def __call__(self):
+        """
+        Returns an iterator that iterates the dataset indefinitely, converting numpy arrays to tensors
+        """
+        while True:
+            for i in range(len(self)):
+                x, y = self.__getitem__(i)  # index does not matter
+                yield (tf.convert_to_tensor(x), tf.convert_to_tensor(y))
 
     @property
     def all_loaded(self):
