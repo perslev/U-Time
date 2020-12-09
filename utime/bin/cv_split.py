@@ -8,7 +8,7 @@ from glob import glob
 import os
 import numpy as np
 import random
-from MultiPlanarUNet.utils import create_folders
+from mpunet.utils import create_folders
 import argparse
 
 

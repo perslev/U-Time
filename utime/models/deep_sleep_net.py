@@ -11,7 +11,7 @@ from tensorflow.keras.layers import Conv1D, BatchNormalization, MaxPooling1D, \
                                     Input, Flatten, Dense, Dropout, Concatenate, \
                                     Lambda, LSTM, Bidirectional, Add
 
-from MultiPlanarUNet.logging import ScreenLogger
+from mpunet.logging import ScreenLogger
 from utime.models.utils import standardize_batch_shape
 
 

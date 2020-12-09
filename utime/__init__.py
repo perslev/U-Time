@@ -48,7 +48,7 @@ class _Defaults:
         return {s[1]: s[0] for s in self.stage_lists}
 
     def get_default_period_length(self, logger=None):
-        from MultiPlanarUNet.logging import ScreenLogger
+        from mpunet.logging import ScreenLogger
         l = logger or ScreenLogger()
         l.warn("Using default period length of {} seconds."
                "".format(self.PERIOD_LENGTH_SEC))

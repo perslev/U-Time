@@ -96,7 +96,7 @@ def get_logger(out_dir, overwrite, name="evaluation_log"):
     The logger will throw an OSError if the dir exists and overwrite=False, in
     which case the script will terminate with a print message.
     """
-    from MultiPlanarUNet.logging import Logger
+    from mpunet.logging import Logger
     try:
         logger = Logger(out_dir,
                         active_file=name,
@@ -175,11 +175,11 @@ def get_and_load_one_shot_model(full_hypnogram, project_dir,
 def set_gpu_vis(num_GPUs, force_GPU, logger=None):
     """ Helper function that sets the GPU visibility as per parsed args """
     if force_GPU:
-        from MultiPlanarUNet.utils.system import set_gpu
+        from mpunet.utils.system import set_gpu
         set_gpu(force_GPU)
     else:
         # Automatically determine GPUs to use
-        from MultiPlanarUNet.utils.system import GPUMonitor
+        from mpunet.utils.system import GPUMonitor
         GPUMonitor(logger).await_and_set_free_GPU(num_GPUs, stop_after=True)
 
 
@@ -369,7 +369,7 @@ def run_pred_and_eval(dataset,
         args:        Passed command-line arguments
         logger:      A Logger object
     """
-    from MultiPlanarUNet.evaluate.metrics import dice_all, class_wise_kappa
+    from mpunet.evaluate.metrics import dice_all, class_wise_kappa
     from utime.evaluation.dataframe import (get_eval_df, add_to_eval_df,
                                             log_eval_df, with_grand_mean_col)
     logger("\nPREDICTING ON {} STUDIES".format(len(dataset.pairs)))

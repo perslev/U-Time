@@ -4,7 +4,7 @@ A set of utility functions used across multiple scripts in utime.bin
 
 import os
 from utime.utils.utils import ensure_list_or_tuple
-from MultiPlanarUNet.logging.default_logger import ScreenLogger
+from mpunet.logging.default_logger import ScreenLogger
 
 
 def assert_project_folder(project_folder, evaluation=False):
@@ -251,7 +251,7 @@ def select_sample_strip_scale_quality(*datasets, hparams, logger=None):
         scl = hparams.get_from_anywhere("scaler") or "RobustScaler"
         list(map(lambda ds: ds.set_scaler(scl), datasets))
     else:
-        from MultiPlanarUNet.logging import ScreenLogger
+        from mpunet.logging import ScreenLogger
         logger = logger or ScreenLogger()
         logger.warn("Note: 'batch_wise_scaling' is set to True in 'fit' hparams."
                     " No scaling will be applied globally to members of the"

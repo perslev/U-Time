@@ -14,7 +14,7 @@ from utime.preprocessing import (apply_scaling, strip_funcs, apply_strip_func,
 from utime.hypnogram.utils import create_class_int_to_period_idx_dict
 from utime.dataset.utils import find_psg_and_hyp
 from utime import defaults
-from MultiPlanarUNet.logging import ScreenLogger
+from mpunet.logging import ScreenLogger
 
 
 def assert_header_fields(header):

@@ -102,10 +102,10 @@ def run(args, gpu_mon):
 
     args:
         args:    (Namespace)  command-line arguments
-        gpu_mon: (GPUMonitor) Initialized MultiPlanarUNet GPUMonitor object
+        gpu_mon: (GPUMonitor) Initialized mpunet GPUMonitor object
     """
     assert_args(args)
-    from MultiPlanarUNet.logging import Logger
+    from mpunet.logging import Logger
     from utime.train import Trainer
     from utime.hyperparameters import YAMLHParams
     from utime.utils.scriptutils import (assert_project_folder,
@@ -119,7 +119,7 @@ def run(args, gpu_mon):
     project_dir = os.path.abspath("./")
     assert_project_folder(project_dir)
     if args.overwrite and not args.continue_training:
-        from MultiPlanarUNet.bin.train import remove_previous_session
+        from mpunet.bin.train import remove_previous_session
         remove_previous_session(project_dir)
 
     # Get logger object
@@ -200,7 +200,7 @@ def entry_func(args=None):
 
     # Here, we wrap the training in a try/except block to ensure that we
     # stop the GPUMonitor process after training, even if an error occurred
-    from MultiPlanarUNet.utils.system import GPUMonitor
+    from mpunet.utils.system import GPUMonitor
     gpu_mon = GPUMonitor()
     try:
         run(args=args, gpu_mon=gpu_mon)

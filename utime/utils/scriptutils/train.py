@@ -2,7 +2,7 @@
 A set of functions for needed for running training in various settings
 """
 
-from MultiPlanarUNet.logging.default_logger import ScreenLogger
+from mpunet.logging.default_logger import ScreenLogger
 
 
 def get_train_and_val_datasets(hparams, no_val, train_on_val, logger):
@@ -92,7 +92,7 @@ def get_generators(datasets, hparams, no_val):
 
 def find_and_set_gpus(gpu_mon, force_GPU, num_GPUs):
     """
-    Given a MultiPlanarUnet GPUMonitor object and the parsed command-line
+    Given a mpunet GPUMonitor object and the parsed command-line
     arguments, either looks for free GPUs and sets them, or sets a forced
     GPU visibility.
 

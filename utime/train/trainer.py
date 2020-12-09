@@ -6,16 +6,14 @@ training the model given a set of parameters and (non-initialized) callbacks.
 """
 
 from multiprocessing import cpu_count
-from tensorflow.keras import optimizers, losses
+from tensorflow.keras import optimizers
 from tensorflow.python.framework.errors_impl import (ResourceExhaustedError,
                                                      InternalError)
-from MultiPlanarUNet.callbacks import (init_callback_objects,
-                                       remove_validation_callbacks)
-from MultiPlanarUNet.logging import ScreenLogger
-from MultiPlanarUNet.callbacks import (DividerLine, LearningCurve)
-from MultiPlanarUNet.utils import ensure_list_or_tuple
-from MultiPlanarUNet.train.utils import (ensure_sparse, init_losses,
-                                         init_metrics)
+from mpunet.callbacks import (init_callback_objects, remove_validation_callbacks)
+from mpunet.logging import ScreenLogger
+from mpunet.callbacks import (DividerLine, LearningCurve)
+from mpunet.utils import ensure_list_or_tuple
+from mpunet.train.utils import (ensure_sparse, init_losses, init_metrics)
 from utime.callbacks import Validation
 from utime.train.utils import get_steps
 
@@ -56,9 +54,9 @@ class Trainer(object):
             optimizer:        (string) The name of a tf.keras.optimizers Optimizer
             optimizer_kwargs: (dict)   Key-word arguments passed to the Optimizer
             loss:             (string) The name of a tf.keras.losses or
-                                       MultiPlanarUnet loss function
+                                       mpunet loss function
             metrics:          (list)   List of tf.keras.metrics or
-                                       MultiPlanarUNet metrics.
+                                       mpunet metrics.
             **kwargs:         (dict)   Key-word arguments passed to losses
                                        and/or metrics that accept such.
         """
@@ -71,7 +69,7 @@ class Trainer(object):
         optimizer = optimizers.__dict__[optimizer]
         optimizer = optimizer(**optimizer_kwargs)
 
-        # Initialize loss(es) and metrics from tf.keras or MultiPlanarUNet
+        # Initialize loss(es) and metrics from tf.keras or mpunet
         losses = init_losses(losses, self.logger, **kwargs)
         metrics = init_metrics(metrics, self.logger, **kwargs)
 
@@ -184,18 +182,23 @@ class Trainer(object):
         if cb:
             cb.org_model = self.org_model
 
+        # Wrap generator in tf dataset
+        import tensorflow as tf
+        dtypes, shapes = list(zip(*map(lambda x: (x.dtype, x.shape), train[0])))
+        train = tf.data.Dataset.from_generator(train, dtypes, shapes)
+
         # Fit the model
         self.logger.active_log_file = "training"
         self.logger.print_calling_method = False
-        self.model.fit_generator(
-            generator=train,
+        self.model.fit(
+            train,
             steps_per_epoch=train_steps,
             epochs=n_epochs,
             callbacks=callbacks,
             initial_epoch=init_epoch,
-            use_multiprocessing=use_multiprocessing,  # Normally False
-            workers=min(7, cpu_count()-1),
-            max_queue_size=25,
+            use_multiprocessing=False,
+            workers=3,
+            max_queue_size=10,
             shuffle=False,  # Determined by the chosen Sequence class
             verbose=verbose
         )

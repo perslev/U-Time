@@ -1,10 +1,8 @@
-import tensorflow as tf
-from tensorflow.keras.callbacks import Callback
-from MultiPlanarUNet.utils import highlighted
-from MultiPlanarUNet.logging import ScreenLogger
-
 import numpy as np
 import pandas as pd
+from tensorflow.keras.callbacks import Callback
+from mpunet.utils import highlighted
+from mpunet.logging import ScreenLogger
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 from queue import Queue

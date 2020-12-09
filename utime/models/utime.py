@@ -11,11 +11,11 @@ import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras import regularizers
 from tensorflow.keras.layers import Input, BatchNormalization, Cropping2D, \
-                                    Concatenate, MaxPooling2D, Dense, \
+                                    Concatenate, MaxPooling2D, \
                                     UpSampling2D, ZeroPadding2D, Lambda, Conv2D, \
-                                    AveragePooling2D, DepthwiseConv2D
-from MultiPlanarUNet.logging import ScreenLogger
-from MultiPlanarUNet.utils.conv_arithmetics import compute_receptive_fields
+                                    AveragePooling2D
+from mpunet.logging import ScreenLogger
+from mpunet.utils.conv_arithmetics import compute_receptive_fields
 
 
 class UTime(Model):
@@ -76,13 +76,11 @@ class UTime(Model):
             TODO
         data_per_prediction (int):
             TODO
-        logger (MultiPlanarUNet.logging.Logger | ScreenLogger):
+        logger (mpunet.logging.Logger | ScreenLogger):
             MutliViewUNet.Logger object, logging to files or screen.
         build (bool):
             TODO
         """
-        super(UTime, self).__init__()
-
         # Set logger or standard print wrapper
         self.logger = logger or ScreenLogger()
 

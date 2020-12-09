@@ -3,7 +3,7 @@ Functions for initializing models from build hyperparameters and loading of
 parameters.
 """
 
-from MultiPlanarUNet.logging import ScreenLogger
+from mpunet.logging import ScreenLogger
 import os
 
 
@@ -71,7 +71,7 @@ def init_and_load_model(hparams, weights_file, logger=None, by_name=True):
 def init_and_load_best_model(hparams, model_dir, logger=None, by_name=True):
     """
     Initializes a model according to hparams. Then finds the best model in
-    model_dir and loads it (see MultiPlanarUNet.utils.get_best_model).
+    model_dir and loads it (see mpunet.utils.get_best_model).
 
     Args:
         hparams:    A YAMLHparams object of hyperparameters
@@ -83,7 +83,7 @@ def init_and_load_best_model(hparams, model_dir, logger=None, by_name=True):
         A tf.keras Model instance
         The file name of the parameter file that was loaded
     """
-    from MultiPlanarUNet.utils import get_best_model
+    from mpunet.utils import get_best_model
     model = init_model(hparams["build"], logger)
     model_path = get_best_model(model_dir)
     load_from_file(model, model_path, logger, by_name=by_name)
@@ -94,7 +94,7 @@ def init_and_load_best_model(hparams, model_dir, logger=None, by_name=True):
 def init_and_load_latest_model(hparams, model_dir, logger=None, by_name=True):
     """
     Initializes a model according to hparams. Then finds the latest model in
-    model_dir and loads it (see MultiPlanarUNet.utils.get_latest_model).
+    model_dir and loads it (see mpunet.utils.get_latest_model).
 
     Args:
         hparams:    A YAMLHparams object of hyperparameters
@@ -107,7 +107,7 @@ def init_and_load_latest_model(hparams, model_dir, logger=None, by_name=True):
         The file name of the parameter file that was loaded
         The epoch of training that the file corresponds to
     """
-    from MultiPlanarUNet.utils import get_last_model
+    from mpunet.utils import get_last_model
     model = init_model(hparams["build"], logger)
     model_path, epoch = get_last_model(model_dir)
     if model_path is None:
@@ -146,7 +146,7 @@ def prepare_for_continued_training(hparams, project_dir, logger=None):
         A path to the model weight files to use for continued training.
         Will be None if no model files were found
     """
-    from MultiPlanarUNet.utils import (get_last_model, get_lr_at_epoch,
+    from mpunet.utils import (get_last_model, get_lr_at_epoch,
                                        get_last_epoch, clear_csv_after_epoch)
     model_path, epoch = get_last_model(os.path.join(project_dir, "model"))
     if model_path:
