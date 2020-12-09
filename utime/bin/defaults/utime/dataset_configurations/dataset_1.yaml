@@ -14,7 +14,7 @@ test_data:
   identifier: "TEST"
 
 # Re-sampling rate
-set_sample_rate: 100
+set_sample_rate: 128
 
 # List of channels to train on from the given dataset
 select_channels: ['EEG Fpz-Cz']    # Or ['C4-A1'], etc...
@@ -40,8 +40,7 @@ sleep_stage_annotations:
 
 strip_func:
   # Keep blank to apply no strip function
-  strip_func: drop_class
-  class_int: 5
+  strip_func: strip_to_match
 
 quality_control_func:
   # Keep blank to apply no strip function

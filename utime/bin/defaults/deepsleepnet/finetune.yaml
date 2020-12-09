@@ -57,7 +57,7 @@ fit:
   margin: 12
 
   # Loss function
-  loss: "sparse_categorical_crossentropy"
+  loss: "SparseCategoricalCrossentropy"
   metrics: ["sparse_categorical_accuracy"]
 
   # Optimization

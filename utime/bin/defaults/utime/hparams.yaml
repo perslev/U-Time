@@ -64,7 +64,7 @@ fit:
   margin: 17
 
   # Loss function
-  loss: ["sparse_dice_loss"]
+  loss: ["SparseCategoricalCrossentropy"]
   metrics: ["sparse_categorical_accuracy"]
 
   # Optimization
