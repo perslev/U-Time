@@ -5,7 +5,6 @@ specified optimizer, loss and metrics and implements the .fit method for
 training the model given a set of parameters and (non-initialized) callbacks.
 """
 
-from multiprocessing import cpu_count
 from tensorflow.keras import optimizers
 from tensorflow.python.framework.errors_impl import (ResourceExhaustedError,
                                                      InternalError)
