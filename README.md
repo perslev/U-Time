@@ -11,14 +11,9 @@ Processing Systems (NeurIPS 2019)
 NeurIPS proceedings:
 https://proceedings.neurips.cc/paper/2019/file/57bafb2c2dfeefba931bb03a835b1fa9-Paper.pdf
 
-Pre-print version: 
-https://arxiv.org/abs/1910.11162
-
 ## Code Changes
-This codebase is live and may over time diverge from the version described in the above paper.
+This codebase is live and may gradually diverge from the version described in the above paper.
 Please see to the following [repository tag](https://github.com/perslev/U-Time/releases/tag/paper_version) if you are interested in the original paper implementation.
-
-## 
 
 ## TLDR: An end-to-end example
 <pre>
