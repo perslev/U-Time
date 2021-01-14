@@ -13,10 +13,7 @@ import os
 import sys
 from glob import glob
 from argparse import ArgumentParser
-import readline
 import pandas as pd
-
-readline.parse_and_bind('tab: complete')
 
 
 def get_argparser():
