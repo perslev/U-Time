@@ -283,3 +283,91 @@ def sparse_hypnogram_from_ids_format(ids_tuple, period_length_sec, ann_to_class)
                                  sleep_stages=ann_class_ints,
                                  period_length_sec=period_length_sec)
     return sparse_hyp, ann_to_class
+
+
+def load_events_file(events_file_path):
+    """
+    Load an .ids events file.
+
+    Args:
+        events_file_path: Path to .ids events file
+    
+    Returns:
+        A StartDurationStage format tuple
+    """
+    from utime.io.hypnogram.hyp_extractors import extract_from_start_dur_stage
+    return extract_from_start_dur_stage(events_file_path)
+
+
+def filter_hypnogram_by_start_stop_events(dense_hypnogram_array, period_length_sec, events=None, events_file_path=None):
+    """
+    TODO
+    """
+    if bool(events) == bool(events_file_path):
+        raise ValueError("Must specify exactly one of the 'events' or 'events_file_path' arguments.")
+    if events_file_path:
+        events = load_events_file(events_file_path)
+    events = list(zip(*events))
+
+    # Filter to keep only start/stop PSG events
+    start_stop_events = list(filter(lambda e: "psg" in e[-1].lower(), events))
+    assert len(start_stop_events) == 2, "Found too many start/stop PSG events: {}".format(start_stop_events)
+
+    # Make sure events are sorted by init time
+    start_stop_events = sorted(start_stop_events, key=lambda x: x[0])
+    assert "start" in start_stop_events[0][-1].lower() and "stop" in start_stop_events[-1][-1].lower()
+
+    start_index = np.ceil(start_stop_events[0][0] / period_length_sec)
+    end_index = np.floor(start_stop_events[-1][0] / period_length_sec)
+    start_sec, stop_sec = start_stop_events[0][0], start_stop_events[-1][0]
+    return dense_hypnogram_array[int(start_index):int(end_index)], (start_sec, stop_sec)
+
+
+def filter_hypnogram_by_lights(dense_hypnogram_array, period_length_sec, events=None, events_file_path=None, offset_sec=0):
+    """
+    TODO
+    """
+    if bool(events) == bool(events_file_path):
+        raise ValueError("Must specify exactly one of the 'events' or 'events_file_path' arguments.")
+    if events_file_path:
+        events = load_events_file(events_file_path)
+    events = list(zip(*events))
+
+    # Filter to keep only lights on and lights off events
+    light_events = list(filter(lambda e: "light" in e[-1].lower(), events))
+
+    # Make sure events are sorted by init time
+    light_events = sorted(light_events, key=lambda x: x[0])
+
+    # Keep only onset and ON/OFF info
+    # Also subtract offset seconds (if array was shifted in time due to trimming, e.g. with start/stop PSG events)
+    light_events = [(max(0, e[0] - offset_sec), "ON" if "on" in e[-1].lower() else "OFF") for e in light_events]
+
+    # Check alternating
+    for i in range(len(light_events)-1):
+        if light_events[i][1] == light_events[i+1][1]:
+            raise ValueError("Not alternating light on/off events")
+
+    # Replace time-stamps (seconds) with hypnogram indices
+    light_event_inds = []
+    for onset_sec, event in light_events:
+        index = onset_sec / period_length_sec
+        if event == "OFF":
+            # Consider a segment as IN-DARK only from first period in complete dark
+            index = np.ceil(index)
+        else:
+            # Drop any segment from IN-DARK if any light
+            index = np.floor(index)
+        light_event_inds.append((int(index), event))
+
+    # Split the hypnogram at the events
+    hypnogram_sections = np.split(np.asarray(dense_hypnogram_array), [e[0] for e in light_event_inds])
+    assert light_event_inds[0][1] == "OFF" and light_event_inds[-1][1] == "ON"
+    section_inds_to_keep = np.where(np.array([e[1] for e in light_event_inds]) == "ON")[0]
+    to_keep = [hypnogram_sections[i] for i in section_inds_to_keep]
+
+    # Keep only the single longest segment
+    # to_keep = to_keep[np.argmax(list(map(len, to_keep)))]
+    # return to_keep
+
+    return np.concatenate(to_keep)
