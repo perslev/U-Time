@@ -7,7 +7,6 @@ originally described in the hyperparameter files.
 """
 
 import os
-import readline
 import numpy as np
 from argparse import ArgumentParser
 from utime.bin.evaluate import (set_gpu_vis, predict_on, get_logger,
@@ -15,8 +14,6 @@ from utime.bin.evaluate import (set_gpu_vis, predict_on, get_logger,
                                 get_and_load_one_shot_model, get_sequencer,
                                 get_out_dir)
 from utime import Defaults
-
-readline.parse_and_bind('tab: complete')
 
 
 def get_argparser():
@@ -73,6 +70,8 @@ def get_argparser():
     parser.add_argument("--weights_file_name", type=str, required=False,
                         help="Specify the exact name of the weights file "
                              "(located in <project_dir>/model/) to use.")
+    parser.add_argument("--continue_", action="store_true", 
+                        help="Skip already predicted files.")
     return parser
 
 
@@ -265,7 +264,10 @@ def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_
         # Save prediction
         save_file(path_pred, arr=pred, argmax=not args.no_argmax, logger=logger)
     if args.majority:
-        save_file(path_mj, arr=majority_voted, argmax=not args.no_argmax, logger=logger)
+        if not os.path.exists(path_mj) or args.overwrite:
+            save_file(path_mj, arr=majority_voted, argmax=not args.no_argmax, logger=logger)
+        else:
+            logger("Skipping (channels=MAJORITY) - already exists and --overwrite not set.")
 
 
 def run_pred(dataset,
@@ -293,6 +295,7 @@ def run_pred(dataset,
     seq = get_sequencer(dataset, hparams)
 
     # Predict on all samples
+    skip = True
     for i, sleep_study_pair in enumerate(dataset):
         logger("[{}/{}] Predicting on SleepStudyBase: {}".format(i+1, len(dataset),
                                                                  sleep_study_pair.identifier))
@@ -333,7 +336,7 @@ def run(args):
     else:
         out_dir = args.out_dir
     prepare_output_dir(out_dir, True)
-    logger = get_logger(out_dir, args.overwrite, name="prediction_log")
+    logger = get_logger(out_dir, args.overwrite or args.continue_, name="prediction_log")
     logger("Args dump: \n{}".format(vars(args)))
 
     # Get hyperparameters and init all described datasets
@@ -346,7 +349,7 @@ def run(args):
         logger("Evaluating using channels {}".format(args.channels))
 
     # Get model
-    set_gpu_vis(args.num_GPUs, args.force_GPU, logger)
+    #set_gpu_vis(args.num_GPUs, args.force_GPU, logger)
     model, model_func = None, None
     if args.one_shot:
         # Model is initialized for each sleep study later
