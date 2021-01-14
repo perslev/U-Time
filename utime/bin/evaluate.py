@@ -4,12 +4,12 @@ comparing to the ground truth labels.
 """
 
 import os
-import readline
+#import readline
 import numpy as np
 from argparse import ArgumentParser
 from utime import Defaults
 
-readline.parse_and_bind('tab: complete')
+#readline.parse_and_bind('tab: complete')
 
 
 def get_argparser():
