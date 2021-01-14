@@ -199,16 +199,17 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
     """
     from utime.dataset.sleep_study_dataset import SleepStudyDataset
     ann_dict = hparams.get("sleep_stage_annotations")
-    params = hparams["train_data"]
+    params = hparams.get("train_data") or hparams['prediction_params']
     data_dir, pattern = os.path.split(os.path.abspath(regex_pattern))
     params["data_dir"] = data_dir
     ssd = SleepStudyDataset(folder_regex=pattern,
-                            **params,
+                            data_dir=data_dir,
+                            # **params,
                             logger=logger,
                             annotation_dict=ann_dict)
     # Apply transformations, scaler etc.
     from utime.utils.scriptutils import select_sample_strip_scale_quality
-    select_sample_strip_scale_quality(ssd, hparams=hparams, logger=logger)
+    select_sample_strip_scale_quality(ssd, hparams=params, logger=logger)
     return ssd
 
 
@@ -269,7 +270,7 @@ def select_sample_strip_scale_quality(*datasets, hparams, logger=None):
 
     # Set scaler
     if hasattr(datasets[0], 'set_scaler'):
-        scl = hparams.get_from_anywhere("scaler") or "RobustScaler"
+        scl = hparams.get("scaler") or "RobustScaler"
         list(map(lambda ds: ds.set_scaler(scl), datasets))
 
 
