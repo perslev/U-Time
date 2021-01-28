@@ -16,10 +16,15 @@ This codebase is live and may gradually diverge from the version described in th
 Please see to the following [repository tag](https://github.com/perslev/U-Time/releases/tag/paper_version) if you are interested in the original paper implementation.
 
 ## An end-to-end example
+The commands listed below installs U-Time, prepares a project folder, downloads the sleep-edf-153 dataset, fits and evaluates
+a U-Time model in a fixed train/val/test dataset split setup. Please note that this code is only intended as a quick example of how
+one may use this codebase. The below code does not reproduce the sleep-edf-153 experiment listed in the paper as 10-fold CV was used.
+To run a CV experiment, please refer to the `ut cv_split --help` and `ut cv_experiment --help` commands.
+
 <pre>
 <b># Clone repo and install</b>
 git clone https://github.com/perslev/U-Time
-pip3 install U-Time
+pip3 install U-Time/
 
 <b># Obtain a public sleep staging dataset</b>
 ut fetch --dataset sleep-EDF-153 --out_dir datasets/sleep-EDF-153
