@@ -1,15 +1,21 @@
 import os
+import shutil
 from multiprocessing import Process, Lock, Queue, Event
 from mpunet.utils import create_folders
 from mpunet.logging import Logger
 from utime.bin.init import init_project_folder
+from utime.hyperparameters import YAMLHParams
 import argparse
 import subprocess
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="Prepare a data folder for a"
-                                                 "CV experiment setup.")
+    parser = argparse.ArgumentParser(description=
+        "Run a CV experiment. First, split a dataset folder using the 'ut cv_split' command. " + \
+        "This command may then be used to invoke a set of specified commands (usually 'ut <command>' commands) on " + \
+        "each split. By default the commands that should be run on each split must be specified in a file named 'script' (otherwise " + \
+        "specify a different path via the --script_prototype flag). The current working directory must be a project folder as created by " + \
+        "'ut init' or contain a subfolder at path '--hparams_prototype_dir <path>' storing the hyperparameters to use.")
     parser.add_argument("--CV_dir", type=str, required=True,
                         help="Directory storing split subfolders as output by"
                              " cv_split.py")
@@ -235,6 +241,23 @@ def _assert_force_and_ignore_gpus(force_gpu, ignore_gpu):
         ))
 
 
+def prepare_hparams_dir(hparams_dir):
+    if not os.path.exists(hparams_dir):
+        # Check local hparams.yaml file, move into hparams_dir
+        if os.path.exists("hparams.yaml"):
+            os.mkdir(hparams_dir)
+            hparams = YAMLHParams("hparams.yaml", no_log=True, no_version_control=True)
+            for dataset, path in hparams['datasets'].items():
+                destination = os.path.join(hparams_dir, path)
+                os.makedirs(os.path.dirname(destination), exist_ok=True)
+                shutil.move(path, destination)
+            shutil.move("hparams.yaml", hparams_dir)
+        else:
+            raise RuntimeError("Must specifiy hyperparameters in a folder at path --hparams_prototype_dir <path> OR " + \
+                               "have a hparams.yaml file at the current working directory (i.e. project folder)")
+
+
+
 def assert_args(args, n_splits):
     # User input assertions
     _assert_force_and_ignore_gpus(args.force_GPU, args.ignore_GPU)
@@ -258,6 +281,7 @@ def run(args):
     assert_args(args, n_splits=len(cv_folders))
     out_dir = os.path.abspath(args.out_dir)
     hparams_dir = os.path.abspath(args.hparams_prototype_dir)
+    prepare_hparams_dir(hparams_dir)
     create_folders(out_dir)
 
     # Wait for PID?

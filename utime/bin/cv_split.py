@@ -21,7 +21,7 @@ def get_argparser():
     """
     Returns an argument parser for this script
     """
-    parser = argparse.ArgumentParser(description="Prepare a data folder for a"
+    parser = argparse.ArgumentParser(description="Prepare a data folder for a "
                                                  "CV experiment setup.")
     parser.add_argument("--data_dir", type=str,
                         help="Path to data directory")
