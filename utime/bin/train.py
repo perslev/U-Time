@@ -62,7 +62,7 @@ def get_argparser():
                         help="Queue type for validation data. "
                              "See --train_queue_type.")
     parser.add_argument("--max_loaded_per_dataset", type=int, default=40,
-                        help="Set a number of maximum SleepStudyBase objects to"
+                        help="Set a number of maximum SleepStudy objects to"
                              " be kept loaded in memory at any given time per "
                              "dataset. OBS: If training on multiple datasets,"
                              " this means that 'max_loaded_per_dataset' times"
@@ -70,7 +70,7 @@ def get_argparser():
                              "studies loaded at a given time.")
     parser.add_argument("--num_access_before_reload", type=int, default=32,
                         help="If --max_loaded_per_dataset is set, this value "
-                             "determines how many times a SleepStudyBase object "
+                             "determines how many times a SleepStudy object "
                              "is accessed (normally for extracting data) "
                              "before the study is unloaded and replaced by "
                              "another random study from the same dataset.")

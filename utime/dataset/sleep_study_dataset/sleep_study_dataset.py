@@ -5,7 +5,7 @@ from utime.dataset.sleep_study_dataset.subject_dir_sleep_study_dataset_base\
 
 class SleepStudyDataset(SubjectDirSleepStudyDatasetBase):
     """
-    Represents a collection of SleepStudyBase objects
+    Represents a collection of SleepStudy objects
     """
     def __init__(self,
                  data_dir,

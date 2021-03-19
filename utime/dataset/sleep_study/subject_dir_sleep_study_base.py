@@ -148,7 +148,7 @@ class SubjectDirSleepStudyBase(AbstractBaseSleepStudy):
 
     def get_all_periods(self):
         """
-        Returns the full (dense) data of the SleepStudyBase
+        Returns the full (dense) data of the SleepStudy
 
         Returns:
             X: An ndarray of shape [self.n_periods,

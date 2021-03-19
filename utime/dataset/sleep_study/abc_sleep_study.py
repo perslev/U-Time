@@ -180,7 +180,7 @@ class AbstractBaseSleepStudy(ABC):
 
     def raise_err(self, err_obj, err_msg, _from=None):
         """
-        Helper method for raising an error specific to this SleepStudyBase
+        Helper method for raising an error specific to this SleepStudy
         object
         """
         e = err_obj("[{}] {}".format(repr(self), err_msg))
@@ -342,7 +342,7 @@ class AbstractBaseSleepStudy(ABC):
 
     def to_batch_generator(self, batch_size, overlapping=False):
         """
-        Yields batches of data from the SleepStudyBase PSG/HYP pair
+        Yields batches of data from the SleepStudy PSG/HYP pair
         Note: With overlapping == False the last batch may be smaller than
         batch_size due to boundary effects.
 

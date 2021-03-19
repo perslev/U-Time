@@ -9,7 +9,7 @@ from utime.dataset.utils import find_subject_folders
 
 class SubjectDirSleepStudyDatasetBase(AbstractBaseSleepStudyDataset):
     """
-    Represents a collection of SleepStudyBase objects
+    Represents a collection of SleepStudy objects
     """
     def __init__(self,
                  data_dir,
@@ -26,7 +26,7 @@ class SubjectDirSleepStudyDatasetBase(AbstractBaseSleepStudyDataset):
         """
         Initialize a SleepStudyDataset from a directory storing one or more
         sub-directories each corresponding to a sleep/PSG study.
-        Each sub-dir will be represented by a SleepStudyBase object.
+        Each sub-dir will be represented by a SleepStudy object.
 
         Args:
             data_dir:                (string) Path to the data directory
@@ -36,10 +36,10 @@ class SubjectDirSleepStudyDatasetBase(AbstractBaseSleepStudyDataset):
             psg_regex:               (string) Regex that matches files to
                                               consider 'PSG' (data) within each
                                               subject folder.
-                                              Passed to each SleepStudyBase.
+                                              Passed to each SleepStudy.
             hyp_regex:               (string) As psg_regex, but for hypnogram/
                                               sleep stages/label files.
-                                              Passed to each SleepStudyBase.
+                                              Passed to each SleepStudy.
             no_labels:               (bool)   TODO
             period_length_sec:       (int)    Ground truth segmentation
                                               period length in seconds.
@@ -67,7 +67,7 @@ class SubjectDirSleepStudyDatasetBase(AbstractBaseSleepStudyDataset):
             raise RuntimeError("Found no subject folders in data directory "
                                "{} using folder regex {}.".format(self.data_dir,
                                                                   folder_regex))
-        # Initialize SleepStudyBase objects
+        # Initialize SleepStudy objects
         pairs = []
         for subject_dir in subject_folders:
             ss = sleep_study_class(
@@ -87,11 +87,11 @@ class SubjectDirSleepStudyDatasetBase(AbstractBaseSleepStudyDataset):
 
     def load(self, N=None, random_order=True):
         """
-        Load all or a subset of stored SleepStudyBase objects
-        Data is loaded using a thread pool with one thread per SleepStudyBase.
+        Load all or a subset of stored SleepStudy objects
+        Data is loaded using a thread pool with one thread per SleepStudy.
 
         Args:
-            N:              Number of SleepStudyBase objects to load. Defaults to
+            N:              Number of SleepStudy objects to load. Defaults to
                             loading all.
             random_order:   Randomly select which of the stored objects to load
                             rather than starting from the beginning. Only has
@@ -108,7 +108,7 @@ class SubjectDirSleepStudyDatasetBase(AbstractBaseSleepStudyDataset):
             to_load = np.random.choice(not_loaded, size=N, replace=False)
         else:
             to_load = not_loaded[:N]
-        self.log("Loading {}/{} SleepStudyBase objects...".format(len(to_load),
+        self.log("Loading {}/{} SleepStudy objects...".format(len(to_load),
                                                               len(self)))
         pool = ThreadPoolExecutor(max_workers=min(len(to_load), 7))
         res = pool.map(lambda x: x.load(), to_load)

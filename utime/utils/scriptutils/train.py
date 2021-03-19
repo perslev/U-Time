@@ -253,7 +253,7 @@ def find_and_set_gpus(gpu_mon, force_GPU, num_GPUs):
 def merge_train_and_val(train, val):
     """
     Takes two SleepStudyDataset objects 'train' and 'val' and merges them by
-    adding all stored SleepStudyBase pairs of 'val' to the list of pairs in 'train'
+    adding all stored SleepStudy pairs of 'val' to the list of pairs in 'train'
     Then changes the 'identifier' attribute of the 'train' sequencer to reflect
     the changes and returns the, now merged, 'train' dataset only (in a list).
 

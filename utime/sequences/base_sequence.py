@@ -22,7 +22,7 @@ def requires_all_loaded(method):
     @wraps(method)
     def check_loaded_and_raise(self, *args, **kwargs):
         if not self.all_loaded:
-            raise NotLoadedError("Method '{}' requires all stored SleepStudyBase "
+            raise NotLoadedError("Method '{}' requires all stored SleepStudy "
                                  "objects to be "
                                  "loaded.".format(method.__name__))
         return method(self, *args, **kwargs)
@@ -152,7 +152,7 @@ class BaseSequence(_BaseSequence):
             dataset_queue:   (queue)    TODO
             n_classes:         (int)    Number of classes (sleep stages)
             n_channels:        (int)    The number of PSG channels to expect in
-                                        data extracted from a SleepStudyBase object
+                                        data extracted from a SleepStudy object
             batch_size:        (int)    The size of the generated batch
             augmenters:        (list)   List of utime.augmentation.augmenters
             batch_scaler:      (string) The name of a sklearn.preprocessing
@@ -186,7 +186,7 @@ class BaseSequence(_BaseSequence):
     def get_class_counts(self):
         """
         Returns:
-            An ndarray of class counts across all stored SleepStudyBase objects
+            An ndarray of class counts across all stored SleepStudy objects
             Shape [self.n_classes], dtype np.int
         """
         counts = np.zeros(shape=[self.n_classes], dtype=np.int)
@@ -201,7 +201,7 @@ class BaseSequence(_BaseSequence):
         """
         Returns:
             An ndarray of class frequencies comptued over all stored
-            SleepStudyBase objects. Shape [self.n_classes], dtype np.int
+            SleepStudy objects. Shape [self.n_classes], dtype np.int
         """
         counts = self.get_class_counts()
         return counts / np.sum(counts)
@@ -242,7 +242,7 @@ class BaseSequence(_BaseSequence):
                              " sampled batches ({:.3f} and {:.3f})."
                              " Make sure scaling is active at either the "
                              "global level (attribute 'scaler' has been set on"
-                             " individual SleepStudyBase objects, typically via the"
+                             " individual SleepStudy objects, typically via the"
                              " SleepStudyDataset set_scaler method), or "
                              "batch-wise via the batch_scaler attribute of the"
                              " Sequence object.".format(mean, std))

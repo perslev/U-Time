@@ -55,7 +55,7 @@ def get_argparser():
                         help="Number of prediction passes over each sleep "
                              "study with augmentation enabled.")
     parser.add_argument("--one_shot", action="store_true",
-                        help="Segment each SleepStudyBase in one forward-pass "
+                        help="Segment each SleepStudy in one forward-pass "
                              "instead of using (GPU memory-efficient) sliding "
                              "window predictions.")
     parser.add_argument("--save_true", action="store_true",
@@ -281,7 +281,7 @@ def run_pred(dataset,
     Run prediction on a all entries of a SleepStudyDataset
 
     Args:
-        dataset:     A SleepStudyDataset object storing one or more SleepStudyBase
+        dataset:     A SleepStudyDataset object storing one or more SleepStudy
                      objects
         out_dir:     Path to directory that will store predictions and
                      evaluation results
@@ -297,7 +297,7 @@ def run_pred(dataset,
     # Predict on all samples
     skip = True
     for i, sleep_study_pair in enumerate(dataset):
-        logger("[{}/{}] Predicting on SleepStudyBase: {}".format(i+1, len(dataset),
+        logger("[{}/{}] Predicting on SleepStudy: {}".format(i+1, len(dataset),
                                                                  sleep_study_pair.identifier))
 
         # Get list of channel sets to predict on

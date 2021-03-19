@@ -1,6 +1,6 @@
 """
 A randomly sampling batch sequence object
-Samples randomly across uniformly randomly selected SleepStudyBase objects
+Samples randomly across uniformly randomly selected SleepStudy objects
 Does not sample uniformly across classes (see BalancedRandomBatchSequence).
 """
 
@@ -11,7 +11,7 @@ from utime.sequences import BatchSequence
 class RandomBatchSequence(BatchSequence):
     """
     BatchSequence sub-class that samples batches randomly across (uniformly)
-    randomly selected SleepStudyBase objects with calls to self.__getitem__.
+    randomly selected SleepStudy objects with calls to self.__getitem__.
 
     See self.get_random_batch for detailed docstring.
     """
@@ -84,7 +84,7 @@ class RandomBatchSequence(BatchSequence):
     def get_random_period(self):
         """
         Sample a random 'period/epoch/segment' of data from a (uniformly)
-        random SleepStudyBase object in self.pairs.
+        random SleepStudy object in self.pairs.
 
         With self.margin > 0 multiple, connected periods is returned in a
         single call.
@@ -103,7 +103,7 @@ class RandomBatchSequence(BatchSequence):
 
     def get_random_batch(self):
         """
-        Returns a batch of data sampled randomly across SleepStudyBase pairs.
+        Returns a batch of data sampled randomly across SleepStudy pairs.
 
         Returns:
             X, float32 ndarray, batch of input data,

@@ -71,7 +71,7 @@ def get_batch_sequence(dataset_queue,
     """
     Return a utime.sequences BatchSequence object made from a dataset queue.
     A BatchSequence object is used to extract batches of data from all or
-    individual SleepStudyBase objects represented by this SleepStudyDataset.
+    individual SleepStudy objects represented by this SleepStudyDataset.
 
     All args pass to the BatchSequence object.
     Please refer to its documentation.

@@ -6,7 +6,7 @@ from mpunet.logging import ScreenLogger
 
 class AbstractBaseSleepStudyDataset(ABC):
     """
-    Represents a collection of SleepStudyBase objects
+    Represents a collection of SleepStudy objects
     """
     def __init__(self,
                  identifier,
@@ -17,7 +17,7 @@ class AbstractBaseSleepStudyDataset(ABC):
         """
         Initialize a SleepStudyDataset from a directory storing one or more
         sub-directories each corresponding to a sleep/PSG study.
-        Each sub-dir will be represented by a SleepStudyBase object.
+        Each sub-dir will be represented by a SleepStudy object.
 
         Args:
             pairs: TODO
@@ -38,7 +38,7 @@ class AbstractBaseSleepStudyDataset(ABC):
 
         # Get list of subject folders in the data_dir according to folder_regex
         if len(np.unique([p.identifier for p in self.pairs])) != len(self.pairs):
-            raise RuntimeError("Two or more SleepStudyBase objects share the same"
+            raise RuntimeError("Two or more SleepStudy objects share the same"
                                " identifier, but all must be unique.")
         if self.pairs:
             self.update_id_to_study_dict()
@@ -72,30 +72,30 @@ class AbstractBaseSleepStudyDataset(ABC):
 
     @property
     def loaded_pairs(self):
-        """ Returns stored SleepStudyBase objects that have data loaded """
+        """ Returns stored SleepStudy objects that have data loaded """
         return [s for s in self if s.loaded]
 
     @property
     def non_loaded_pairs(self):
         """
-        Returns stored SleepStudyBase objects that do not have data loaded
+        Returns stored SleepStudy objects that do not have data loaded
         """
         return [s for s in self if not s.loaded]
 
     @property
     def pairs(self):
-        """ Return the stored SleepStudyBase pairs """
+        """ Return the stored SleepStudy pairs """
         return self._pairs
 
     @property
     def id_to_study(self):
-        """ Returns the ID to SleepStudyBase object dictionary """
+        """ Returns the ID to SleepStudy object dictionary """
         return self._id_to_study
 
     @property
     def study_identifiers(self):
         """
-        Returns a list of SleepStudyBase identifier strings matching the
+        Returns a list of SleepStudy identifier strings matching the
         currently stored objects.
         """
         return self._study_identifiers
@@ -107,7 +107,7 @@ class AbstractBaseSleepStudyDataset(ABC):
 
     def add_pairs(self, pairs):
         """
-        Add new SleepStudyBase pairs to this object.
+        Add new SleepStudy pairs to this object.
         This method also recomputes the self.id_to_study dictionary
         """
         self._pairs.extend(pairs)
@@ -116,24 +116,24 @@ class AbstractBaseSleepStudyDataset(ABC):
     def update_id_to_study_dict(self):
         """
         Recompute the self.id_to_study dictionary based on the currently stored
-        SleepStudyBase pairs.
+        SleepStudy pairs.
         """
         self._id_to_study = {ss.identifier: ss for ss in self.pairs}
         self._study_identifiers = list(self.id_to_study.keys())
 
     def __len__(self):
-        """ Returns the number of stored SleepStudyBase objects """
+        """ Returns the number of stored SleepStudy objects """
         return len(self.pairs)
 
     def __getitem__(self, item):
         """
-        Return an element from the list of stored SleepStudyBase
+        Return an element from the list of stored SleepStudy
         objects
         """
         return self.pairs[item]
 
     def __iter__(self):
-        """ Yield elements from the list of stored SleepStudyBase objects """
+        """ Yield elements from the list of stored SleepStudy objects """
         for pair in self.pairs:
             yield pair
 
@@ -143,7 +143,7 @@ class AbstractBaseSleepStudyDataset(ABC):
             ss.unload()
 
     def get_by_id(self, sleep_study_id):
-        """ Return a stored SleepStudyBase object by its ID string """
+        """ Return a stored SleepStudy object by its ID string """
         if sleep_study_id not in self.id_to_study:
             raise ValueError("Did not find a match to id {}".format(sleep_study_id))
         else:
@@ -151,10 +151,10 @@ class AbstractBaseSleepStudyDataset(ABC):
 
     def get_all_periods(self, stack=False):
         """
-        Returns the output of SleepStudyBase.get_all_periods across all stored
-        SleepStudyBase objects either as a list with one element for each
+        Returns the output of SleepStudy.get_all_periods across all stored
+        SleepStudy objects either as a list with one element for each
         (stack=False) or as single, stacked arrays (stack=True)
-        Please refer to SleepStudyBase.get_all_periods
+        Please refer to SleepStudy.get_all_periods
 
         Returns:
             X: ndarray shape [-1, data_per_period, n_channels] (stack=True)
@@ -170,7 +170,7 @@ class AbstractBaseSleepStudyDataset(ABC):
 
     def get_class_counts(self, n_classes, log=True):
         """
-        Computes the sum of class count across all loaded SleepStudyBase objects
+        Computes the sum of class count across all loaded SleepStudy objects
 
         Args:
             n_classes: Number of expected classes.
@@ -196,8 +196,8 @@ class AbstractBaseSleepStudyDataset(ABC):
 
     def set_select_channels(self, channels):
         """
-        Sets the 'select_channels' property on all stored SleepStudyBase objects.
-        Please refer to the SleepStudyBase.select_channels setter method
+        Sets the 'select_channels' property on all stored SleepStudy objects.
+        Please refer to the SleepStudy.select_channels setter method
         """
         if channels is None or len(channels) == 0:
             return
@@ -208,8 +208,8 @@ class AbstractBaseSleepStudyDataset(ABC):
     def set_alternative_select_channels(self, channels):
         """
         Sets the 'alternative_select_channels' property on all stored
-        SleepStudyBase objects. Please refer to the
-        SleepStudyBase.alternative_select_channels setter method
+        SleepStudy objects. Please refer to the
+        SleepStudy.alternative_select_channels setter method
         """
         if channels is None or len(channels) == 0:
             return

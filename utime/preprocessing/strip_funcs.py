@@ -352,10 +352,10 @@ def assert_equal_length(psg, hyp, sample_rate):
 
 def apply_strip_func(sleep_study, sample_rate):
     """
-    Applies the strip function set on a SleepStudyBase object to itself.
+    Applies the strip function set on a SleepStudy object to itself.
 
     Args:
-        sleep_study: A SleepStudyBase object
+        sleep_study: A SleepStudy object
         sample_rate: The sample rate of the currently set PSG.
 
     Returns:

@@ -99,10 +99,10 @@ def clip_noisy_values(psg, sample_rate, period_length_sec,
 
 def apply_quality_control_func(sleep_study, sample_rate, warn=True):
     """
-    Applies the quality control function set on a SleepStudyBase object to itself.
+    Applies the quality control function set on a SleepStudy object to itself.
 
     Args:
-        sleep_study: A SleepStudyBase object
+        sleep_study: A SleepStudy object
         sample_rate: The sample rate of the currently set PSG.
         warn:        TODO
 

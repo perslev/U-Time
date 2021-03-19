@@ -1,7 +1,6 @@
 """
 A randomly sampling batch sequence object
-Performs class-balanced sampling across uniformly randomly selected SleepStudyBase
-objects.
+Performs class-balanced sampling across uniformly randomly selected SleepStudy objects.
 """
 
 import numpy as np
@@ -11,7 +10,7 @@ from utime.sequences import BatchSequence
 class BalancedRandomBatchSequence(BatchSequence):
     """
     BatchSequence sub-class that samples class-balanced random batches
-    across (uniformly) randomly selected SleepStudyBase objects with calls to
+    across (uniformly) randomly selected SleepStudy objects with calls to
     self.__getitem__.
 
     The 'sample_prob' property can be set to a list of values in [0...1] with
@@ -124,7 +123,7 @@ class BalancedRandomBatchSequence(BatchSequence):
         """
         Sample a class-balanced random 'period/epoch/segment' of data
         according to sample probabilities in self.sample_prob from
-        a (uniformly) random SleepStudyBase object in self.dataset_queue.
+        a (uniformly) random SleepStudy object in self.dataset_queue.
 
         With self.margin > 0 multiple, connected periods is returned in a
         single call.
@@ -157,7 +156,7 @@ class BalancedRandomBatchSequence(BatchSequence):
                 else:
                     # Get the period index of a randomly sampled class
                     # (according to sample_prob distribution) within the
-                    # SleepStudyBase pair
+                    # SleepStudy pair
                     idx = np.random.choice(class_inds, 1)[0]
                     if self.margin > 0:
                         # Shift the idx randomly within the window
@@ -172,13 +171,13 @@ class BalancedRandomBatchSequence(BatchSequence):
 
     def get_class_balanced_random_batch(self):
         """
-        Returns a batch of data sampled uniformly across SleepStudyBase pairs and
+        Returns a batch of data sampled uniformly across SleepStudy pairs and
         randomly across target classes according to the distribution of
         self.sample_prob (for instance, [0.2, 0.2, 0.2, 0.2, 0.2] will sample
-        uniformly across 5 classes from the uniformly chosen SleepStudyBase pair).
+        uniformly across 5 classes from the uniformly chosen SleepStudy pair).
 
-        Note: If the sampled SleepStudyBase object does not display the sampled
-        target class, a new SleepStudyBase is sampled until success for the given
+        Note: If the sampled SleepStudy object does not display the sampled
+        target class, a new SleepStudy is sampled until success for the given
         label class.
 
         Note: For self.margin > 0 ('sequence' mode), sampling is conducted as

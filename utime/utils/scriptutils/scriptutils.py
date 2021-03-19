@@ -183,7 +183,7 @@ def get_splits_from_all_datasets(hparams, splits_to_load, logger=None,
 
 def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
     """
-    Initializes a SleepStudyBase dataset and applies prep. function
+    Initializes a SleepStudy dataset and applies prep. function
     'select_sample_strip_scale_quality' from all subject folders that match
     the a regex statement.
 
@@ -195,7 +195,7 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
         logger:        A Logger object
 
     Returns:
-        A SleepStudyBase object with settings set as per 'hparams'
+        A SleepStudy object with settings set as per 'hparams'
     """
     from utime.dataset.sleep_study_dataset import SleepStudyDataset
     ann_dict = hparams.get("sleep_stage_annotations")

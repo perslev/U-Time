@@ -2,7 +2,7 @@
 A set of helper functions for finding subject folders and PSG/HYP file pairs
 within such.
 
-These functions are used in particular by the utime.dataset SleepStudyBase and
+These functions are used in particular by the utime.dataset SleepStudy and
 SleepStudyDataset objects.
 """
 

@@ -1,5 +1,5 @@
 """
-Implements the SleepStudyBase class which represents a sleep study (PSG)
+Implements the SleepStudy class which represents a sleep study (PSG)
 """
 
 import numpy as np
@@ -380,7 +380,7 @@ class H5SleepStudy(AbstractBaseSleepStudy):
 
     def to_batch_generator(self, batch_size, overlapping=False):
         """
-        Yields batches of data from the SleepStudyBase PSG/HYP pair
+        Yields batches of data from the SleepStudy PSG/HYP pair
         Note: With overlapping == False the last batch may be smaller than
         batch_size due to boundary effects.
 
