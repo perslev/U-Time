@@ -11,7 +11,7 @@ beyond the other file will normally be discarded (see strip functions below)
 """
 
 import numpy as np
-from utime import defaults
+from utime import Defaults
 from utime.hypnogram import SparseHypnogram
 from utime.errors import NotLoadedError, StripError
 
@@ -171,7 +171,7 @@ def strip_to_match(psg, hyp, sample_rate, class_int=None, check_lengths=False):
     # Drop out of bounds segments
     psg, hyp = drop_class(psg, hyp,
                           sample_rate=sample_rate,
-                          class_int=defaults.OUT_OF_BOUNDS[1],
+                          class_int=Defaults.OUT_OF_BOUNDS[1],
                           strip_only=True,
                           call_strip_to_match=False)
     psg_length_sec = psg.shape[0] / sample_rate
@@ -352,10 +352,10 @@ def assert_equal_length(psg, hyp, sample_rate):
 
 def apply_strip_func(sleep_study, sample_rate):
     """
-    Applies the strip function set on a SleepStudy object to itself.
+    Applies the strip function set on a SleepStudyBase object to itself.
 
     Args:
-        sleep_study: A SleepStudy object
+        sleep_study: A SleepStudyBase object
         sample_rate: The sample rate of the currently set PSG.
 
     Returns:

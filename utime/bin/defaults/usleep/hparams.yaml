@@ -1,0 +1,116 @@
+# Components prefixed __CB are for keras callback hyperparamer settings
+
+__CB_tb: &TB
+  # tensorboard
+  nickname: "tb"
+  class_name: "TensorBoard"
+  kwargs: {log_dir: './tensorboard', profile_batch: 0}
+
+__CB_es: &ES
+  # Early stopping
+  nickname: "es"
+  class_name: "EarlyStopping"
+  kwargs: {monitor: 'val_dice', min_delta: 0,
+           patience: 200, verbose: 1 , mode: 'max'}
+
+__CB_mcp_clean: &MCP_CLEAN
+  # Model checkpoint
+  nickname: "mcp_clean"
+  class_name: "ModelCheckPointClean"
+  kwargs: {filepath: "./model/@epoch_{epoch:02d}_val_dice_{val_dice:.5f}.h5",
+           monitor: "val_dice", save_best_only: false, save_weights_only: true,
+           verbose: 1, mode: "max"}
+
+__CB_timer: &TIMER
+  # Train timer callback
+  nickname: "timer"
+  class_name: "TrainTimer"
+  pass_logger: True
+  kwargs: {verbose: True}
+
+__CB_csv: &CSV
+  # keras.CSVLogger
+  nickname: "csv"
+  class_name: "CSVLogger"
+  kwargs: {filename: "logs/training.csv", separator: ",", append: true}
+
+datasets:
+  # Add dataset IDs --> relative paths here
+
+  #### Training datasets
+  shhs: dataset_configurations/shhs.yaml
+  chat: dataset_configurations/chat.yaml
+  cfs: dataset_configurations/cfs.yaml
+  sof: dataset_configurations/sof.yaml
+  mros: dataset_configurations/mros.yaml
+  ccshs: dataset_configurations/ccshs.yaml
+  mesa: dataset_configurations/mesa.yaml
+  hpap: dataset_configurations/hpap.yaml
+  abc: dataset_configurations/abc.yaml
+  phys: dataset_configurations/phys.yaml
+  dcsm: dataset_configurations/dcsm.yaml
+  sedf_sc: dataset_configurations/sedf_sc.yaml
+  sedf_st: dataset_configurations/sedf_st.yaml
+
+  #### Testing datasets
+  # isruc_sg1: dataset_configurations/isruc_sg1.yaml
+  # isruc_sg2: dataset_configurations/isruc_sg2.yaml
+  # isruc_sg3: dataset_configurations/isruc_sg3.yaml
+  # svuh: dataset_configurations/svuh.yaml
+  # dod_o: dataset_configurations/dod_o.yaml
+  # dod_h: dataset_configurations/dod_h.yaml
+  # mass_c1: dataset_configurations/mass_c1.yaml
+  # mass_c3: dataset_configurations/mass_c3.yaml
+
+build:
+  #
+  # Hyperparameters passed to the Model.build and __init__ methods
+  #
+  model_class_name: "SingleConvUTime"
+  activation: elu
+  depth: 12
+  kernel_size: 9
+  dilation: 1
+  transition_window: 1
+  complexity_factor: 1.67
+  n_classes: 5
+  l2_reg: Null
+  batch_shape: [64, 35, 3840, 2]
+
+augmenters:
+  # On-the-fly augmentation
+  [
+  {cls_name: "RegionalErase",
+   kwargs: {min_region_fraction: 0.001,
+            max_region_fraction: 0.33,
+            log_sample: True,
+            apply_prob: 0.1}},
+  {cls_name: "ChannelDropout",
+   kwargs: {drop_fraction: 0.5,
+            apply_prob: 0.1}}
+  ]
+
+fit:
+  # Hyperparameters passed to the Trainer object
+  balanced_sampling: True
+  use_multiprocessing: False
+  channel_mixture: False
+  margin: 17
+
+  # Loss function
+  loss: ["SparseCategoricalCrossentropy"]
+  metrics: ["sparse_categorical_accuracy"]
+
+  # Optimization
+  batch_size: 64
+  n_epochs: 12000
+  verbose: true
+  optimizer: "Adam"
+  optimizer_kwargs: {lr: 1.0e-07, amsgrad: True, decay: 0.0, beta_1: 0.9, beta_2: 0.999, epsilon: 1.0e-8}
+
+  # Callbacks
+  callbacks: [*TB, *MCP_CLEAN, *TIMER, *CSV, *ES]
+
+__VERSION__: 0.0.1
+__BRANCH__: master
+__COMMIT__: d8fcd78

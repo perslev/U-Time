@@ -4,11 +4,12 @@ comparing to the ground truth labels.
 """
 
 import os
-from argparse import ArgumentParser
-import readline
+#import readline
 import numpy as np
+from argparse import ArgumentParser
+from utime import Defaults
 
-readline.parse_and_bind('tab: complete')
+#readline.parse_and_bind('tab: complete')
 
 
 def get_argparser():
@@ -22,11 +23,14 @@ def get_argparser():
                         help="Output folder to store results")
     parser.add_argument("--num_GPUs", type=int, default=1,
                         help="Number of GPUs to use for this job")
+    parser.add_argument("--num_test_time_augment", type=int, default=0,
+                        help="Number of prediction passes over each sleep "
+                             "study with augmentation enabled.")
     parser.add_argument("--channels", nargs='*', type=str, default=None,
                         help="A list of channels to use instead of those "
                              "specified in the parameter file.")
     parser.add_argument("--one_shot", action="store_true",
-                        help="Segment each SleepStudy in one forward-pass "
+                        help="Segment each SleepStudyBase in one forward-pass "
                              "instead of using (GPU memory-efficient) sliding "
                              "window predictions.")
     parser.add_argument("--overwrite", action='store_true',
@@ -144,7 +148,7 @@ def get_and_load_model(project_dir, hparams, logger, weights_file_name=None):
     return model
 
 
-def get_and_load_one_shot_model(full_hypnogram, project_dir,
+def get_and_load_one_shot_model(n_periods, project_dir,
                                 hparams, logger, weights_file_name=None):
     """
     Returns a model according to 'hparams', potentially initialized from
@@ -166,7 +170,6 @@ def get_and_load_one_shot_model(full_hypnogram, project_dir,
         Initialized model
     """
     # Set seguence length
-    n_periods = full_hypnogram.shape[0]
     hparams["build"]["batch_shape"][1] = n_periods
     hparams["build"]["batch_shape"][0] = 1  # Should not matter
     return get_and_load_model(project_dir, hparams, logger, weights_file_name)
@@ -272,7 +275,8 @@ def _predict_sequence_one_shot(study_pair, seq, model):
     return model.predict_on_batch(X)[0]
 
 
-def predict_on(study_pair, seq, model=None, model_func=None, argmax=True):
+def predict_on(study_pair, seq, model=None, model_func=None, n_aug=None,
+               argmax=True):
     """
     High-level function for predicting on a single SleepStudyPair
     ('study_pair')object as wrapped by a BatchSequence ('seq') object using a
@@ -285,6 +289,8 @@ def predict_on(study_pair, seq, model=None, model_func=None, argmax=True):
         seq:         A BatchSequence object that stores 'study_pair'
         model:       An initialized and loaded model to predict with
         model_func:  A callable which returns an intialized model
+        n_aug:       Number of times to predict on study_pair with random
+                     augmentation enabled
         argmax:      If true, returns [n_periods, 1] sleep stage labels,
                      otherwise returns [n_periods, n_classes] softmax scores.
 
@@ -303,6 +309,9 @@ def predict_on(study_pair, seq, model=None, model_func=None, argmax=True):
                                       "parameter, but did not receive a "
                                       "sequence object with margin > 0.")
         from utime.utils.scriptutils.predict import predict_on_generator
+        if n_aug:
+            raise NotImplementedError("Test-time augmentation currently not"
+                                      " supported for non-sequence models.")
         gen = seq.single_study_batch_generator(study_id=study_pair.identifier)
         pred = predict_on_generator(model=model,
                                     generator=gen,
@@ -312,12 +321,20 @@ def predict_on(study_pair, seq, model=None, model_func=None, argmax=True):
             # One-shot sequencing
             pred_func = _predict_sequence_one_shot
             # Get one-shot model of input shape matching the hypnogram
-            model = model_func(y)
+            model = model_func(study_pair.n_periods)
         else:
             # Batch-wise sequencing with pre-loaded model
             pred_func = _predict_sequence
         # Get prediction
         pred = pred_func(study_pair, seq, model)
+        if n_aug:
+            # Predict additional times with augmentation enabled
+            seq.augmentation_enabled = True
+            for i in range(n_aug):
+                print("-- With aug: {}/{}".format(i+1, n_aug), end="\r", flush=True)
+                pred += pred_func(study_pair, seq, model, y) / n_aug
+            seq.augmentation_enabled = False
+            print()
     if argmax:
         pred = pred.argmax(-1)
     return y, pred
@@ -327,8 +344,8 @@ def get_sequencer(dataset, hparams):
     """
     Returns a BatchSequence object (see utime.seqeunces)
 
-    OBS: Initializes the BatchSequence with scale_assertion, and
-    requires_all_loaded flags all set to False.
+    OBS: Initializes the BatchSequence with scale_assertion,
+    augmentation_enabled and requires_all_loaded flags all set to False.
 
     args:
         dataset: (SleepStudyDataset) A SleepStudyDataset storing data to
@@ -338,13 +355,23 @@ def get_sequencer(dataset, hparams):
     Returns:
         A BatchSequence object
     """
-    dataset.pairs[0].load()  # get_batch_sequence needs 1 loaded study
+    # Wrap dataset in LazyQueue object
+    from utime.dataset.queue import LazyQueue
+    dataset_queue = LazyQueue(dataset)
+
+    from utime.sequences import get_batch_sequence
+    if 'fit' not in hparams:
+        hparams['fit'] = {}
     hparams["fit"]["balanced_sampling"] = False
-    seq = dataset.get_batch_sequence(random_batches=False,
-                                     **hparams["fit"],
-                                     no_log=True,
-                                     scale_assertion=False,  # needs >1 Studies
-                                     require_all_loaded=False)
+    seq = get_batch_sequence(dataset_queue=dataset_queue,
+                             random_batches=False,
+                             augmenters=hparams.get("augmenters"),
+                             n_classes=hparams.get_from_anywhere('n_classes'),
+                             **hparams["fit"],
+                             no_log=True,
+                             scale_assertion=False,
+                             require_all_loaded=False)
+    seq.augmentation_enabled = False
     return seq
 
 
@@ -359,7 +386,7 @@ def run_pred_and_eval(dataset,
     Run evaluation (predict + evaluate) on a all entries of a SleepStudyDataset
 
     Args:
-        dataset:     A SleepStudyDataset object storing one or more SleepStudy
+        dataset:     A SleepStudyDataset object storing one or more SleepStudyBase
                      objects
         out_dir:     Path to directory that will store predictions and
                      evaluation results
@@ -382,7 +409,7 @@ def run_pred_and_eval(dataset,
     # Predict on all samples
     for i, sleep_study_pair in enumerate(dataset):
         id_ = sleep_study_pair.identifier
-        logger("[{}/{}] Predicting on SleepStudy: {}".format(i+1,
+        logger("[{}/{}] Predicting on SleepStudyBase: {}".format(i+1,
                                                              len(dataset),
                                                              id_))
 
@@ -391,7 +418,8 @@ def run_pred_and_eval(dataset,
             y, pred = predict_on(study_pair=sleep_study_pair,
                                  seq=seq,
                                  model=model,
-                                 model_func=model_func)
+                                 model_func=model_func,
+                                 n_aug=args.num_test_time_augment)
 
         if args.wake_trim_min:
             # Trim long periods of wake in start/end of true & prediction
@@ -462,7 +490,7 @@ def run(args):
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(project_dir + "/hparams.yaml", logger)
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir), logger)
     if args.channels:
         hparams["select_channels"] = args.channels
         hparams["channel_sampling_groups"] = None
@@ -473,9 +501,11 @@ def run(args):
     model, model_func = None, None
     if args.one_shot:
         # Model is initialized for each sleep study later
-        def model_func(full_hyp):
-            return get_and_load_one_shot_model(full_hyp, project_dir,
-                                               hparams, logger,
+        def model_func(n_periods):
+            return get_and_load_one_shot_model(n_periods,
+                                               project_dir,
+                                               hparams,
+                                               logger,
                                                args.weights_file_name)
     else:
         model = get_and_load_model(project_dir, hparams, logger,

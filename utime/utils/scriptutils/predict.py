@@ -39,19 +39,19 @@ def predict_on_generator(model, generator, argmax=False):
 
 def predict_by_id(model, sequencer, study_id, argmax=False):
     """
-    Takes a tf.keras model and predicts on all batches of data in a SleepStudy
+    Takes a tf.keras model and predicts on all batches of data in a SleepStudyBase
     object.
 
     Args:
         model:      A tf.keras model instance. Should accept batches of data
                     as output by the 'sequence' Sequence object.
         sequencer:  A Sequence object which stores at least the passed
-                    SleepStudy object of 'sleep_study'.
-        study_id:   The identifier string of a SleepStudy object in 'sequence'.
+                    SleepStudyBase object of 'sleep_study'.
+        study_id:   The identifier string of a SleepStudyBase object in 'sequence'.
         argmax:     See predict_on_generator docstring.
 
     Returns:
-        Predictions of 'model' on all batches of data in a SleepStudy
+        Predictions of 'model' on all batches of data in a SleepStudyBase
         Please refer to the 'predict_on_generator' docstring.
     """
     # Get generator
@@ -88,7 +88,7 @@ def sequence_predict_generator(model, total_seq_length, generator,
     pred = np.zeros(shape=[total_seq_length] + s[2:], dtype=np.float64)
 
     cur_pos = 0
-    for X, _ in generator:
+    for X, _, _ in generator:
         if verbose:
             print("  pos: {}/{}".format(cur_pos+1, total_seq_length),
                   end="\r", flush=True)

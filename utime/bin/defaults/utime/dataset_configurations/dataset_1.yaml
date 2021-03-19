@@ -40,7 +40,8 @@ sleep_stage_annotations:
 
 strip_func:
   # Keep blank to apply no strip function
-  strip_func: strip_to_match
+  strip_func: drop_class
+  class_int: 5
 
 quality_control_func:
   # Keep blank to apply no strip function

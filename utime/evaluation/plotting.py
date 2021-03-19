@@ -66,8 +66,8 @@ def plot_confusion_matrix(y_true, y_pred, n_classes,
         cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 
     # Get transformed labels
-    from utime import defaults
-    labels = [defaults.class_int_to_stage_string[i] for i in classes]
+    from utime import Defaults
+    labels = [Defaults.get_class_int_to_stage_string()[i] for i in classes]
 
     fig, ax = plt.subplots()
     im = ax.imshow(cm, interpolation='nearest', cmap=plt.get_cmap(cmap))

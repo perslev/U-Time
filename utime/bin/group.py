@@ -71,9 +71,9 @@ def run(args):
         print("Moving...")
         for p in pairs:
             if args.common_prefix_length is None:
-                subject_dir_name = os.path.splitext(os.path.split(pairs[0])[-1])[0]
+                subject_dir_name = os.path.splitext(os.path.split(p[0])[-1])[0]
             else:
-                subject_dir_name = os.path.split(pairs[0])[-1][:args.common_prefix_length]
+                subject_dir_name = os.path.split(p[0])[-1][:args.common_prefix_length]
             move_files(p, out_dir, subject_dir_name)
 
 

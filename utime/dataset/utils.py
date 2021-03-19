@@ -2,7 +2,7 @@
 A set of helper functions for finding subject folders and PSG/HYP file pairs
 within such.
 
-These functions are used in particular by the utime.dataset SleepStudy and
+These functions are used in particular by the utime.dataset SleepStudyBase and
 SleepStudyDataset objects.
 """
 
@@ -136,7 +136,7 @@ def infer_psg_file(subject_dir, excludes, file_types):
 
 def find_hyp_file(subject_dir,
                   hyp_regex=None,
-                  tries=("hypnogram", "hypno", "hyp", "stages")):
+                  tries=("hypnogram", "hypno", "hyp", "stages", ".ids", ".sds")):
     """
     Find a HYP/sleep stages/labels file in a folder 'subject_dir' using either
     a passed regex 'hyp_regex' that should match uniquely to 1 file in the

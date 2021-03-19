@@ -5,18 +5,44 @@ specified optimizer, loss and metrics and implements the .fit method for
 training the model given a set of parameters and (non-initialized) callbacks.
 """
 
-from tensorflow.keras import optimizers
+import tensorflow as tf
 from tensorflow.python.framework.errors_impl import (ResourceExhaustedError,
                                                      InternalError)
-from mpunet.callbacks import (init_callback_objects, remove_validation_callbacks)
+from mpunet.callbacks import (init_callback_objects,
+                              remove_validation_callbacks)
 from mpunet.logging import ScreenLogger
 from mpunet.callbacks import (DividerLine, LearningCurve)
 from mpunet.utils import ensure_list_or_tuple
-from mpunet.train.utils import (ensure_sparse, init_losses,
-                                init_metrics, init_optimizer)
-from utime.callbacks import Validation
+from mpunet.train.utils import (ensure_sparse,
+                                init_losses,
+                                init_metrics,
+                                init_optimizer)
+from utime.callbacks import Validation, MemoryConsumption
 from utime.train.utils import get_steps
-from utime.evaluation.utils import ignore_class_wrapper
+
+
+def ignore_class_wrapper(loss_func, n_pred_classes, logger):
+    """
+    For a model that outputs K classes, this wrapper removes entries in the
+    true/pred pairs for which the true label is of integer value K.
+
+    TODO
+    """
+    @tf.function
+    def wrapper(true, pred):
+        true.set_shape(pred.get_shape()[:-1] + [1])
+        true = tf.reshape(true, [-1])
+        pred = tf.reshape(pred, [-1, n_pred_classes])
+        mask = tf.where(tf.not_equal(true, n_pred_classes), tf.ones_like(true), tf.zeros_like(true))
+        mask = tf.cast(mask, tf.bool)
+        true = tf.boolean_mask(true, mask, axis=0)
+        pred = tf.boolean_mask(pred, mask, axis=0)
+        return loss_func(true, pred)
+    logger("Regarding loss func: {}. "
+           "Model outputs {} classes; Ignoring class with "
+           "integer values {}".format(loss_func, n_pred_classes,
+                                      n_pred_classes))
+    return wrapper
 
 
 class Trainer(object):
@@ -46,15 +72,8 @@ class Trainer(object):
         # May also be set from a script at a later time (before self.fit call)
         self.org_model = org_model
 
-    def compile_model(self,
-                      optimizer,
-                      loss,
-                      metrics,
-                      reduction,
-                      check_sparse=False,
-                      optimizer_kwargs={},
-                      loss_kwargs={},
-                      **kwargs):
+    def compile_model(self, optimizer, loss, metrics, reduction,
+                      check_sparse=False, optimizer_kwargs={}, loss_kwargs={}, **kwargs):
         """
         Compile the stored tf.keras Model instance stored in self.model
         Sets the loss function, optimizer and metrics
@@ -63,13 +82,11 @@ class Trainer(object):
             optimizer:        (string) The name of a tf.keras.optimizers Optimizer
             optimizer_kwargs: (dict)   Key-word arguments passed to the Optimizer
             loss:             (string) The name of a tf.keras.losses or
-                                       mpunet loss function
+                                       MultiPlanarUnet loss function
             metrics:          (list)   List of tf.keras.metrics or
-                                       mpunet metrics.
-            reduction                  TODO
-            check_sparse               TODO
-            optimizer_kwargs           TODO
-            loss_kwargs                TODO
+                                       MultiPlanarUNet metrics.
+            reduction         TODO
+            check_sparse:     TODO
             **kwargs:         (dict)   Key-word arguments passed to losses
                                        and/or metrics that accept such.
         """
@@ -79,10 +96,9 @@ class Trainer(object):
         if check_sparse:
             ensure_sparse(metrics+losses)
 
-        # Initialize optimizer, loss(es) and metric(s) from tf.keras or mpunet
+        # Initialize optimizer, loss(es) and metric(s) from tf.keras or MultiPlanarUNet
         optimizer = init_optimizer(optimizer, self.logger, **optimizer_kwargs)
         losses = init_losses(losses, self.logger, **kwargs)
-        metrics = init_metrics(metrics, self.logger, **kwargs)
         for i, loss in enumerate(losses):
             try:
                 losses[i] = loss(reduction=reduction, **loss_kwargs)
@@ -98,11 +114,9 @@ class Trainer(object):
                                 "you implemented a custom loss function, "
                                 "please raise an issue on GitHub.")
             else:
-                # Mask out potential class 5 ("UNKNOWN" e.g.)
-                # TODO: Make optional
-                losses[i] = ignore_class_wrapper(losses[i],
-                                                 self.model.n_classes,
-                                                 self.logger)
+                # Mask out class 5: TODO: Make optional
+                losses[i] = ignore_class_wrapper(losses[i], self.model.n_classes, self.logger)
+        metrics = init_metrics(metrics, self.logger, **kwargs)
 
         # Compile the model
         self.model.compile(optimizer=optimizer, loss=losses, metrics=metrics)
@@ -156,10 +170,8 @@ class Trainer(object):
              n_epochs,
              callbacks,
              train_samples_per_epoch,
-             val_samples_per_epoch,
              verbose=1,
              init_epoch=0,
-             use_multiprocessing=False,
              **unused):
         """
         Args:
@@ -171,7 +183,6 @@ class Trainer(object):
             callbacks: (list)       List of uninitialized callback kwargs.
             train_samples_per_epoch: (int) Number of training samples to sample
                                            before an epoch is determined over.
-            val_samples_per_epoch:   (int) Same as 'train_samples_per_epoch'
             verbose: (int/bool)     Verbosity level passed to keras.fit_generator
             init_epoch: (int)       The initial epoch
             use_multiprocessing: (bool) Whether to use multiprocessing instead
@@ -179,30 +190,25 @@ class Trainer(object):
         """
         train.batch_size = batch_size
         train_steps = get_steps(train_samples_per_epoch, train)
-        self.logger("Using %i steps per train epoch (total batches=%i)" %
-                    (train_steps, len(train)))
+        self.logger("Using {} steps per train epoch".format(train_steps))
 
-        if val is None or len(val) == 0:
+        if val is None:
             # No validation to be performed, remove callbacks that might need
             # validation data to function properly
             remove_validation_callbacks(callbacks, self.logger)
         else:
             val.batch_size = batch_size
-            val_steps = get_steps(val_samples_per_epoch, val)
-            self.logger("Using %i steps per validation epoch "
-                        "(total batches=%i)" % (val_steps, len(val)))
             # Add validation callback
             # Important: Should be first in callbacks list as other CBs may
             # depend on the validation metrics/loss
-            validation = Validation(val,
-                                    steps=val_steps,
-                                    logger=self.logger,
-                                    verbose=verbose)
+            validation = Validation(val, logger=self.logger, verbose=verbose)
             callbacks = [validation] + callbacks
 
-        # Callback for plotting learning curves
+        # Add various callbacks for plotting learning curves etc.
+        callbacks.append(MemoryConsumption(max_gib=45, logger=self.logger))
         callbacks.append(LearningCurve(logger=self.logger))
-        callbacks = callbacks + [DividerLine(self.logger)]
+        # callbacks.append(CarbonUsageTracking(epochs=n_epochs, add_to_logs=False))
+        callbacks.append(DividerLine(self.logger))
 
         # Get initialized callback objects
         callbacks, cb_dict = init_callback_objects(callbacks, self.logger)
@@ -213,7 +219,7 @@ class Trainer(object):
         if cb:
             cb.org_model = self.org_model
 
-        # Wrap generator in tf dataset
+        # Temporary memory leak fix
         import tensorflow as tf
         dtypes, shapes = list(zip(*map(lambda x: (x.dtype, x.shape), train[0])))
         train = tf.data.Dataset.from_generator(train, dtypes, shapes)

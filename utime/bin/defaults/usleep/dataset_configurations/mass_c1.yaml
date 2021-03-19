@@ -1,0 +1,33 @@
+test_data:
+  data_dir: [LOCAL_PATH]/mass-c1/
+  period_length_sec: 30
+  identifier: "TEST"
+  psg_regex: .*-PSG.h5
+  hyp_regex: .*-HYP.ids
+  folder_regex: 01-.*
+
+set_sample_rate: 128
+
+load_time_channel_sampling_groups: [
+  ['F3-CLE', 'F4-CLE', 'C3-CLE', 'C4-CLE', 'O1-CLE', 'O2-CLE', 'F7-CLE', 'F8-CLE', 'T3-CLE', 'T4-CLE', 'T5-CLE', 'T6-CLE', 'P3-CLE', 'P4-CLE', 'Fz-CLE', 'Cz-CLE', 'Pz-CLE', 'Fp1-CLE', 'Fp2-CLE', 'F3-LER', 'F4-LER', 'C3-LER', 'C4-LER', 'O1-LER', 'O2-LER', 'F7-LER', 'F8-LER', 'T3-LER', 'T4-LER', 'T5-LER', 'T6-LER', 'P3-LER', 'P4-LER', 'Fz-LER', 'Cz-LER', 'Pz-LER', 'Fp1-LER', 'Fp2-LER'],
+  ['EOG_left_horizontal', 'EOG_right_horizontal']
+]
+
+sleep_stage_annotations:
+  "Sleep stage W": 0
+  "Sleep stage 1": 1
+  "Sleep stage 2": 2
+  "Sleep stage 3": 3
+  "Sleep stage 4": 3
+  "Sleep stage R": 4
+  "Sleep stage ?": 5
+
+strip_func:
+  strip_func: strip_to_match
+
+quality_control_func:
+  quality_control_func: "clip_noisy_values"
+  min_max_times_global_iqr: 20
+  
+scaler: "RobustScaler"
+batch_wise_scaling: false

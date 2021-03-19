@@ -11,11 +11,12 @@ import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras import regularizers
 from tensorflow.keras.layers import Input, BatchNormalization, Cropping2D, \
-                                    Concatenate, MaxPooling2D, \
+                                    Concatenate, MaxPooling2D, Dense, \
                                     UpSampling2D, ZeroPadding2D, Lambda, Conv2D, \
-                                    AveragePooling2D
+                                    AveragePooling2D, DepthwiseConv2D
 from mpunet.logging import ScreenLogger
 from mpunet.utils.conv_arithmetics import compute_receptive_fields
+from mpunet.train.utils import init_activation
 
 
 class UTime(Model):
@@ -37,6 +38,7 @@ class UTime(Model):
                  kernel_size=5,
                  transition_window=1,
                  padding="same",
+                 init_filters=16,
                  complexity_factor=2,
                  l2_reg=None,
                  pools=(10, 8, 6, 4),
@@ -77,10 +79,12 @@ class UTime(Model):
         data_per_prediction (int):
             TODO
         logger (mpunet.logging.Logger | ScreenLogger):
-            MutliViewUNet.Logger object, logging to files or screen.
+            mpunet.Logger object, logging to files or screen.
         build (bool):
             TODO
         """
+        super(UTime, self).__init__()
+
         # Set logger or standard print wrapper
         self.logger = logger or ScreenLogger()
 
@@ -91,8 +95,8 @@ class UTime(Model):
         self.n_channels = batch_shape[3]
         self.n_classes = int(n_classes)
         self.dilation = int(dilation)
-        self.cf = complexity_factor
-        self.init_filters = int(8 * self.cf)
+        self.cf = np.sqrt(complexity_factor)
+        self.init_filters = init_filters
         self.kernel_size = int(kernel_size)
         self.transition_window = transition_window
         self.activation = activation
@@ -139,22 +143,25 @@ class UTime(Model):
                        activation,
                        dilation,
                        padding,
-                       kernel_reg=None,
+                       complexity_factor,
+                       regularizer=None,
                        name="encoder",
                        name_prefix=""):
         name = "{}{}".format(name_prefix, name)
         residual_connections = []
         for i in range(depth):
             l_name = name + "_L%i" % i
-            conv = Conv2D(filters, (kernel_size, 1),
+            conv = Conv2D(int(filters*complexity_factor), (kernel_size, 1),
                           activation=activation, padding=padding,
-                          kernel_regularizer=kernel_reg,
+                          kernel_regularizer=regularizer,
+                          bias_regularizer=regularizer,
                           dilation_rate=dilation,
                           name=l_name + "_conv1")(in_)
             bn = BatchNormalization(name=l_name + "_BN1")(conv)
-            conv = Conv2D(filters, (kernel_size, 1),
+            conv = Conv2D(int(filters*complexity_factor), (kernel_size, 1),
                           activation=activation, padding=padding,
-                          kernel_regularizer=kernel_reg,
+                          kernel_regularizer=regularizer,
+                          bias_regularizer=regularizer,
                           dilation_rate=dilation,
                           name=l_name + "_conv2")(bn)
             bn = BatchNormalization(name=l_name + "_BN2")(conv)
@@ -167,15 +174,17 @@ class UTime(Model):
 
         # Bottom
         name = "{}bottom".format(name_prefix)
-        conv = Conv2D(filters, (kernel_size, 1),
+        conv = Conv2D(int(filters*complexity_factor), (kernel_size, 1),
                       activation=activation, padding=padding,
-                      kernel_regularizer=kernel_reg,
+                      kernel_regularizer=regularizer,
+                      bias_regularizer=regularizer,
                       dilation_rate=1,
                       name=name + "_conv1")(in_)
         bn = BatchNormalization(name=name + "_BN1")(conv)
-        conv = Conv2D(filters, (kernel_size, 1),
+        conv = Conv2D(int(filters*complexity_factor), (kernel_size, 1),
                       activation=activation, padding=padding,
-                      kernel_regularizer=kernel_reg,
+                      kernel_regularizer=regularizer,
+                      bias_regularizer=regularizer,
                       dilation_rate=1,
                       name=name + "_conv2")(bn)
         encoded = BatchNormalization(name=name + "_BN2")(conv)
@@ -192,7 +201,8 @@ class UTime(Model):
                         activation,
                         dilation,  # NOT USED
                         padding,
-                        kernel_reg=None,
+                        complexity_factor,
+                        regularizer=None,
                         name="upsample",
                         name_prefix=""):
         name = "{}{}".format(name_prefix, name)
@@ -205,9 +215,11 @@ class UTime(Model):
             fs = pools[::-1][i]
             up = UpSampling2D(size=(fs, 1),
                               name=l_name + "_up")(in_)
-            conv = Conv2D(filters, (fs, 1),
+            conv = Conv2D(int(filters*complexity_factor), (fs, 1),
                           activation=activation,
-                          padding=padding, kernel_regularizer=kernel_reg,
+                          padding=padding,
+                          kernel_regularizer=regularizer,
+                          bias_regularizer=regularizer,
                           name=l_name + "_conv1")(up)
             bn = BatchNormalization(name=l_name + "_BN1")(conv)
 
@@ -216,14 +228,16 @@ class UTime(Model):
             # cropped_res = residual_connections[i]
             merge = Concatenate(axis=-1,
                                 name=l_name + "_concat")([cropped_res, bn])
-            conv = Conv2D(filters, (kernel_size, 1),
+            conv = Conv2D(int(filters*complexity_factor), (kernel_size, 1),
                           activation=activation, padding=padding,
-                          kernel_regularizer=kernel_reg,
+                          kernel_regularizer=regularizer,
+                          bias_regularizer=regularizer,
                           name=l_name + "_conv2")(merge)
             bn = BatchNormalization(name=l_name + "_BN2")(conv)
-            conv = Conv2D(filters, (kernel_size, 1),
+            conv = Conv2D(int(filters*complexity_factor), (kernel_size, 1),
                           activation=activation, padding=padding,
-                          kernel_regularizer=kernel_reg,
+                          kernel_regularizer=regularizer,
+                          bias_regularizer=regularizer,
                           name=l_name + "_conv3")(bn)
             in_ = BatchNormalization(name=l_name + "_BN3")(conv)
         return in_
@@ -233,9 +247,14 @@ class UTime(Model):
                               in_reshaped,
                               filters,
                               dense_classifier_activation,
-                              name_prefix=""):
-        cls = Conv2D(filters=filters,
+                              regularizer,
+                              complexity_factor,
+                              name_prefix="",
+                              **kwargs):
+        cls = Conv2D(filters=int(filters*complexity_factor),
                      kernel_size=(1, 1),
+                     kernel_regularizer=regularizer,
+                     bias_regularizer=regularizer,
                      activation=dense_classifier_activation,
                      name="{}dense_classifier_out".format(name_prefix))(in_)
         s = (self.n_periods * self.input_dims) - cls.get_shape().as_list()[1]
@@ -252,15 +271,25 @@ class UTime(Model):
                             n_periods,
                             n_classes,
                             transition_window,
+                            activation,
+                            regularizer=None,
                             name_prefix=""):
         cls = AveragePooling2D((data_per_period, 1),
                                name="{}average_pool".format(name_prefix))(in_)
         out = Conv2D(filters=n_classes,
                      kernel_size=(transition_window, 1),
-                     activation="softmax",
-                     kernel_regularizer=regularizers.l2(1e-5),
+                     activation=activation,
+                     kernel_regularizer=regularizer,
+                     bias_regularizer=regularizer,
                      padding="same",
-                     name="{}sequence_conv_out".format(name_prefix))(cls)
+                     name="{}sequence_conv_out_1".format(name_prefix))(cls)
+        out = Conv2D(filters=n_classes,
+                     kernel_size=(transition_window, 1),
+                     activation="softmax",
+                     kernel_regularizer=regularizer,
+                     bias_regularizer=regularizer,
+                     padding="same",
+                     name="{}sequence_conv_out_2".format(name_prefix))(out)
         s = [-1, n_periods, input_dims//data_per_period, n_classes]
         if s[2] == 1:
             s.pop(2)  # Squeeze the dim
@@ -268,7 +297,7 @@ class UTime(Model):
                      name="{}sequence_classification_reshaped".format(name_prefix))(out)
         return out
 
-    def init_model(self, inputs=None, create_seg_modeling=True, name_prefix=""):
+    def init_model(self, inputs=None, name_prefix=""):
         """
         Build the UNet model with the specified input image shape.
         """
@@ -280,18 +309,22 @@ class UTime(Model):
         in_reshaped = Lambda(lambda x: tf.reshape(x, reshaped))(inputs)
 
         # Apply regularization if not None or 0
-        kr = regularizers.l2(self.l2_reg) if self.l2_reg else None
+        regularizer = regularizers.l2(self.l2_reg) if self.l2_reg else None
+
+        # Get activation func from tf or tfa
+        activation = init_activation(activation_string=self.activation)
 
         settings = {
             "depth": self.depth,
             "pools": self.pools,
             "filters": self.init_filters,
             "kernel_size": self.kernel_size,
-            "activation": self.activation,
+            "activation": activation,
             "dilation": self.dilation,
             "padding": self.padding,
-            "kernel_reg": kr,
-            "name_prefix": name_prefix
+            "regularizer": regularizer,
+            "name_prefix": name_prefix,
+            "complexity_factor": self.cf
         }
 
         """
@@ -313,21 +346,22 @@ class UTime(Model):
                                          in_reshaped=in_reshaped,
                                          filters=self.n_classes,
                                          dense_classifier_activation=self.dense_classifier_activation,
+                                         regularizer=regularizer,
+                                         complexity_factor=self.cf,
                                          name_prefix=name_prefix)
 
         """
         Sequence modeling
         """
-        if create_seg_modeling:
-            out = self.create_seq_modeling(in_=cls,
-                                           input_dims=self.input_dims,
-                                           data_per_period=self.data_per_prediction,
-                                           n_periods=self.n_periods,
-                                           n_classes=self.n_classes,
-                                           transition_window=self.transition_window,
-                                           name_prefix=name_prefix)
-        else:
-            out = cls
+        out = self.create_seq_modeling(in_=cls,
+                                       input_dims=self.input_dims,
+                                       data_per_period=self.data_per_prediction,
+                                       n_periods=self.n_periods,
+                                       n_classes=self.n_classes,
+                                       transition_window=self.transition_window,
+                                       activation=self.activation,
+                                       regularizer=regularizer,
+                                       name_prefix=name_prefix)
 
         return [inputs], [out]
 
@@ -357,17 +391,17 @@ class UTime(Model):
         self.logger("N classes:         {}".format(self.n_classes))
         self.logger("Kernel size:       {}".format(self.kernel_size))
         self.logger("Dilation rate:     {}".format(self.dilation))
-        self.logger("CF factor:         %.3f" % self.cf)
+        self.logger("CF factor:         {:.3f}".format(self.cf**2))
         self.logger("Init filters:      {}".format(self.init_filters))
-        self.logger("Depth:             %i" % self.depth)
+        self.logger("Depth:             {}".format(self.depth))
         self.logger("Poolings:          {}".format(self.pools))
         self.logger("Transition window  {}".format(self.transition_window))
         self.logger("Dense activation   {}".format(self.dense_classifier_activation))
-        self.logger("l2 reg:            %s" % self.l2_reg)
-        self.logger("Padding:           %s" % self.padding)
-        self.logger("Conv activation:   %s" % self.activation)
-        self.logger("Receptive field:   %s" % self.receptive_field[0])
+        self.logger("l2 reg:            {}".format(self.l2_reg))
+        self.logger("Padding:           {}".format(self.padding))
+        self.logger("Conv activation:   {}".format(self.activation))
+        self.logger("Receptive field:   {}".format(self.receptive_field[0]))
         self.logger("Seq length.:       {}".format(self.n_periods*self.input_dims))
-        self.logger("N params:          %i" % self.count_params())
-        self.logger("Input:             %s" % self.input)
-        self.logger("Output:            %s" % self.output)
+        self.logger("N params:          {}".format(self.count_params()))
+        self.logger("Input:             {}".format(self.input))
+        self.logger("Output:            {}".format(self.output))

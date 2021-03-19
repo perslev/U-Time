@@ -1,18 +1,17 @@
 """
 A randomly sampling batch sequence object
-Performs class-balanced sampling across uniformly randomly selected SleepStudy
+Performs class-balanced sampling across uniformly randomly selected SleepStudyBase
 objects.
 """
 
 import numpy as np
-from utime.sequences import BatchSequence, requires_all_loaded
-from utime.errors import NotLoadedError
+from utime.sequences import BatchSequence
 
 
 class BalancedRandomBatchSequence(BatchSequence):
     """
     BatchSequence sub-class that samples class-balanced random batches
-    across (uniformly) randomly selected SleepStudy objects with calls to
+    across (uniformly) randomly selected SleepStudyBase objects with calls to
     self.__getitem__.
 
     The 'sample_prob' property can be set to a list of values in [0...1] with
@@ -22,13 +21,14 @@ class BalancedRandomBatchSequence(BatchSequence):
     See self.get_class_balanced_random_batch for detailed docstring.
     """
     def __init__(self,
-                 sleep_study_pairs,
+                 dataset_queue,
                  batch_size,
                  data_per_period,
                  n_classes,
                  n_channels,
                  sample_prob=None,
                  margin=0,
+                 augmenters=None,
                  batch_scaler=None,
                  logger=None,
                  no_log=False,
@@ -43,16 +43,18 @@ class BalancedRandomBatchSequence(BatchSequence):
         See BatchSequence docstring for other argument descriptions
         """
         self._sample_prob = None
-        super().__init__(sleep_study_pairs=sleep_study_pairs,
+        super().__init__(dataset_queue=dataset_queue,
                          batch_size=batch_size,
                          data_per_period=data_per_period,
                          n_classes=n_classes,
                          n_channels=n_channels,
                          margin=margin,
+                         augmenters=augmenters,
                          batch_scaler=batch_scaler,
                          logger=logger,
                          no_log=True,
                          identifier=identifier,
+                         require_all_loaded=False,
                          **kwargs)
         self.sample_prob = sample_prob
         if not no_log:
@@ -61,17 +63,23 @@ class BalancedRandomBatchSequence(BatchSequence):
     def log(self):
         """ Log basic information on this object """
         self.logger("[*] BalancedRandomBatchSequence initialized{}:\n"
+                    "    Data queue type: {}\n"
                     "    Batch shape:     {}\n"
                     "    Sample prob.:    {}\n"
                     "    N pairs:         {}\n"
                     "    Margin:          {}\n"
+                    "    Augmenters:      {}\n"
+                    "    Aug enabled:     {}\n"
                     "    Batch scaling:   {}\n"
                     "    All loaded:      {}\n"
-                    "    N classes:       {}{}".format(" ()".format(self.identifier) if self.identifier else "",
+                    "    N classes:       {}{}".format(" ({})".format(self.identifier) if self.identifier else "",
+                                                       type(self.dataset_queue),
                                                        self.batch_shape,
                                                        self.sample_prob,
-                                                       len(self.pairs),
+                                                       len(self.dataset_queue),
                                                        self.margin,
+                                                       self.augmenters,
+                                                       self.augmentation_enabled,
                                                        bool(self.batch_scaler),
                                                        self.all_loaded,
                                                        self.n_classes,
@@ -103,7 +111,6 @@ class BalancedRandomBatchSequence(BatchSequence):
             self._sample_prob = np.array(values)
             self._sample_prob /= np.sum(self._sample_prob)  # sum 1
 
-    @requires_all_loaded
     def __getitem__(self, idx):
         """
         Return a random batch of data
@@ -113,11 +120,11 @@ class BalancedRandomBatchSequence(BatchSequence):
         self.seed()
         return self.get_class_balanced_random_batch()
 
-    def get_class_balanced_random_period(self, assume_all_loaded=True):
+    def get_class_balanced_random_period(self):
         """
         Sample a class-balanced random 'period/epoch/segment' of data
         according to sample probabilities in self.sample_prob from
-        a (uniformly) random SleepStudy object in self.pairs.
+        a (uniformly) random SleepStudyBase object in self.dataset_queue.
 
         With self.margin > 0 multiple, connected periods is returned in a
         single call.
@@ -129,45 +136,49 @@ class BalancedRandomBatchSequence(BatchSequence):
             y, integer label value if margin == 0 else a list of len margin*2+1
                of integer label values if margin >0
         """
-        if assume_all_loaded:
-            pairs = self.pairs
-        else:
-            pairs = [s for s in self.pairs if s.loaded]
         # Get random class according to the sample probs.
         classes = np.arange(self.n_classes)
         cls = np.random.choice(classes, size=1, p=self.sample_prob)[0]
-        found = False
-        while not found:
-            sleep_study = np.random.choice(pairs)
-            if not sleep_study.loaded:
-                raise NotLoadedError
-            if cls not in sleep_study.class_to_period_dict or \
-                    len(sleep_study.class_to_period_dict[cls]) == 0:
-                # This SS does not have the given class
-                continue
-            try:
-                # Get the period index of a randomly sampled class (according
-                # to sample_prob distribution) within the SleepStudy pair
-                idx = np.random.choice(sleep_study.class_to_period_dict[cls], 1)[0]
-                if self.margin > 0:
-                    # Shift the idx randomly within the window
-                    idx += np.random.randint(-self.margin, self.margin+1)
-                X_, y_ = self.get_period(study_id=sleep_study.identifier,
-                                         period_idx=idx,
-                                         allow_shift_at_border=True)
-                return X_, y_
-            except KeyError:
-                continue
+        tries, max_tries = 0, 1000
+        while tries < max_tries:
+            with self.dataset_queue.get_random_study() as sleep_study:
+                try:
+                    class_inds = sleep_study.get_class_indicies(cls)
+                    if len(class_inds) == 0:
+                        self.logger.warn("Found empty class inds array for "
+                                         "study {} and class {}".format(
+                            sleep_study, cls
+                        ))
+                        raise KeyError
+                except KeyError:
+                    # This SS does not have the given class
+                    tries += 1
+                    continue
+                else:
+                    # Get the period index of a randomly sampled class
+                    # (according to sample_prob distribution) within the
+                    # SleepStudyBase pair
+                    idx = np.random.choice(class_inds, 1)[0]
+                    if self.margin > 0:
+                        # Shift the idx randomly within the window
+                        idx += np.random.randint(-self.margin, self.margin+1)
+                    X_, y_ = self.get_period(sleep_study=sleep_study,
+                                             period_idx=idx,
+                                             allow_shift_at_border=True)
+                    return X_, y_
+        # Probably something is wrong, raise error.
+        raise RuntimeError("Could not sample period for class {}, stopping "
+                           "after {} tries.".format(cls, max_tries))
 
-    def get_class_balanced_random_batch(self, assume_all_loaded=True):
+    def get_class_balanced_random_batch(self):
         """
-        Returns a batch of data sampled uniformly across SleepStudy pairs and
+        Returns a batch of data sampled uniformly across SleepStudyBase pairs and
         randomly across target classes according to the distribution of
         self.sample_prob (for instance, [0.2, 0.2, 0.2, 0.2, 0.2] will sample
-        uniformly across 5 classes from the uniformly chosen SleepStudy pair).
+        uniformly across 5 classes from the uniformly chosen SleepStudyBase pair).
 
-        Note: If the sampled SleepStudy object does not display the sampled
-        target class, a new SleepStudy is sampled until success for the given
+        Note: If the sampled SleepStudyBase object does not display the sampled
+        target class, a new SleepStudyBase is sampled until success for the given
         label class.
 
         Note: For self.margin > 0 ('sequence' mode), sampling is conducted as
@@ -189,8 +200,9 @@ class BalancedRandomBatchSequence(BatchSequence):
                shape [batch_size, 1] if margin=0
                else [batch_size, margin*2+1, 1]
         """
-        X, y = [], []
-        while len(X) != self.batch_size:
-            X_, y_ = self.get_class_balanced_random_period(assume_all_loaded)
-            X.append(X_), y.append(y_)
+        X, y = self.get_empty_batch_arrays()
+        for i in range(self.batch_size):
+            xx, yy = self.get_class_balanced_random_period()
+            X[i] = xx
+            y[i] = yy
         return self.process_batch(X, y)

@@ -1,0 +1,95 @@
+# Components prefixed __CB are for keras callback hyperparamer settings
+
+__CB_tb: &TB
+  # tensorboard
+  nickname: "tb"
+  class_name: "TensorBoard"
+  kwargs: {log_dir: './tensorboard', profile_batch: 0}
+
+__CB_es: &ES
+  # Early stopping
+  nickname: "es"
+  class_name: "EarlyStopping"
+  kwargs: {monitor: 'val_dice', min_delta: 0,
+           patience: 200, verbose: 1 , mode: 'max'}
+
+__CB_mcp_clean: &MCP_CLEAN
+  # Model checkpoint
+  nickname: "mcp_clean"
+  class_name: "ModelCheckPointClean"
+  kwargs: {filepath: "./model/@epoch_{epoch:02d}_val_dice_{val_dice:.5f}.h5",
+           monitor: "val_dice", save_best_only: false, save_weights_only: true,
+           verbose: 1, mode: "max"}
+
+__CB_timer: &TIMER
+  # Train timer callback
+  nickname: "timer"
+  class_name: "TrainTimer"
+  pass_logger: True
+  kwargs: {verbose: True}
+
+__CB_csv: &CSV
+  # keras.CSVLogger
+  nickname: "csv"
+  class_name: "CSVLogger"
+  kwargs: {filename: "logs/training.csv", separator: ",", append: true}
+
+datasets:
+  # Add dataset IDs --> relative paths here
+
+  #### For testing purposes, we consider just a few datasets here
+  sedf_sc: dataset_configurations/sedf_sc.yaml
+  dcsm: dataset_configurations/dcsm.yaml
+
+build:
+  #
+  # Hyperparameters passed to the Model.build and __init__ methods
+  #
+  model_class_name: "SingleConvUTime"
+  activation: elu
+  depth: 12
+  kernel_size: 9
+  dilation: 1
+  transition_window: 1
+  complexity_factor: 1.67
+  n_classes: 5
+  l2_reg: Null
+  batch_shape: [64, 35, 3840, 2]
+
+augmenters:
+  # On-the-fly augmentation
+  [
+  {cls_name: "RegionalErase",
+   kwargs: {min_region_fraction: 0.001,
+            max_region_fraction: 0.33,
+            log_sample: True,
+            apply_prob: 0.1}},
+  {cls_name: "ChannelDropout",
+   kwargs: {drop_fraction: 0.5,
+            apply_prob: 0.1}}
+  ]
+
+fit:
+  # Hyperparameters passed to the Trainer object
+  balanced_sampling: True
+  use_multiprocessing: False
+  channel_mixture: False
+  margin: 17
+
+  # Loss function
+  loss: ["SparseCategoricalCrossentropy"]
+  metrics: ["sparse_categorical_accuracy"]
+
+  # Optimization
+  batch_size: 64
+  n_epochs: 10   # For testing purposes, we train for just 10 epochs
+  verbose: true
+  optimizer: "Adam"
+  optimizer_kwargs: {lr: 1.0e-07, amsgrad: True, decay: 0.0, beta_1: 0.9, beta_2: 0.999, epsilon: 1.0e-8}
+
+  # Callbacks
+  callbacks: [*TB, *MCP_CLEAN, *TIMER, *CSV, *ES]
+
+__VERSION__: Null
+__BRANCH__: Null
+__COMMIT__: Null

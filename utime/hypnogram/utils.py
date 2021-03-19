@@ -283,3 +283,151 @@ def sparse_hypnogram_from_ids_format(ids_tuple, period_length_sec, ann_to_class)
                                  sleep_stages=ann_class_ints,
                                  period_length_sec=period_length_sec)
     return sparse_hyp, ann_to_class
+
+
+def load_events_file(events_file_path):
+    """
+    Load an .ids events file.
+
+    Args:
+        events_file_path: Path to .ids events file
+    
+    Returns:
+        A StartDurationStage format tuple
+    """
+    from utime.io.hypnogram.hyp_extractors import extract_from_start_dur_stage
+    events = list(zip(*extract_from_start_dur_stage(events_file_path)))
+    # Make sure events are sorted by init time
+    events = sorted(events, key=lambda x: x[0])
+    return events
+
+
+def get_indices_from_events(events, period_length_sec):
+    """
+
+    :param events:
+    :param period_length_sec:
+    :return:
+    """
+    indices = []
+    for onset, dur, event in events:
+        event = event.upper()
+        round_func = np.ceil if "START" in event else (np.floor if "STOP" in event else np.round)
+        index = int(round_func(onset / period_length_sec))
+        indices.append(index)
+    return indices
+
+
+def get_psg_start_stop_events(events):
+    """
+    :param events:
+    :return:
+        List of START/STOP events. Length 2 list of format:
+            [[start_sec, 0?? (duration), "START PSG"], [start_sec, 0?? (duration), "STOP PSG"]]
+    """
+    # Filter to keep only start/stop PSG events
+    start_stop_events = list(filter(lambda e: "psg" in e[-1].lower(), events))
+    assert len(start_stop_events) == 2, "Found != 2 start/stop PSG events: {}".format(start_stop_events)
+
+    # Make sure events are sorted by init time
+    start_stop_events = sorted(start_stop_events, key=lambda x: x[0])
+    assert "start" in start_stop_events[0][-1].lower() and "stop" in start_stop_events[-1][-1].lower()
+
+    # Standardize
+    return [
+        (start_stop_events[0][0], start_stop_events[0][1], "PSG START"),
+        (start_stop_events[1][0], start_stop_events[1][1], "PSG STOP"),
+    ]
+
+
+def get_light_events(events):
+    """
+
+    :param events:
+    :return:
+    """
+    # Filter to keep only lights on and lights off events
+    light_events = list(filter(lambda e: "light" in e[-1].lower(), events))
+
+    # Make sure events are sorted by init time
+    light_events = sorted(light_events, key=lambda x: x[0])
+
+    # Standardize to (onset, duration, "LIGHTS ON/OFF (STOP/START)") tuples
+    # Also subtract offset seconds (if array was shifted in time due to trimming, e.g. with start/stop PSG events)
+    light_events = [(e[0], e[1], "LIGHTS ON (STOP)" if "on" in e[-1].lower() else "LIGHTS OFF (START)")
+                    for e in light_events]
+
+    return light_events
+
+
+def check_start_stop_events(start_stop_events):
+    """
+
+    :param start_stop_events:
+    :return:
+    """
+    # Make sure events are sorted by init time
+    start_stop_events = sorted(start_stop_events, key=lambda x: x[0])
+    # Check alternating pairs
+    start_stops = ["START" if "START" in e[-1] else "STOP" for e in start_stop_events]
+    for i in range(len(start_stops)-1):
+        if start_stops[i] == start_stops[i+1]:
+            raise ValueError(f"Not alternating START/STOP events, {start_stop_events}")
+    # Check starts with START event
+    if start_stops[0] != "START":
+        raise ValueError(f"Fisrt START/STOP event must be a 'START' event, got {start_stop_events}")
+    # Check ends with STOP event
+    if start_stops[-1] != "STOP":
+        raise ValueError(f"Last START/STOP event must be a 'STOP' event, got {start_stop_events}")
+    return start_stop_events
+
+
+def filter_events_by_start_stop_events(events, start_stop_events):
+    """
+
+    :param events:
+    :return:
+    """
+    # Sort, check alternating, starting with "START" event
+    start_stop_events = check_start_stop_events(start_stop_events)
+
+    # Extract [[START, STOP]..] pairs
+    start_stop_pairs = []
+    for i in range(0, len(start_stop_events), 2):
+        start_stop_pairs.append(start_stop_events[i:i+2])
+
+    # TODO:
+    #  Inefficient search, but does it matter?
+    filtered_events = []
+    for event in events:
+        # Remove any event which is not in [START...STOP] (seconds) of any of the STRT/STOP pairs
+        for (start_sec, _, _), (stop_sec, _, _) in start_stop_pairs:
+            if not (event[0] < start_sec or event[0] + event[1] > stop_sec):
+                # In period, add to filtered list and stop search
+                filtered_events.append(event)
+                break
+    return filtered_events
+
+
+def filter_hypnogram_by_start_stop_events(dense_hypnogram_array, start_stop_events,
+                                          period_length_sec, offset_sec=0):
+    """
+    TODO
+    """
+    # Sort, check alternating, starting with "START" event, ends with "STOP" event
+    start_stop_events = check_start_stop_events(start_stop_events)
+
+    # Add offset sec to starts
+    start_stop_events = [
+        (max(0, e[0] - offset_sec), e[1], e[2]) for e in start_stop_events
+    ]
+
+    # Extract indicies from the start stop second events
+    start_stop_indices = get_indices_from_events(start_stop_events, period_length_sec)
+
+    # Split into sections
+    hypnogram_sections = np.split(np.asarray(dense_hypnogram_array), start_stop_indices)
+
+    # Keep only between START...STOP
+    to_keep = [hypnogram_sections[i] for i in range(1, len(hypnogram_sections), 2)]
+    return np.concatenate(to_keep)

@@ -14,7 +14,7 @@ __CB_es: &ES
   nickname: "es"
   class_name: "EarlyStopping"
   kwargs: {monitor: 'val_dice', min_delta: 0,
-           patience: 150, verbose: 1 , mode: 'max'}
+           patience: 80, verbose: 1 , mode: 'max'}
 
 __CB_mcp_clean: &MCP_CLEAN
   # Model checkpoint
@@ -57,7 +57,7 @@ fit:
   margin: 12
 
   # Loss function
-  loss: "SparseCategoricalCrossentropy"
+  loss: ["SparseCategoricalCrossentropy"]
   metrics: ["sparse_categorical_accuracy"]
 
   # Optimization

@@ -5,6 +5,7 @@ A set of utility functions used across multiple scripts in utime.bin
 import os
 from utime.utils.utils import ensure_list_or_tuple
 from mpunet.logging.default_logger import ScreenLogger
+from utime import Defaults
 
 
 def assert_project_folder(project_folder, evaluation=False):
@@ -20,16 +21,16 @@ def assert_project_folder(project_folder, evaluation=False):
     import os
     import glob
     project_folder = os.path.abspath(project_folder)
-    if not os.path.exists(os.path.join(project_folder, "hparams.yaml")):
+    if not os.path.exists(Defaults.get_hparams_path(project_folder)):
         # Folder must contain a 'hparams.yaml' file in all cases.
-        raise RuntimeError("Folder {} is not a valid DeepSleep project folder."
+        raise RuntimeError("Folder {} is not a valid project folder."
                            " Must contain a 'hparams.yaml' "
                            "file.".format(project_folder))
     if evaluation:
         # Folder must contain a 'model' subfolder storing saved model files
         model_path = os.path.join(project_folder, "model")
         if not os.path.exists(model_path):
-            raise RuntimeError("Folder {} is not a valid DeepSleep project "
+            raise RuntimeError("Folder {} is not a valid project "
                                "folder. Must contain a 'model' "
                                "subfolder.".format(project_folder))
         # There must be a least 1 model file (.h5) in the folder
@@ -109,6 +110,8 @@ def get_dataset_splits_from_hparams(hparams, splits_to_load,
                              "hyperparameters file".format(data_key))
         new_id = f"{id}{'/' if id else ''}{hparams[data_key]['identifier']}"
         hparams[data_key]["identifier"] = new_id
+
+        # Load either a standard SleepStudyDataset or from the SingleH5Dataset
         dataset = SleepStudyDataset(**hparams[data_key],
                                     logger=logger,
                                     annotation_dict=ann_dict)
@@ -136,7 +139,8 @@ def get_dataset_splits_from_hparams_file(hparams_path, splits_to_load,
     return get_dataset_splits_from_hparams(hparams, splits_to_load, logger, id)
 
 
-def get_splits_from_all_datasets(hparams, splits_to_load, logger=None):
+def get_splits_from_all_datasets(hparams, splits_to_load, logger=None,
+                                 return_data_hparams=False):
     """
     Wrapper around the 'get_dataset_splits_from_hparams_file' and
     'get_dataset_splits_from_hparams' files loading all sub-datasets according
@@ -158,6 +162,7 @@ def get_splits_from_all_datasets(hparams, splits_to_load, logger=None):
                         of all sub-datasets to load according to their hparams
                         descriptions.
         logger:         A Logger object
+        return_data_hparams: TODO
 
     Returns:
         Yields one or more splits of data from datasets as described by
@@ -165,17 +170,20 @@ def get_splits_from_all_datasets(hparams, splits_to_load, logger=None):
     """
     data_hparams = get_all_dataset_hparams(hparams)
     for dataset_id, hparams in data_hparams.items():
-        yield get_dataset_splits_from_hparams(
-            hparams=hparams,
-            splits_to_load=splits_to_load,
-            logger=logger,
-            id=dataset_id
-        )
+        ds = get_dataset_splits_from_hparams(
+                hparams=hparams,
+                splits_to_load=splits_to_load,
+                logger=logger,
+                id=dataset_id)
+        if return_data_hparams:
+            yield ds, hparams
+        else:
+            yield ds
 
 
 def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
     """
-    Initializes a SleepStudy dataset and applies prep. function
+    Initializes a SleepStudyBase dataset and applies prep. function
     'select_sample_strip_scale_quality' from all subject folders that match
     the a regex statement.
 
@@ -187,37 +195,39 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
         logger:        A Logger object
 
     Returns:
-        A SleepStudy object with settings set as per 'hparams'
+        A SleepStudyBase object with settings set as per 'hparams'
     """
     from utime.dataset.sleep_study_dataset import SleepStudyDataset
     ann_dict = hparams.get("sleep_stage_annotations")
-    params = hparams["train_data"]
+    params = hparams.get("train_data") or hparams['prediction_params']
     data_dir, pattern = os.path.split(os.path.abspath(regex_pattern))
     params["data_dir"] = data_dir
     ssd = SleepStudyDataset(folder_regex=pattern,
-                            **params,
+                            data_dir=data_dir,
+                            # **params,
                             logger=logger,
                             annotation_dict=ann_dict)
     # Apply transformations, scaler etc.
     from utime.utils.scriptutils import select_sample_strip_scale_quality
-    select_sample_strip_scale_quality(ssd, hparams=hparams, logger=logger)
+    select_sample_strip_scale_quality(ssd, hparams=params, logger=logger)
     return ssd
 
 
 def select_sample_strip_scale_quality(*datasets, hparams, logger=None):
     """
-    Helper function which calls the following 7 methods on a SleepStudyDataset
-    with parameters inferred from a YAMLHparams object:
+    Helper function which calls the following methods on a SleepStudyDataset
+    like object with parameters inferred from a YAMLHparams object:
     - SleepStudyDataset.set_select_channels()
     - SleepStudyDataset.set_alternative_select_channels()
-    - SleepStudyDataset.set_channel_sampling_groups()
-    - SleepStudyDataset.set_sample_rate()
-    - SleepStudyDataset.set_strip_func()
-    - SleepStudyDataset.set_quality_control_func()
-    - SleepStudyDataset.set_scaler()
+    - [if applicable] SleepStudyDataset.set_sample_rate()
+    - [if applicable] SleepStudyDataset.set_strip_func()
+    - [if applicable] SleepStudyDataset.set_quality_control_func()
+    - [if applicable] SleepStudyDataset.set_scaler()
+    - [if applicable] set_load_time_channel_sampling_groups
+    - [if applicable] set_access_time_channel_sampling_groups
 
     Args:
-        *datasets: Any number of SleepStudyDataset objects
+        *datasets: Any number of SleepStudyDataset-like objects
         hparams:   A YAMLHparams object parameterised the 3 methods called.
     """
     # Select channels if specified
@@ -228,38 +238,40 @@ def select_sample_strip_scale_quality(*datasets, hparams, logger=None):
     alt_select = hparams.get("alternative_select_channels", [])
     list(map(lambda ds: ds.set_alternative_select_channels(alt_select), datasets))
 
-    # Set channel sampling groups if specified
-    groups = hparams.get("channel_sampling_groups", None)
-    list(map(lambda ds: ds.set_channel_sampling_groups(groups), datasets))
+    # Set load/access time channel sampler if specified
+    if hasattr(datasets[0], 'set_load_time_channel_sampling_groups'):
+        load_groups = tuple(hparams.get("load_time_channel_sampling_groups", []))
+        list(map(lambda ds: ds.set_load_time_channel_sampling_groups(*load_groups),
+                 datasets))
+    elif hasattr(datasets[0], 'set_access_time_channel_sampling_groups'):
+        load_groups = tuple(hparams.get("access_time_channel_sampling_groups", []))
+        list(map(lambda ds: ds.set_access_time_channel_sampling_groups(*load_groups),
+                 datasets))
 
     # Set sample rate
-    sample_rate = hparams.get("set_sample_rate", None)
-    list(map(lambda ds: ds.set_sample_rate(sample_rate), datasets))
+    if hasattr(datasets[0], 'set_sample_rate'):
+        sample_rate = hparams.get("set_sample_rate", None)
+        list(map(lambda ds: ds.set_sample_rate(sample_rate), datasets))
 
     # Apply strip function if specified
     strip_settings = hparams.get("strip_func")
-    if strip_settings:
+    if strip_settings and hasattr(datasets[0], 'set_strip_func'):
         list(map(lambda ds: ds.set_strip_func(**strip_settings), datasets))
 
     # Apply quality control function if specified
     quality_settings = hparams.get("quality_control_func")
-    if quality_settings:
+    if quality_settings and hasattr(datasets[0], 'set_quality_control_func'):
         list(map(lambda ds: ds.set_quality_control_func(**quality_settings), datasets))
 
+    # Set misc attribute on dataset if specified
+    misc = hparams.get('misc', {})
+    if misc and hasattr(datasets[0], 'set_misc_dict'):
+        list(map(lambda ds: ds.set_misc_dict(misc), datasets))
+
     # Set scaler
-    if not hparams.get("batch_wise_scaling"):
-        scl = hparams.get_from_anywhere("scaler") or "RobustScaler"
+    if hasattr(datasets[0], 'set_scaler'):
+        scl = hparams.get("scaler") or "RobustScaler"
         list(map(lambda ds: ds.set_scaler(scl), datasets))
-    else:
-        from mpunet.logging import ScreenLogger
-        logger = logger or ScreenLogger()
-        logger.warn("Note: 'batch_wise_scaling' is set to True in 'fit' hparams."
-                    " No scaling will be applied globally to members of the"
-                    " datasets: {}. Scaling will instead be applied batch-wise."
-                    " Check the log-output of the sequencer object to ensure "
-                    "that a 'batch_wise_scaler' object has been set".format(
-            list(map(str, datasets))
-        ))
 
 
 def make_multi_gpu_model(model, num_GPUs, logger=None):
