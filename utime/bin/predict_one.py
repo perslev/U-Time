@@ -3,7 +3,6 @@
 """
 
 import os
-import readline
 import numpy as np
 from argparse import ArgumentParser
 from utime.bin.evaluate import (set_gpu_vis,
@@ -12,8 +11,6 @@ from utime.bin.evaluate import (set_gpu_vis,
 from utime import Defaults
 from pprint import pformat
 from collections import namedtuple
-
-readline.parse_and_bind('tab: complete')
 
 
 def get_argparser():
