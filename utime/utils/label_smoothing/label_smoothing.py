@@ -14,9 +14,3 @@ def smooth_by_neighbours(labels, kernel, n_classes):
 def smoothen(one_hot_labels, max_alpha, n_classes):
     alpha = np.random.rand() * max_alpha
     return (1-alpha) * one_hot_labels + (alpha/n_classes)
-
-
-# kernel = [0.1, 0.8, 0.1]
-# labels = np.random.randint(0, 5, 10)
-# s1 = smooth_by_neighbours(labels, kernel, 5)
-# s2 = smoothen(s1, 0.1, 5)
