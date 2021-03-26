@@ -300,7 +300,7 @@ ut cv_split --data_dir 'datasets/sleep-EDF-153' \
             --CV 1 \
             --validation_fraction 0.20 \
             --test_fraction 0.20 \
-            --common_prefix_length 5 \
+            --subject_matching_regex 'SC4(\d{2}).*' \
             --file_list
 
 <b># Initialize a U-Time project</b>
