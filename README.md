@@ -9,9 +9,9 @@ This repository may be used to train both the original U-Time and newer U-Sleep 
 However, the repository has been significantly extended since [[1]](#utime_ref) and may gradually 
 diverge from the version described in [[2]](#usleep_ref). Earlier versions may be found at:
 
-* [U-Sleep paper version](https://github.com/perslev/U-Time/tree/usleep_paper_version).
-* [Latest U-Time only release](https://github.com/perslev/U-Time/tree/utime-latest).
-* [U-Time paper version](https://github.com/perslev/U-Time/releases/tag/paper_version).
+* [U-Sleep paper version](https://github.com/perslev/U-Time/tree/usleep-paper-version).
+* [Latest U-Time only version](https://github.com/perslev/U-Time/tree/utime-latest).
+* [U-Time paper version](https://github.com/perslev/U-Time/releases/tag/utime-paper-version).
 
 ## Contents
 
