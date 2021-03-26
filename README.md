@@ -1,6 +1,17 @@
-# U-Sleep
+# U-Time & U-Sleep
 
-Official implementation of the *U-Sleep* model for resilient high-frequency sleep staging.
+Official implementation of
+
+* The *U-Time* [[1]](#utime_ref) model for general-purpose time-series segmentation.
+* The *U-Sleep* [[2]](#usleep_ref) model for resilient high-frequency sleep staging.
+
+This repository may be used to train both the original U-Time and newer U-Sleep models.
+However, the repository has been significantly extended since [[1]](#utime_ref) and may gradually 
+diverge from the version described in [[2]](#usleep_ref). Earlier versions may be found at:
+
+* [U-Sleep paper version](https://github.com/perslev/U-Time/tree/usleep_paper_version).
+* [Latest U-Time only release](https://github.com/perslev/U-Time/tree/utime-latest).
+* [U-Time paper version](https://github.com/perslev/U-Time/releases/tag/paper_version).
 
 ## Contents
 
@@ -293,9 +304,11 @@ We suggest increasing the learning rate (from the current `1e-7` to e.g. `1e-6`)
 #### <a name="usleep_ref"> [2] U-Sleep
 
 ```
-*[in review]*
-Title:         U-Sleep: Resilient High-Frequency Sleep Staging
-Authors:       Mathias Perslev (1), Sune Darkner (1), Lykke Kempfner (2), Miki Nikolic (2), Poul Jørgen Jennum (2) & Christian Igel (1)
-Affiliations:  (1) Department of Computer Science, University of Copenhagen, Denmark
-               (2) Danish Center for Sleep Medicine, Rigshospitalet, Glostrup, Denmark
+[*in press*]
+U-Sleep: Resilient High-Frequency Sleep Staging
+Mathias Perslev (1), Sune Darkner (1), Lykke Kempfner (2), Miki Nikolic (2), Poul Jørgen Jennum (2) & Christian Igel (1)
+npj Digital Medicine, 2021 
+
+(1) Department of Computer Science, University of Copenhagen, Denmark
+(2) Danish Center for Sleep Medicine, Rigshospitalet, Glostrup, Denmark
 ```
