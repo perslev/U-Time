@@ -18,8 +18,9 @@ diverge from the version described in [[2]](#usleep_ref). Earlier versions may b
 - [Overview](#overview)
 - [System Requirements](#system-requirements)
 - [Installation Guide](#installation-guide)
-- [Demo](#demo)
+- [U-Sleep Demo](#demo)
 - [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep)
+- [U-Time Example](#u-time-example)
 - [U-Time and U-Sleep References](#references)
 
 
@@ -39,7 +40,7 @@ In the following we will introduce the software behind U-Sleep in greater detail
 
 
 #### U-Time and U-Sleep - What's the Difference?
-This repository stores code for training and evaluating the *U-Sleep* sleep staging model. It builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model currently in review [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate the U-Sleep model.
+This repository stores code for training and evaluating the *U-Sleep* sleep staging model. It builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model currently in press [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate the U-Sleep model.
 
 ## System Requirements
 **Minimal Hardware Requirements**
@@ -282,6 +283,53 @@ This will apply all preprocessing, create a data archive suitable for streaming,
 
 Due to the vast size of the dataset considered, training U-Sleep with the default parameters may take very long. 
 We suggest increasing the learning rate (from the current `1e-7` to e.g. `1e-6`) unless you are looking to re-create U-Sleep under the exact conditions considered in [[2]](#usleep_ref).
+
+## U-Time Example
+You can still use this repository to train the older U-Time model. 
+In the following we show an end-to-end example. The commands listed below prepares a project folder, downloads the sleep-edf-153 dataset, fits and evaluates
+a U-Time model in a fixed train/val/test dataset split setup. Please note that the below code does not reproduce the sleep-edf-153 experiment of [[1]](#utime_ref) as 10-fold CV was used.
+To run a CV experiment, please refer to the `ut cv_split --help` and `ut cv_experiment --help` commands.
+
+<pre>
+<b># Obtain a public sleep staging dataset</b>
+ut fetch --dataset sleep-EDF-153 --out_dir datasets/sleep-EDF-153
+
+<b># Prepare a fixed-split experiment</b>
+ut cv_split --data_dir 'datasets/sleep-EDF-153' \
+            --subject_dir_pattern 'SC*' \
+            --CV 1 \
+            --validation_fraction 0.20 \
+            --test_fraction 0.20 \
+            --common_prefix_length 5 \
+            --file_list
+
+<b># Initialize a U-Time project</b>
+ut init --name my_utime_project \
+        --model utime \
+        --data_dir datasets/sleep-EDF-153/views/fixed_split
+
+<b># Start training</b>
+cd my_utime_project
+ut train --num_GPUs=1 --channels 'EEG Fpz-Cz'
+
+<b># Predict and evaluate</b>
+ut evaluate --out_dir eval --one_shot
+
+<b># Print a confusion matrix</b>
+ut cm --true 'eval/test_data/dataset_1/files/*/true.npz' \
+      --pred 'eval/test_data/dataset_1/files/*/pred.npz'
+      
+<b># Print per-subject summary statistics</b>
+ut summary --csv_pattern 'eval/test_data/*/evaluation_dice.csv' \
+           --print_all
+
+<b># Output sleep stages for every 3 seconds of 100 Hz signal </b>
+<b># Here, the 'folder_regex' matches 2 files in the dataset </b>
+ut predict --folder_regex '../datasets/sleep-EDF-153/SC400[1-2]E0' \
+           --out_dir high_res_pred \
+           --data_per_prediction 300 \
+           --one_shot
+</pre>
 
 
 ## References
