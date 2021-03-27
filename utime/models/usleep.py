@@ -19,7 +19,7 @@ from mpunet.utils.conv_arithmetics import compute_receptive_fields
 from mpunet.train.utils import init_activation
 
 
-class SingleConvUTime(Model):
+class USleep(Model):
     """
     OBS: Uses 2D operations internally with a 'dummy' axis, so that a batch
          of shape [bs, d, c] is processed as [bs, d, 1, c]. These operations
@@ -80,7 +80,7 @@ class SingleConvUTime(Model):
         build (bool):
             TODO
         """
-        super(SingleConvUTime, self).__init__()
+        super(USleep, self).__init__()
 
         # Set logger or standard print wrapper
         self.logger = logger or ScreenLogger()
