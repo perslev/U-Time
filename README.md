@@ -292,10 +292,10 @@ To run a CV experiment, please refer to the `ut cv_split --help` and `ut cv_expe
 
 <pre>
 <b># Obtain a public sleep staging dataset</b>
-ut fetch --dataset sleep-EDF-153 --out_dir datasets/sleep-EDF-153
+ut fetch --dataset sedf_sc --out_dir datasets/sedf_sc
 
 <b># Prepare a fixed-split experiment</b>
-ut cv_split --data_dir 'datasets/sleep-EDF-153' \
+ut cv_split --data_dir 'datasets/sedf_sc' \
             --subject_dir_pattern 'SC*' \
             --CV 1 \
             --validation_fraction 0.20 \
@@ -306,7 +306,7 @@ ut cv_split --data_dir 'datasets/sleep-EDF-153' \
 <b># Initialize a U-Time project</b>
 ut init --name my_utime_project \
         --model utime \
-        --data_dir datasets/sleep-EDF-153/views/fixed_split
+        --data_dir datasets/sedf_sc/views/fixed_split
 
 <b># Start training</b>
 cd my_utime_project
