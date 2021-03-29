@@ -137,7 +137,7 @@ class LimitationQueue(BaseQueue):
         with self.study_loader.thread_lock:
             self._warn_access_limit()
         # Get random SleepStudy ID from the specified dataset
-        timeout_s = 5
+        timeout_s = 30
         try:
             sleep_study, n_accesses = self.loaded_queue.get(timeout=timeout_s)
         except Empty as e:
