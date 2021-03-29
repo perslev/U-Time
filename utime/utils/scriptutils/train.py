@@ -157,6 +157,7 @@ def get_data_queues(datasets,
     dataset_queues = []
     for dataset in datasets:
         if max_loaded_per_dataset >= len(dataset) and queue_type is LimitationQueue:
+            # TODO: Implement load/access_time_random_channel_selector for EagerQueue, see NotImplementedError below.
             logger.warn(f"Replacing queue type '{queue_type.__name__}' for dataset {dataset} with queue type "
                         f"'{EagerQueue.__name__}' (because max_loaded_per_dataset = {max_loaded_per_dataset} "
                         f">= len(dataset) = {len(dataset)})")
