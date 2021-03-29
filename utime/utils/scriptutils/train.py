@@ -163,8 +163,8 @@ def get_data_queues(datasets,
                         f">= len(dataset) = {len(dataset)})")
             queue_type = EagerQueue
         if queue_type is EagerQueue and \
-                (any([getattr(ss, 'load_time_random_channel_selector') or
-                      getattr(ss, 'access_time_random_channel_selector') for ss in dataset])):
+                (any([getattr(ss, 'load_time_random_channel_selector', False) or
+                      getattr(ss, 'access_time_random_channel_selector', False) for ss in dataset])):
             raise NotImplementedError(
                 "The 'eager' data loading queue currently does not support datasets with "
                 "the 'load_time_channel_sampling_groups' or "
