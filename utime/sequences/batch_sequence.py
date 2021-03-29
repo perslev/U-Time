@@ -204,10 +204,13 @@ class BatchSequence(BaseSequence):
         """
         return self._cum_periods_per_pair_minus_margins
 
-    @requires_all_loaded
     def __len__(self):
         """ Returns the total number of batches in this dataset """
-        return int(np.ceil(self.total_periods_minus_margins/self.batch_size))
+        if self.all_loaded:
+            return int(np.ceil(self.total_periods_minus_margins/self.batch_size))
+        else:
+            # We don't really know, return some reasonably large number (this number is not really used anyway)
+            return int(1e6)
 
     def __iter__(self):
         """ Yields the entire dataset in fixed ordered batches """
