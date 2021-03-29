@@ -129,6 +129,10 @@ def update_hparams_with_command_line_arguments(hparams, args):
                                       name="select_channels",
                                       value=args.channels,
                                       overwrite=True)
+            if dataset_hparams.get("load_time_channel_sampling_groups"):
+                dataset_hparams.delete_group('load_time_channel_sampling_groups')
+            if dataset_hparams.get("access_time_channel_sampling_groups"):
+                dataset_hparams.delete_group('access_time_channel_sampling_groups')
             dataset_hparams.save_current()
     hparams.save_current()
 
