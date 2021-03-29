@@ -157,7 +157,23 @@ def get_data_queues(datasets,
     dataset_queues = []
     for dataset in datasets:
         if max_loaded_per_dataset >= len(dataset) and queue_type is LimitationQueue:
+            logger.warn(f"Replacing queue type '{queue_type.__name__}' for dataset {dataset} with queue type "
+                        f"'{EagerQueue.__name__}' (because max_loaded_per_dataset = {max_loaded_per_dataset} "
+                        f">= len(dataset) = {len(dataset)})")
             queue_type = EagerQueue
+        if queue_type is EagerQueue and \
+                (any([getattr(ss, 'load_time_random_channel_selector') or
+                      getattr(ss, 'access_time_random_channel_selector') for ss in dataset])):
+            raise NotImplementedError(
+                "The 'eager' data loading queue currently does not support datasets with "
+                "the 'load_time_channel_sampling_groups' or "
+                "'access_time_channel_sampling_groups' attributes set. "
+                "If you want to train using random channel combinations, either "
+                "pre-process the data using the 'ut preprocess' command and then re-run "
+                "training using 'ut train --preprocessed', or run training with the "
+                "limitation queue loader using the '--train_queue_type "
+                "limitation' command."
+            )
         dataset_queues.append(queue_type(
             dataset=dataset,
             max_loaded=max_loaded_per_dataset,
