@@ -136,7 +136,7 @@ def save_prediction(pred, out_path, input_file_path, period_length_sec, logger):
     logger("* Saving prediction array of shape {} to {}".format(
         pred.shape, out_path
     ))
-    logger(f"* Using save function: {save_func}")
+    logger(f"* Using save function: {save_func.__name__}")
     save_func(out_path, pred, period_length_sec=period_length_sec)
 
 
