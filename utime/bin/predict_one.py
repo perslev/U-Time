@@ -8,6 +8,7 @@ from argparse import ArgumentParser
 from utime.bin.evaluate import (set_gpu_vis,
                                 get_and_load_one_shot_model,
                                 get_logger)
+from utime.hypnogram.utils import dense_to_sparse
 from utime import Defaults
 from pprint import pformat
 from collections import namedtuple
@@ -24,7 +25,11 @@ def get_argparser():
                              'on the test_data as specified in the '
                              'hyperparameter file.')
     parser.add_argument("-o", type=str, required=True,
-                        help="Output path for storing predictions.")
+                        help="Output path for storing predictions. "
+                             "Valid extensions are '.hyp' (text file with 1 stage (string) per line), "
+                             "'.ids' (init-duration-stage (string) format text file) and '.npy' (numpy array "
+                             "of shape [N, 1] storing stages (ints)). "
+                             "If any other or no extension is specified, '.npy' is assumed.")
     parser.add_argument("--channels", nargs='*', type=str, default=None,
                         required=True,
                         help="A list of channels to use for prediction. "
@@ -79,20 +84,60 @@ def predict_study(study, model, channel_groups, no_argmax, logger=print):
         return np.expand_dims(pred.argmax(-1), -1)
 
 
-def save_prediction(pred, out_path, input_file_path, logger):
+def save_hyp(path, pred, **kwargs):
+    """
+    Save predictions as stage strings with 1 stage (segment) per line in a plain text file.
+    """
+    # Map integer outputs to string stages
+    stage_strings = np.vectorize(Defaults.get_class_int_to_stage_string().get)(pred.ravel())
+    with open(path, "w") as out_f:
+        out_f.write("\n".join(stage_strings))
+
+
+def save_ids(path, pred, period_length_sec, **kwargs):
+    """
+    Save predictions as stage strings in init-duration-stage format in a plain text file.
+    """
+    # Map integer outputs to string stages
+    stage_strings = np.vectorize(Defaults.get_class_int_to_stage_string().get)(pred.ravel())
+    ids = dense_to_sparse(stage_strings, period_length_sec, allow_trim=True)
+    with open(path, "w") as out_f:
+        for i, d, s in ids:
+            out_f.write(f"{i},{d},{s}\n")
+
+
+def save_npy(path, pred, **kwargs):
+    """
+    Save predictions as a numpy file storing a [N, 1] array of integer stages
+    """
+    np.save(path, pred.reshape(-1, 1))
+
+
+def save_prediction(pred, out_path, input_file_path, period_length_sec, logger):
     out_path = os.path.abspath(out_path)
     if os.path.isdir(out_path):
         out_path = os.path.join(out_path, os.path.split(input_file_path)[-1])
     dir_, fname = os.path.split(out_path)
     os.makedirs(dir_, exist_ok=True)
-    fname = os.path.splitext(fname)[0] + ".npy"
-
+    basename, ext = os.path.splitext(fname)
+    if ext == ".hyp":
+        # Save as plain text of 1 stage per line
+        out_path = os.path.join(dir_, basename + ext)
+        save_func = save_hyp
+    elif ext == ".ids":
+        # Save as plain text in IDS format
+        out_path = os.path.join(dir_, basename + ext)
+        save_func = save_ids
+    else:
+        # Save as npy
+        out_path = os.path.join(dir_, basename + ".npy")
+        save_func = save_npy
     # Save pred to disk
-    out_path = os.path.join(dir_, fname)
     logger("* Saving prediction array of shape {} to {}".format(
         pred.shape, out_path
     ))
-    np.save(out_path, pred)
+    logger(f"* Using save function: {save_func}")
+    save_func(out_path, pred, period_length_sec=period_length_sec)
 
 
 def unpack_channel_groups(channels):
@@ -211,6 +256,7 @@ def run(args, return_prediction=False, dump_args=None):
         save_prediction(pred=pred,
                         out_path=args.o,
                         input_file_path=study.psg_file_path,
+                        period_length_sec=hparams.get('period_length_sec', 30),
                         logger=logger)
 
 
