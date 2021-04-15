@@ -350,12 +350,11 @@ ut predict --folder_regex '../datasets/sleep-EDF-153/SC400[1-2]E0' \
 ```
 
 #### <a name="usleep_ref"> [2] U-Sleep
-
 ```
-[*in press*]
 U-Sleep: Resilient High-Frequency Sleep Staging
 Mathias Perslev (1), Sune Darkner (1), Lykke Kempfner (2), Miki Nikolic (2), Poul Jørgen Jennum (2) & Christian Igel (1)
-npj Digital Medicine, 2021 
+npj Digital Medicine, 4, 72 (2021)
+https://doi.org/10.1038/s41746-021-00440-5
 
 (1) Department of Computer Science, University of Copenhagen, Denmark
 (2) Danish Center for Sleep Medicine, Rigshospitalet, Glostrup, Denmark
