@@ -1,5 +1,47 @@
 import numpy as np
-from utime.io.channels import ChannelMontageTuple
+import re
+from utime.io.channels import ChannelMontageTuple, ChannelMontage, infer_channel_types
+
+
+def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",)):
+    """
+    Attempts to automatically infer referencing of all channels of type in "types".
+    Referencing is done to MASTOID classified channels on opposite hemisphere.
+    Channels must contain the appropriate MASTOIDS, otherwise a value error is raised.
+    """
+    channel_names = ChannelMontageTuple(channel_names, relax=True)
+    inferred_types = infer_channel_types(channel_names)
+    channel_types = list(channel_types or inferred_types)
+    if "MASTOID" not in channel_types:
+        # If passed by user, try to overwrite possibly "EEG" labelled passed MASTOID channels
+        # If no mastoid was inferred, this does nothing and an error is raised below
+        for i, (c1, c2) in enumerate(zip(channel_types, inferred_types)):
+            if c2 == "MASTOID":
+                channel_types[i] = c2
+    mastoids = ChannelMontageTuple(("M1", "M2")).match(channel_names, take_target=True)
+    other_channels = [(c, type_) for c, type_ in zip(channel_names, channel_types) if type_ != "MASTOID"]
+    if not mastoids:
+        raise ValueError(f"Could not automatically infer referencing for channels {channel_names}. "
+                         f"Inferred types {channel_types} does not contain 1 or more MASTOID typed channels.")
+    referenced = []
+    for channel, type_ in other_channels:
+        if type_ not in types:
+            referenced.append(channel.original_name)
+        else:
+            numbers = list(map(int, re.findall(r"\d", channel.channel)))
+            if not numbers or len(numbers) > 1:
+                raise ValueError(f"Could not automatically infer referencing for channel {channel} (type={type_}). "
+                                 f"The channel name {channel.channel} should contain 1 digit, e.g. as in 'EEG C3', "
+                                 f"but found {len(numbers)} ({numbers})")
+            needed_mastoid = ChannelMontage("M" + str(1 + (numbers[0] % 2)))
+            if needed_mastoid in mastoids:
+                ref_mastoid = mastoids[mastoids.index(needed_mastoid)]
+                referenced.append(f"{channel.original_name}-{ref_mastoid.original_name}")
+            else:
+                raise ValueError(f"Could not automatically infer referencing for channel {channel} (type={type_}). "
+                                 f"The channel should be referenced to mastoid {needed_mastoid}, "
+                                 f"but a match to such was not found among possible: {mastoids}")
+    return referenced
 
 
 def get_existing_separated_channels(channel, existing_channels):
@@ -89,8 +131,6 @@ class ChannelMontageCreator:
 
         Args:
             channel_data:
-            channels:
-            allow_missing:
 
         Returns:
 
