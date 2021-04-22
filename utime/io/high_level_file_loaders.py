@@ -38,7 +38,7 @@ def load_psg(psg_file_path,
         A dictionary of header information
     """
     # Load the header of a PSG file. Stores e.g. channel names and sample rates
-    header = extract_header(psg_file_path)
+    header = extract_header(psg_file_path=psg_file_path)
 
     if load_time_channel_selector:
         # Randomly select from the available channels in groups according to
@@ -59,22 +59,30 @@ def load_psg(psg_file_path,
                           load_time_channel_selector.channel_groups)) from e
 
     # Work out which channels to include and exclude during loading
-    org_channels, include_channels, exclude_channels = \
+    org_channels, include_channels, exclude_channels, montage_creator = \
         get_org_include_exclude_channel_montages(
             load_channels=load_channels,
             header=header,
             ignore_reference_channels=ignore_reference_channels,
             check_num_channels=check_num_channels,
+            allow_auto_referencing=True,
             check_duplicates=True
         )
-    header["channel_names"] = include_channels
-    header["n_channels"] = len(include_channels)
+    header["channel_names"] = org_channels  # Now a ChannelMontageTuple object
 
     # Actually load data from disk, if not done already in open_psg_file
     # Select the relevant channels if not done already in open_psg_file
-    psg_data = extract_psg_data(psg_file_path, header,
+    psg_data = extract_psg_data(psg_file_path=psg_file_path,
+                                header=header,
                                 include_channels=include_channels.original_names,
                                 exclude_channels=exclude_channels.original_names)
+    if montage_creator:
+        psg_data, include_channels = montage_creator.create_montages(psg_data)
+
+    # Update header with actually kept channels
+    header["channel_names"] = include_channels
+    header["n_channels"] = len(include_channels)
+
     return psg_data, header
 
 
