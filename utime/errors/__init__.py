@@ -21,6 +21,9 @@ class H5ChannelRootError(KeyError): pass
 class H5VariableAttributesError(ValueError): pass
 
 
+class VariableSampleRateError(ValueError): pass
+
+
 class MissingHeaderFieldError(KeyError): pass
 
 
