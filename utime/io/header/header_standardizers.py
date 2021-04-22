@@ -20,7 +20,8 @@ import numpy as np
 import h5py
 from datetime import datetime
 from utime.errors import (MissingHeaderFieldError, HeaderFieldTypeError,
-                          LengthZeroSignalError, H5VariableAttributesError)
+                          LengthZeroSignalError, H5VariableAttributesError,
+                          VariableSampleRateError)
 
 
 def _assert_header(header):
@@ -206,4 +207,43 @@ def _standardized_h5_header(h5_file, channel_group_name="channels"):
     elif not isinstance(date, datetime):
         date = None
     header["date"] = date
+    return _assert_header(header)
+
+
+def _standardized_bin_header(raw_header):
+    """
+    Header extraction function for custom dict type headers for data in .bin files.
+    Raw header has structure:
+        {"CHX": [list of channel inds], "NAME": [list of channel names],
+         "TYPE": [list of channel types], "FS": [list of channel sample rates]}
+
+    All values stored in the header are strings and should be cast to ints. etc as appropriate
+    for header standardization.
+
+    Currently raises an error if all attribute in header["FS"] are not equal
+    (i.e., same sample rate is required for all channels).
+
+    Returns:
+        Header information as dict
+    """
+    # Assert upper case keys
+    raw_header = {key.upper(): values for key, values in raw_header.items()}
+
+    # Assert that all samples rates are equal
+    sample_rates = np.array(raw_header["FS"], dtype=np.int32)
+    if not (sample_rates[0] == sample_rates).all():
+        raise VariableSampleRateError(f"Sample rates in header {raw_header} are not "
+                                      f"all equal with rates: {sample_rates}. "
+                                      f"The data loaders for .bin formatted files currently "
+                                      f"support only files with all channels sampled at equal rates.")
+
+    # Build standardized header
+    header = {
+        "n_channels": len(raw_header["NAME"]),
+        "channel_names": list(raw_header["NAME"]),
+        "sample_rate": int(sample_rates[0]),
+        "date": None,
+        "length": int(raw_header["LENGTH"]),
+        "channel_types": [type_.upper() for type_ in raw_header.get("TYPE", [])]
+    }
     return _assert_header(header)

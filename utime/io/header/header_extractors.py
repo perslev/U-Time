@@ -11,11 +11,13 @@ A collection of functions for extracting a header of the following format:
 """
 import os
 import warnings
+import numpy as np
 from utime.errors import H5ChannelRootError
 from utime.utils import mne_no_log_context
 from utime.io.header.header_standardizers import (_standardized_edf_header,
                                                   _standardized_wfdb_header,
-                                                  _standardized_h5_header)
+                                                  _standardized_h5_header,
+                                                  _standardized_bin_header)
 
 
 def extract_edf_header(file_path):
@@ -82,28 +84,50 @@ def extract_h5_header(h5_path, try_channel_dir_names=("channels", "signals", "ps
                                  f"would not be valid).")
 
 
+def extract_bin_header(bin_path, bin_dtype=np.dtype("<f4"), header_rename_func=lambda x: x.rpartition("_")[0] + "_ChannelInfo.txt"):
+    header_path = header_rename_func(bin_path)
+    lines = []
+    with open(header_path, "r") as in_f:
+        for line in in_f:
+            split_sep = "\t" if "\t" in line else " "
+            lines.append(list(map(lambda x: x.strip(" .:\n\t"), filter(None, line.split(split_sep)))))
+    columns = list(zip(*lines))
+    header = {col[0].upper(): col[1:] for col in columns}
+
+    # Infer data length attribute here
+    bytes_in_file = os.path.getsize(bin_path)
+    n_channels = len(header["NAME"])
+    assert not bytes_in_file % n_channels, f"Number of channels in header file {header_path} does" \
+                                           f" not match data in bin file {bin_dtype}"
+    length = int(int(bytes_in_file / n_channels) / bin_dtype.itemsize)
+    assert not length % int(header["FS"][0]), "Inferred length of data does not match sample rate specified in header"
+    header["LENGTH"] = length
+    return _standardized_bin_header(header)
+
+
 _EXT_TO_LOADER = {
     "edf": extract_edf_header,
     "mat": extract_wfdb_header,
     "dat": extract_wfdb_header,
     "h5": extract_h5_header,
-    "hdf5": extract_h5_header
+    "hdf5": extract_h5_header,
+    "bin": extract_bin_header
 }
 
 
-def extract_header(file_path):
+def extract_header(psg_file_path, **kwargs):
     """
-    Loads the header from a PSG-type file at path 'file_path'.
+    Loads the header from a PSG-type file at path 'psg_file_path'.
 
     Returns:
         dictionary of header information
     """
-    fname = os.path.split(os.path.abspath(file_path))[-1]
+    fname = os.path.split(os.path.abspath(psg_file_path))[-1]
     _, ext = os.path.splitext(fname)
     load_func = _EXT_TO_LOADER[ext[1:]]
-    header = load_func(file_path)
+    header = load_func(psg_file_path, **kwargs)
     # Add file location data
-    file_path, file_name = os.path.split(file_path)
+    file_path, file_name = os.path.split(psg_file_path)
     header['data_dir'] = file_path
     header["file_name"] = file_name
     return header

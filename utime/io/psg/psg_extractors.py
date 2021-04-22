@@ -3,6 +3,7 @@ import os
 import h5py
 from utime.utils import mne_no_log_context
 from utime.errors import ChannelNotFoundError
+from utime.io.channels import ChannelMontageTuple
 
 
 def extract_from_edf(psg_file_path, header, include_channels, exclude_channels, **kwargs):
@@ -60,7 +61,7 @@ def extract_from_h5(h5_file_path, include_channels, header, **kwargs):
     TODO
 
     Returns:
-        ndarray
+        ndarray, shape NxC
     """
     data = np.empty(shape=[len(include_channels), header["length"]], dtype=np.float32)
     with h5py.File(h5_file_path, "r") as h5_file:
@@ -70,16 +71,38 @@ def extract_from_h5(h5_file_path, include_channels, header, **kwargs):
     return data.T
 
 
+def extract_from_bin(bin_path, include_channels, exclude_channels, header, bin_dtype=np.dtype("<f4"), **kwargs):
+    """
+    TODO.
+
+    OBS: All data is loaded even if only a subset of channels, those in "include_channels", are returned.
+
+    Returns:
+        ndarray, shape NxC
+    """
+    with open(bin_path, "rb") as in_f:
+        data = np.fromfile(in_f, bin_dtype).reshape((-1, header["n_channels"]))
+    assert data.shape[0] == header["length"]
+    org_channel_names = header["channel_names"].original_names
+    if not np.all(np.isin(include_channels, org_channel_names)):
+        raise ChannelNotFoundError(f"Did not find one or more requested channels "
+                                   f"'{include_channels}' in file {bin_path} "
+                                   f"with channels {header['channel_names']}.")
+    keep_channels_mask = np.isin(org_channel_names, include_channels)
+    return data[:, keep_channels_mask]
+
+
 _EXT_TO_LOADER = {
     "edf": extract_from_edf,
     "mat": extract_from_wfdb,
     "dat": extract_from_wfdb,
     "h5": extract_from_h5,
-    "hdf5": extract_from_h5
+    "hdf5": extract_from_h5,
+    "bin": extract_from_bin
 }
 
 
-def extract_psg_data(psg_file_path, header, include_channels, exclude_channels):
+def extract_psg_data(psg_file_path, header, include_channels, exclude_channels, **kwargs):
     """
     Extract final ndarray data from the PSG object
     """
@@ -89,7 +112,8 @@ def extract_psg_data(psg_file_path, header, include_channels, exclude_channels):
     psg_data = load_func(psg_file_path,
                          header=header,
                          include_channels=include_channels,
-                         exclude_channels=exclude_channels)
+                         exclude_channels=exclude_channels,
+                         **kwargs)
     psg_data = np.asarray(psg_data)
 
     if include_channels and psg_data.shape[1] != len(include_channels):
