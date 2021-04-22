@@ -1,15 +1,13 @@
-from mne.channels import read_layout
+from mne.channels import make_standard_montage
 from numpy import ndarray
 
 _ALLOWED_CHAN_SYNONYMS = {"A1": "M1",
                           "A2": "M2",
                           "ROC": "E2",
                           "LOC": "E1"}
-
-#_REPLACE_RULES = (("EEG", ""), ("(", ""), (")", ""))
 _REPLACE_RULES = (("(", ""), (")", ""))
 
-_ALLOWED_CHANNELS_LIST = read_layout("biosemi").names + \
+_ALLOWED_CHANNELS_LIST = make_standard_montage("standard_1020").ch_names + \
                          list(_ALLOWED_CHAN_SYNONYMS.keys()) + \
                          list(_ALLOWED_CHAN_SYNONYMS.values())
 ALLOWED_CHANNELS = {c.upper(): None for c in _ALLOWED_CHANNELS_LIST}
