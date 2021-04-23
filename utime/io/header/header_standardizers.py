@@ -16,12 +16,13 @@ the following keys:
 Note: length gives the number of samples, divide by sample_rate to get length_sec
 """
 
+import logging
 import numpy as np
 import h5py
 from datetime import datetime
 from utime.errors import (MissingHeaderFieldError, HeaderFieldTypeError,
                           LengthZeroSignalError, H5VariableAttributesError,
-                          VariableSampleRateError)
+                          VariableSampleRateError, FloatSampleRateError)
 
 
 def _assert_header(header):
@@ -55,6 +56,34 @@ def _assert_header(header):
     return header
 
 
+def _sample_rate_as_int(sample_rate, raise_or_warn='raise'):
+    """
+    Returns the sample rate rounded to the nearest whole integer.
+    If the integer sample rate is not exactly (as determined by np.isclose) equal to the original,
+    possibly floating, value an warning is issued if raise_or_warn="warn" or an FloatSampleRateError
+    is raised if raise_or_warn="raise".
+
+    Raises ValueError if raise_or_warn not in ('raise', 'warn', 'warning').
+
+    Args:
+        sample_rate: int, float sample rate
+
+    Returns:
+        sample_rate, int
+    """
+    new_sample_rate = int(np.round(sample_rate))
+    if not np.isclose(new_sample_rate, sample_rate):
+        s = f"File has float sample rate of value {sample_rate} which is not exactly equal to the " \
+            f"rounded integer value of {new_sample_rate}. Integer value {new_sample_rate} will be used."
+        if raise_or_warn.lower() == "raise":
+            raise FloatSampleRateError(s)
+        elif raise_or_warn.lower() in ("warn", "warning"):
+            logging.warning(s)
+        else:
+            raise ValueError("raise_or_warn argument must be one of 'raise' or 'warn'.")
+    return new_sample_rate
+
+
 def _standardized_edf_header(raw_edf):
     """
     Header extraction function for RawEDF and Raw objects.
@@ -69,7 +98,7 @@ def _standardized_edf_header(raw_edf):
     # value, 4) whether a missing value should raise an error.
     header_map = [("n_channels", "nchan", int, True),
                   ("channel_names", "ch_names", list, True),
-                  ("sample_rate", "sfreq", int, True),
+                  ("sample_rate", "sfreq", _sample_rate_as_int, True),
                   ("date", "meas_date", datetime.utcfromtimestamp, False)]
     if isinstance(raw_edf.info["meas_date"], (tuple, list)):
         assert raw_edf.info["meas_date"][1] == 0
@@ -102,7 +131,7 @@ def _standardized_wfdb_header(wfdb_record):
     # value, 4) whether a missing value should raise an error.
     header_map = [("n_channels", "n_sig", int, True),
                   ("channel_names", "sig_name", list, True),
-                  ("sample_rate", "fs", int, True),
+                  ("sample_rate", "fs", _sample_rate_as_int, True),
                   ("date", "base_date", datetime.utcfromtimestamp, False),
                   ("length", "sig_len", int, True)]
     header = {}
@@ -193,7 +222,7 @@ def _standardized_h5_header(h5_file, channel_group_name="channels"):
     # TODO: Remove this restriction at least for sample rates; requires handling at PSG loading time
     try:
         header["date"] = _get_unique_value(header["date"])
-        header["sample_rate"] = int(_get_unique_value(header["sample_rate"]))
+        header["sample_rate"] = _sample_rate_as_int(_get_unique_value(header["sample_rate"]))
         header["length"] = int(_get_unique_value(header["length"]))
     except H5VariableAttributesError as e:
         raise H5VariableAttributesError("Datasets stored in the specified H5 archive differ with respect to one or "
@@ -241,7 +270,7 @@ def _standardized_bin_header(raw_header):
     header = {
         "n_channels": len(raw_header["NAME"]),
         "channel_names": list(raw_header["NAME"]),
-        "sample_rate": int(sample_rates[0]),
+        "sample_rate": _sample_rate_as_int(sample_rates[0]),
         "date": None,
         "length": int(raw_header["LENGTH"]),
         "channel_types": [type_.upper() for type_ in raw_header.get("TYPE", [])]
