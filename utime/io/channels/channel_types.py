@@ -4,10 +4,10 @@ from utime.io.channels import ChannelMontageTuple, ChannelMontage
 
 EEG_CHANNELS = list(filter(lambda chan: chan not in ("M1", "M2", "A1", "A2"),
                            make_standard_montage("standard_1020").ch_names))
-EEG_REGEX = re.compile("(EEG|{})".format("|".join(EEG_CHANNELS)), re.IGNORECASE)
-EOG_REGEX = re.compile(r"(EOG|E\d|ROC|LOC)", re.IGNORECASE)
-EMG_REGEX = re.compile(r"(EMG)", re.IGNORECASE)
-MASTOID_REGEX = re.compile(r"(A1|A2|M1|M2)", re.IGNORECASE)
+EEG_REGEX = re.compile(r"(\bEEG|\b{})".format(r"|\b".join(EEG_CHANNELS)), re.IGNORECASE)
+EOG_REGEX = re.compile(r"(\bEOG|\bE\d|\bROC|\bLOC)", re.IGNORECASE)
+EMG_REGEX = re.compile(r"(\bEMG)", re.IGNORECASE)
+MASTOID_REGEX = re.compile(r"(\bA1|\bA2|\bM1|\bM2)", re.IGNORECASE)
 
 
 def is_eeg(channel_name):
