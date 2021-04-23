@@ -38,7 +38,7 @@ def _strip(hyp, mask, inits, durs, stages, pop_from_start):
     hyp.stages = np.array(stages, hyp.stages.dtype)
 
 
-def strip_class_leading(psg, hyp, class_int, sample_rate, check_lengths=False):
+def strip_class_leading(psg, hyp, class_int, sample_rate, check_lengths=False, **kwargs):
     """
     Remove stage 'class_int' events from start and/or end of hypnogram
     Typically applied in 'strip_class_leading_and_trailing'
@@ -52,7 +52,7 @@ def strip_class_leading(psg, hyp, class_int, sample_rate, check_lengths=False):
     return psg, hyp
 
 
-def strip_class_trailing(psg, hyp, class_int, sample_rate, check_lengths=False):
+def strip_class_trailing(psg, hyp, class_int, sample_rate, check_lengths=False, **kwargs):
     """
     Remove stage 'class_int' events from the end of hypnogram
     Typically applied in 'strip_class_leading_and_trailing'
@@ -66,8 +66,7 @@ def strip_class_trailing(psg, hyp, class_int, sample_rate, check_lengths=False):
     return psg, hyp
 
 
-def strip_class_leading_and_trailing(psg, hyp, class_int, sample_rate,
-                                     check_lengths=False):
+def strip_class_leading_and_trailing(psg, hyp, class_int, sample_rate, check_lengths=False, **kwargs):
     """
     Drops a class 'class_int' from the head and tail of a hypnogram file.
     Does not strip the PSG or HYP further. If this function is applied alone,
@@ -81,7 +80,7 @@ def strip_class_leading_and_trailing(psg, hyp, class_int, sample_rate,
     return psg, hyp
 
 
-def strip_psg_to_match_hyp_len(psg, hyp, sample_rate, check_lengths=False):
+def strip_psg_to_match_hyp_len(psg, hyp, sample_rate, check_lengths=False, **kwargs):
     """
     Trims the tail of a PSG to match the length of a hypnogram.
     See drop_class function for argument description.
@@ -101,8 +100,7 @@ def strip_psg_to_match_hyp_len(psg, hyp, sample_rate, check_lengths=False):
     return psg[:-idx_to_strip]
 
 
-def end_pad_psg(psg, hyp, sample_rate, pad_value=0.0,
-                check_lengths=False):
+def end_pad_psg(psg, hyp, sample_rate, pad_value=0.0, check_lengths=False, **kwargs):
     """
     TODO
 
@@ -131,7 +129,7 @@ def end_pad_psg(psg, hyp, sample_rate, pad_value=0.0,
     return padded_psg
 
 
-def strip_hyp_to_match_psg_len(psg, hyp, sample_rate, check_lengths=False):
+def strip_hyp_to_match_psg_len(psg, hyp, sample_rate, check_lengths=False, **kwargs):
     """
     Strips a (longer) hypnogram to match the length of a (shorter) PSG
     See the SparseHypnogram.set_new_end_time method
@@ -156,7 +154,7 @@ def strip_hyp_to_match_psg_len(psg, hyp, sample_rate, check_lengths=False):
     return hyp
 
 
-def strip_to_match(psg, hyp, sample_rate, class_int=None, check_lengths=False):
+def strip_to_match(psg, hyp, sample_rate, class_int=None, check_lengths=False, **kwargs):
     """
     Strips to match the PSG and HYP lengths using the following ordered steps:
       1) Drops any potential "OUT_OF_BOUNDS" segments
@@ -194,7 +192,7 @@ def strip_to_match(psg, hyp, sample_rate, class_int=None, check_lengths=False):
     return psg, hyp
 
 
-def strip_class(psg, hyp, class_int, sample_rate, check_lengths=False):
+def strip_class(psg, hyp, class_int, sample_rate, check_lengths=False, **kwargs):
     """
     Remove class 'class_int' if leading or trailing, then strip to match
     See drop_class function for argument description.
@@ -231,7 +229,8 @@ def convert_to_strip_mask(bool_mask):
 
 
 def drop_class(psg, hyp, class_int, sample_rate,
-               strip_only=False, check_lengths=False, call_strip_to_match=True):
+               strip_only=False, check_lengths=False,
+               call_strip_to_match=True, **kwargs):
     """
     Drops a sleep stage / class with integer value 'class_int' entirely. That
     is, all 'class_int' stages in SparseHypnogram 'hyp' will be dropped and
@@ -320,7 +319,7 @@ def drop_class(psg, hyp, class_int, sample_rate,
     return psg, hyp
 
 
-def trim_psg_trailing(psg, sample_rate, period_length_sec, hyp=None, class_int=None, check_lengths=None):
+def trim_psg_trailing(psg, sample_rate, period_length_sec, hyp=None, **kwargs):
     """
     Trims the length of an input PSG array so that it is evenly divisible by a number
         i = sample_rate * period_length_sec
@@ -333,8 +332,6 @@ def trim_psg_trailing(psg, sample_rate, period_length_sec, hyp=None, class_int=N
         sample_rate: The sample rate in 1/s of the input PSG
         period_length_sec: Length in seconds of 1 segment in the PSG
         hyp: Ignored
-        class_int: Ignored
-        check_lengths: Ignored
 
     Returns:
         PSG, hyp/None
@@ -372,6 +369,7 @@ def apply_strip_func(sleep_study, sample_rate):
                            hyp=sleep_study.hypnogram,
                            sample_rate=sample_rate,
                            check_lengths=True,  # Always check in the end
+                           period_length_sec=sleep_study.period_length_sec,
                            **kwargs)
     except StripError as e:
         sleep_study.raise_err(StripError,
