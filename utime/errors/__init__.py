@@ -21,9 +21,6 @@ class H5ChannelRootError(KeyError): pass
 class H5VariableAttributesError(ValueError): pass
 
 
-class FloatSampleRateError(ValueError): pass
-
-
 class VariableSampleRateError(ValueError): pass
 
 
@@ -46,3 +43,7 @@ class MarginError(ValueError):
     def __init__(self, *args, shift=None, **kwargs):
         super(MarginError, self).__init__(*args, **kwargs)
         self.shift = shift
+
+
+""" Warnings """
+class FloatSampleRateWarning(UserWarning): pass

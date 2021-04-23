@@ -16,13 +16,13 @@ the following keys:
 Note: length gives the number of samples, divide by sample_rate to get length_sec
 """
 
-import logging
+import warnings
 import numpy as np
 import h5py
 from datetime import datetime
 from utime.errors import (MissingHeaderFieldError, HeaderFieldTypeError,
                           LengthZeroSignalError, H5VariableAttributesError,
-                          VariableSampleRateError, FloatSampleRateError)
+                          VariableSampleRateError, FloatSampleRateWarning)
 
 
 def _assert_header(header):
@@ -56,7 +56,7 @@ def _assert_header(header):
     return header
 
 
-def _sample_rate_as_int(sample_rate, raise_or_warn='raise'):
+def _sample_rate_as_int(sample_rate, raise_or_warn='warn'):
     """
     Returns the sample rate rounded to the nearest whole integer.
     If the integer sample rate is not exactly (as determined by np.isclose) equal to the original,
@@ -76,9 +76,9 @@ def _sample_rate_as_int(sample_rate, raise_or_warn='raise'):
         s = f"File has float sample rate of value {sample_rate} which is not exactly equal to the " \
             f"rounded integer value of {new_sample_rate}. Integer value {new_sample_rate} will be used."
         if raise_or_warn.lower() == "raise":
-            raise FloatSampleRateError(s)
+            raise FloatSampleRateWarning(s)
         elif raise_or_warn.lower() in ("warn", "warning"):
-            logging.warning(s)
+            warnings.warn(s, FloatSampleRateWarning)
         else:
             raise ValueError("raise_or_warn argument must be one of 'raise' or 'warn'.")
     return new_sample_rate
