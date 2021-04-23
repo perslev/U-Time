@@ -73,8 +73,8 @@ def _sample_rate_as_int(sample_rate, raise_or_warn='warn'):
     """
     new_sample_rate = int(np.round(sample_rate))
     if not np.isclose(new_sample_rate, sample_rate):
-        s = f"File has float sample rate of value {sample_rate} which is not exactly equal to the " \
-            f"rounded integer value of {new_sample_rate}. Integer value {new_sample_rate} will be used."
+        s = f"The loaded file has a float sample rate of value {sample_rate} which is not exactly equal to the " \
+            f"rounded integer value of {new_sample_rate}. Please note: Integer value {new_sample_rate} will be used."
         if raise_or_warn.lower() == "raise":
             raise FloatSampleRateWarning(s)
         elif raise_or_warn.lower() in ("warn", "warning"):
