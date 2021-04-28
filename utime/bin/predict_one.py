@@ -59,6 +59,8 @@ def get_argparser():
                              "types in ['EEG', 'EOG'] for which this feature should be active. E.g., with "
                              "--channels C3 C4 A1 A2 passed and --auto_reference_types EEG set, the referenced "
                              "channels C3-A2 and C4-A1 will be used instead.")
+    parser.add_argument("--strip_func", type=str, default='trim_psg_trailing',
+                        help="Strip function to use, default = 'trim_psg_trailing'.")
     parser.add_argument("--project_dir", type=str, default="./",
                         help='Path to U-Time project folder')
     parser.add_argument("--data_per_prediction", type=int, default=None,
@@ -397,6 +399,7 @@ def run(args, return_prediction=False, dump_args=None):
     # Get the sleep study
     logger("Loading and pre-processing PSG file...")
     hparams['prediction_params']['channels'] = args.channels
+    hparams['prediction_params']['strip_func']['strip_func_str'] = args.strip_func
     study, channel_groups = get_sleep_study(psg_path=args.f,
                                             logger=logger,
                                             auto_channel_grouping=args.auto_channel_grouping,
