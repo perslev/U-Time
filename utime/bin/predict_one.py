@@ -4,11 +4,13 @@
 
 import os
 import numpy as np
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from utime.bin.evaluate import (set_gpu_vis,
                                 get_and_load_one_shot_model,
                                 get_logger)
 from utime.hypnogram.utils import dense_to_sparse
+from utime.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
+from utime.io.channels import auto_infer_referencing as infer_channel_refs
 from utime import Defaults
 from pprint import pformat
 from collections import namedtuple
@@ -20,24 +22,43 @@ def get_argparser():
     """
     parser = ArgumentParser(description='Predict using a U-Time model.')
     parser.add_argument("-f", type=str, required=True,
-                        help='Regex pattern matching files to predict on. '
-                             'If not specified, prediction will be launched '
-                             'on the test_data as specified in the '
-                             'hyperparameter file.')
+                        help='Path to file to predict on.')
     parser.add_argument("-o", type=str, required=True,
                         help="Output path for storing predictions. "
                              "Valid extensions are '.hyp' (text file with 1 stage (string) per line), "
                              "'.ids' (init-duration-stage (string) format text file) and '.npy' (numpy array "
                              "of shape [N, 1] storing stages (ints)). "
                              "If any other or no extension is specified, '.npy' is assumed.")
-    parser.add_argument("--channels", nargs='*', type=str, default=None,
+    parser.add_argument("--logging_out_path", type=str, default=None,
+                        help='Optional path to store prediction log. If not set, <out_folder>/<file_name>.log is used.')
+    parser.add_argument("--channels", nargs='+', type=str, default=None,
                         required=True,
                         help="A list of channels to use for prediction. "
-                             "To predict on multiple channel groups, pass one string for "
-                             "each channel group with each channel in the group separated by a '++' sign. "
-                             "E.g. to predict on EEG1-EOG1 and EEG2-EOG2, pass EEG1+EOG1 EEG2+EOG2. Each group "
-                             "will be used for prediction once, and the final results will be a majority vote "
-                             "across all.")
+                             "To predict on multiple channel groups, pass a string where "
+                             "each channel in each channel group is separated by '++' and different groups are "
+                             "separated by space or '&&'. E.g. to predict on {EEG1, EOG1} and {EEG2, EOG2}, pass "
+                             "'EEG1++EOG1' 'EEG2++EOG2'. Each group will be used for prediction once, and the final "
+                             "results will be a majority vote across all. "
+                             "You may also specify a list of individual channels and use the --auto_channel_grouping to"
+                             " predict on all channel group combinations possible by channel types. "
+                             "You may optionally also specify channel types using general channel declarations "
+                             "['EEG', 'EOG', 'EMG'] which will be considered when using the --auto_channel_grouping "
+                             "flag. Use '<channel_name>==<channel_type>', e.g. 'C3-A2==EEG' 'EOGl==EOG'.")
+    parser.add_argument("--auto_channel_grouping", nargs="+", type=str, default=None,
+                        help="Attempt to automatically group all channels specified with --channels into channel "
+                             "groups by types. Pass a string of format '<type_1> <type_2>' (optional && separaters) "
+                             "using the general channel types declarations ['EEG', 'EOG', 'EMG']. "
+                             "E.g. to predict on all available channel groups with 1 EEG and 1 EOG channel "
+                             "(in that order), pass '--auto_channel_grouping=EEG++EOG' and all channels to consider "
+                             "with the --channels argument. Channel types may be passed with --channels (see above), "
+                             "otherwise, channel types are automatically inferred from the channel names. "
+                             "Note that not all models are designed to work with all types, e.g. U-Sleep V1.0 "
+                             "does not need EMG inputs and should not be passed.")
+    parser.add_argument("--auto_reference_types", nargs='+', type=str, default=None,
+                        help="Attempt to automatically reference channels to MASTOID typed channels. Pass channel "
+                             "types in ['EEG', 'EOG'] for which this feature should be active. E.g., with "
+                             "--channels C3 C4 A1 A2 passed and --auto_reference_types EEG set, the referenced "
+                             "channels C3-A2 and C4-A1 will be used instead.")
     parser.add_argument("--project_dir", type=str, default="./",
                         help='Path to U-Time project folder')
     parser.add_argument("--data_per_prediction", type=int, default=None,
@@ -57,9 +78,53 @@ def get_argparser():
     return parser
 
 
-def assert_args(args):
-    """ Not yet implemented """
-    return
+def get_processed_args(args):
+    """
+    Validate and prepare args.
+    Returns a new set of args with potential modifications.
+
+    Returns:
+         Path to a validated project directory as per --project_dir.
+    """
+    modified_args = {}
+    for key, value in vars(args).items():
+        if isinstance(value, list):
+            # Allow list-like arguments to be passed either space-separated as normally,
+            # or using '&&' delimiters. This is useful e.g. when using Docker.
+            split_list = []
+            for item in value:
+                split_list.extend(map(lambda s: s.strip(), item.split("&&")))
+            value = split_list
+        modified_args[key] = value
+    args = Namespace(**modified_args)
+    assert args.num_GPUs >= 0, "--num_GPUs must be positive or 0."
+
+    # Check project folder is valid
+    from utime.utils.scriptutils.scriptutils import assert_project_folder
+    project_dir = os.path.abspath(args.project_dir)
+    assert_project_folder(project_dir, evaluation=True)
+    args.project_dir = project_dir
+
+    # Set absolute input file path
+    args.f = os.path.abspath(args.f)
+
+    # Set output file path
+    if os.path.isdir(args.o):
+        args.o = os.path.join(args.o, os.path.splitext(os.path.split(args.f)[-1])[0] + ".npy")
+
+    # Set logging out path
+    if args.logging_out_path is None:
+        args.logging_out_path = args.o.replace(".npy", ".log")
+    elif os.path.isdir(args.logging_out_path):
+        args.logging_out_path = os.path.join(args.logging_out_path, os.path.split(args.o)[0].replace(".npy", ".log"))
+
+    if args.auto_channel_grouping is not None:
+        # Check if --auto_channel_grouping has correct format and at least 2 groups
+        assert len(args.auto_channel_grouping) > 1, "Should specify at least 2 channel type groups " \
+                                                    "with parameter --auto_channel_grouping, " \
+                                                    f"e.g. 'EEG' 'EOG', but got {args.auto_channel_grouping}"
+
+    return args
 
 
 def predict_study(study, model, channel_groups, no_argmax, logger=print):
@@ -113,10 +178,7 @@ def save_npy(path, pred, **kwargs):
     np.save(path, pred.reshape(-1, 1))
 
 
-def save_prediction(pred, out_path, input_file_path, period_length_sec, logger):
-    out_path = os.path.abspath(out_path)
-    if os.path.isdir(out_path):
-        out_path = os.path.join(out_path, os.path.split(input_file_path)[-1])
+def save_prediction(pred, out_path, period_length_sec, logger):
     dir_, fname = os.path.split(out_path)
     os.makedirs(dir_, exist_ok=True)
     basename, ext = os.path.splitext(fname)
@@ -140,15 +202,36 @@ def save_prediction(pred, out_path, input_file_path, period_length_sec, logger):
     save_func(out_path, pred, period_length_sec=period_length_sec)
 
 
+def split_channel_types(channels):
+    """
+    TODO
+
+    Args:
+        channels: list of channel names
+
+    Returns:
+        stripped channels
+        channel_types
+    """
+    stripped, types = [], []
+    for channel in channels:
+        type_ = None
+        if "==" in channel:
+            channel, type_ = channel.split("==")
+            type_ = type_.strip().upper()
+            if type_ not in VALID_CHANNEL_TYPES:
+                raise ValueError(f"Invalid channel type '{type_}' specified for channel '{channel}'. "
+                                 f"Valid are: {VALID_CHANNEL_TYPES}")
+        types.append(type_)
+        stripped.append(channel)
+    return stripped, types
+
+
 def unpack_channel_groups(channels):
     """
     TODO
     """
     channels_to_load, channel_groups = [], []
-    if len(channels) == 1:
-        # Multiple groups may be split by "&&"
-        # Used e.g. if one string is passed to a docker container
-        channels = channels[0].split("&&")
     grouped = map(lambda chan: "++" in chan, channels)
     if all(grouped):
         for channel in channels:
@@ -164,6 +247,81 @@ def unpack_channel_groups(channels):
     else:
         raise ValueError("Must specify either a list of channels "
                          "or a list of channel groups, got a mix: {}".format(channels))
+
+    return channels_to_load, channel_groups
+
+
+def strip_and_infer_channel_types(channels_to_load, channel_groups):
+    """
+    TODO
+
+    Args:
+        channels_to_load:
+        channel_groups:
+
+    Returns:
+
+    """
+    # Infer and strip potential channel types
+    channels_to_load, channel_types = split_channel_types(channels_to_load)
+    channel_groups = [split_channel_types(group)[0] for group in channel_groups]
+
+    # Infer channel types, may not be specified by user
+    # If user did not specify all channels, use inferred for those missing
+    inferred_channel_types = infer_channel_types(channels_to_load)
+    for i, (inferred, passed) in enumerate(zip(inferred_channel_types, channel_types)):
+        if passed is None:
+            channel_types[i] = inferred
+
+    return channels_to_load, channel_groups, channel_types
+
+
+def get_channel_groups(channels, channel_types, channel_group_spec):
+    def upper_stripped(s):
+        return s.strip().upper()
+    channel_types = list(map(upper_stripped, channel_types))
+    channel_group_spec = list(map(upper_stripped, channel_group_spec))
+    if any([c not in channel_group_spec for c in channel_types]):
+        raise ValueError(f"Cannot get channel groups for spec {channel_group_spec} with channels "
+                         f"{channels} and types {channel_types}: One or more types are not in the requested "
+                         f"channel group spec.")
+    channels_by_group = [[] for _ in range(len(channel_group_spec))]
+    for channel, type_ in zip(channels, channel_types):
+        channels_by_group[channel_group_spec.index(type_)].append(channel)
+    # Return all combinations
+    from itertools import product
+    return list(product(*channels_by_group))
+
+
+def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_types, logger):
+    """
+    TODO
+
+    Args:
+        channels:
+        auto_channel_grouping:
+        auto_reference_types:
+        logger:
+
+    Returns:
+
+    """
+    logger(f"Processing input channels: {channels}")
+    channels_to_load, channel_groups = unpack_channel_groups(channels)
+    channels_to_load, channel_groups, channel_types = strip_and_infer_channel_types(channels_to_load,
+                                                                                    channel_groups)
+    logger(f"Found:\n-- Load channels: {channels_to_load}\n-- Groups: {channel_groups}\n-- Types: {channel_types}")
+    if isinstance(auto_reference_types, list):
+        assert len(channel_groups) == 1, "Cannot use channel groups with --auto_reference_types."
+        channels_to_load, channel_types = infer_channel_refs(channel_names=channels_to_load,
+                                                             channel_types=channel_types,
+                                                             types=auto_reference_types)
+        channel_groups = [channels_to_load]
+        logger(f"OBS: Auto referencing returned channels: {channels_to_load}")
+    if isinstance(auto_channel_grouping, list):
+        channel_groups = get_channel_groups(channels_to_load, channel_types, auto_channel_grouping)
+        logger(f"OBS: Auto channel grouping returned groups: {channel_groups}")
+
     # Add channel inds to groups
     channel_set = namedtuple("ChannelSet", ["channel_names", "channel_indices"])
     for i, group in enumerate(channel_groups):
@@ -171,11 +329,15 @@ def unpack_channel_groups(channels):
             channel_names=group,
             channel_indices=[channels_to_load.index(channel) for channel in group]
         )
+
     return channels_to_load, channel_groups
 
 
 def get_sleep_study(psg_path,
                     logger,
+                    channels,
+                    auto_channel_grouping=False,
+                    auto_reference_types=False,
                     **params):
     """
     Loads a specified sleep study object with no labels
@@ -194,7 +356,12 @@ def get_sleep_study(psg_path,
                        no_hypnogram=True,
                        period_length_sec=params.get('period_length_sec', 30),
                        logger=logger)
-    channels_to_load, channel_groups = unpack_channel_groups(params['channels'])
+
+    channels_to_load, channel_groups = get_load_and_group_channels(channels,
+                                                                   auto_channel_grouping,
+                                                                   auto_reference_types,
+                                                                   logger)
+
     logger("Loading channels: {}".format(channels_to_load))
     logger("Channel groups: {}".format(channel_groups))
     study.set_strip_func(**params['strip_func'])
@@ -213,20 +380,17 @@ def run(args, return_prediction=False, dump_args=None):
     """
     Run the script according to args - Please refer to the argparser.
     """
-    assert_args(args)
-    # Check project folder is valid
-    from utime.utils.scriptutils.scriptutils import assert_project_folder
-    project_dir = os.path.abspath(args.project_dir)
-    assert_project_folder(project_dir, evaluation=True)
+    args = get_processed_args(args)
 
     # Get a logger
-    logger = get_logger(project_dir, True, name="prediction_log")
+    log_dir, log_file_name = os.path.split(args.logging_out_path)
+    logger = get_logger(log_dir, True, name=log_file_name)
     if dump_args:
         logger("Args dump: \n{}".format(vars(args)))
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir), logger,
+    hparams = YAMLHParams(Defaults.get_hparams_path(args.project_dir), logger,
                           no_version_control=True)
 
     # Get the sleep study
@@ -234,6 +398,8 @@ def run(args, return_prediction=False, dump_args=None):
     hparams['prediction_params']['channels'] = args.channels
     study, channel_groups = get_sleep_study(psg_path=args.f,
                                             logger=logger,
+                                            auto_channel_grouping=args.auto_channel_grouping,
+                                            auto_reference_types=args.auto_reference_types,
                                             **hparams['prediction_params'])
 
     # Set GPU and get model
@@ -242,7 +408,7 @@ def run(args, return_prediction=False, dump_args=None):
     logger("Predicting with {} data per prediction".format(args.data_per_prediction))
     model = get_and_load_one_shot_model(
         n_periods=study.n_periods,
-        project_dir=project_dir,
+        project_dir=args.project_dir,
         hparams=hparams,
         logger=logger,
         weights_file_name=hparams.get_from_anywhere('weight_file_name')
@@ -255,7 +421,6 @@ def run(args, return_prediction=False, dump_args=None):
     else:
         save_prediction(pred=pred,
                         out_path=args.o,
-                        input_file_path=study.psg_file_path,
                         period_length_sec=hparams.get('period_length_sec', 30),
                         logger=logger)
 
@@ -264,7 +429,6 @@ def entry_func(args=None):
     # Parse command line arguments
     parser = get_argparser()
     args = parser.parse_args(args)
-    assert_args(args)
     run(args, dump_args=args)
 
 
