@@ -9,6 +9,8 @@ EOG_REGEX = re.compile(r"(\bEOG|\bE\d|\bROC|\bLOC)", re.IGNORECASE)
 EMG_REGEX = re.compile(r"(\bEMG)", re.IGNORECASE)
 MASTOID_REGEX = re.compile(r"(\bA1|\bA2|\bM1|\bM2)", re.IGNORECASE)
 
+VALID_CHANNEL_TYPES = ("EEG", "EOG", "EMG", "MASTOID", "OTHER")
+
 
 def is_eeg(channel_name):
     if not isinstance(channel_name, ChannelMontage):
@@ -32,6 +34,12 @@ def is_mastoid(channel_name):
     if not isinstance(channel_name, ChannelMontage):
         channel_name = ChannelMontage(channel_name, relax=True)
     return bool(re.search(MASTOID_REGEX, channel_name.channel))
+
+
+def assert_channel_types(types, valid_types):
+    for type_ in types:
+        if type_ not in valid_types:
+            raise ValueError(f"Passed type '{type_}' is not in list of valid types '{valid_types}'")
 
 
 def infer_channel_types(channels):
