@@ -1,6 +1,6 @@
 import numpy as np
 import re
-from utime.io.channels import ChannelMontageTuple, ChannelMontage, infer_channel_types
+from utime.io.channels import ChannelMontageTuple, ChannelMontage, infer_channel_types, assert_channel_types
 
 
 def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",)):
@@ -8,7 +8,10 @@ def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",)):
     Attempts to automatically infer referencing of all channels of type in "types".
     Referencing is done to MASTOID classified channels on opposite hemisphere.
     Channels must contain the appropriate MASTOIDS, otherwise a value error is raised.
+
+    TODO: Simplify / Split into sub functions
     """
+    assert_channel_types(types, ("EEG", "EOG"))
     channel_names = ChannelMontageTuple(channel_names, relax=True)
     inferred_types = infer_channel_types(channel_names)
     channel_types = list(channel_types or inferred_types)
@@ -23,12 +26,22 @@ def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",)):
     if not mastoids:
         raise ValueError(f"Could not automatically infer referencing for channels {channel_names}. "
                          f"Inferred types {channel_types} does not contain 1 or more MASTOID typed channels.")
-    referenced = []
+    referenced, referenced_types = [], []
     for channel, type_ in other_channels:
+        referenced_types.append(type_)
         if type_ not in types:
             referenced.append(channel.original_name)
+        elif channel.reference is not None:
+            raise ValueError(f"Could not infer referencing for channel {channel}, which seems to already be "
+                             f"referenced to {channel.reference}.")
         else:
             numbers = list(map(int, re.findall(r"\d", channel.channel)))
+            check_string = channel.channel.replace(type_, "")
+            perhaps_left = bool(re.match(r'(_|\b)L($|_)|(_|\b)LEFT($|_)', check_string, re.IGNORECASE))
+            perhaps_right = bool(re.match(r'(_|\b)R($|_)|(_|\b)RIGHT($|_)', check_string, re.IGNORECASE))
+            if not numbers and (perhaps_left or perhaps_right):
+                assert perhaps_left != perhaps_right
+                numbers = [1 if perhaps_left else 2]
             if not numbers or len(numbers) > 1:
                 raise ValueError(f"Could not automatically infer referencing for channel {channel} (type={type_}). "
                                  f"The channel name {channel.channel} should contain 1 digit, e.g. as in 'EEG C3', "
@@ -41,7 +54,7 @@ def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",)):
                 raise ValueError(f"Could not automatically infer referencing for channel {channel} (type={type_}). "
                                  f"The channel should be referenced to mastoid {needed_mastoid}, "
                                  f"but a match to such was not found among possible: {mastoids}")
-    return referenced
+    return referenced, referenced_types
 
 
 def get_existing_separated_channels(channel, existing_channels):
