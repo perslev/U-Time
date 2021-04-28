@@ -113,10 +113,11 @@ def get_processed_args(args):
         args.o = os.path.join(args.o, os.path.splitext(os.path.split(args.f)[-1])[0] + ".npy")
 
     # Set logging out path
+    default_log_file_path = os.path.splitext(args.o)[0] + ".log"
     if args.logging_out_path is None:
-        args.logging_out_path = args.o.replace(".npy", ".log")
+        args.logging_out_path = default_log_file_path
     elif os.path.isdir(args.logging_out_path):
-        args.logging_out_path = os.path.join(args.logging_out_path, os.path.split(args.o)[0].replace(".npy", ".log"))
+        args.logging_out_path = os.path.join(args.logging_out_path, os.path.split(default_log_file_path)[-1])
 
     if args.auto_channel_grouping is not None:
         # Check if --auto_channel_grouping has correct format and at least 2 groups
