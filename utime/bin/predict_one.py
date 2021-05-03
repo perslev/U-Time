@@ -49,7 +49,7 @@ def get_argparser():
                              "groups by types. Pass a string of format '<type_1> <type_2>' (optional && separaters) "
                              "using the general channel types declarations ['EEG', 'EOG', 'EMG']. "
                              "E.g. to predict on all available channel groups with 1 EEG and 1 EOG channel "
-                             "(in that order), pass '--auto_channel_grouping=EEG++EOG' and all channels to consider "
+                             "(in that order), pass '--auto_channel_grouping=EEG EOG' and all channels to consider "
                              "with the --channels argument. Channel types may be passed with --channels (see above), "
                              "otherwise, channel types are automatically inferred from the channel names. "
                              "Note that not all models are designed to work with all types, e.g. U-Sleep V1.0 "
