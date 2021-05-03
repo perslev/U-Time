@@ -378,11 +378,13 @@ def get_psg_start_stop_events(events):
     """
     # Filter to keep only start/stop PSG events
     start_stop_events = list(filter(lambda e: "psg" in e[-1].lower(), events))
-    assert len(start_stop_events) == 2, "Found != 2 start/stop PSG events: {}".format(start_stop_events)
+    if len(start_stop_events) != 2:
+        raise ValueError("Found != 2 start/stop PSG events: {}".format(start_stop_events))
 
     # Make sure events are sorted by init time
     start_stop_events = sorted(start_stop_events, key=lambda x: x[0])
-    assert "start" in start_stop_events[0][-1].lower() and "stop" in start_stop_events[-1][-1].lower()
+    if not ("start" in start_stop_events[0][-1].lower() and "stop" in start_stop_events[-1][-1].lower()):
+        raise ValueError("Invalid start/stop events: {}".format(start_stop_events))
 
     # Standardize
     return [
