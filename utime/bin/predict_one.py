@@ -183,7 +183,8 @@ def save_npy(path, pred, **kwargs):
 
 def save_prediction(pred, out_path, period_length_sec, logger):
     dir_, fname = os.path.split(out_path)
-    os.makedirs(dir_, exist_ok=True)
+    if dir_:
+        os.makedirs(dir_, exist_ok=True)
     basename, ext = os.path.splitext(fname)
     if ext == ".hyp":
         # Save as plain text of 1 stage per line
