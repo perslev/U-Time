@@ -181,7 +181,7 @@ def set_gpu_vis(num_GPUs, force_GPU, logger=None):
     else:
         # Automatically determine GPUs to use
         from mpunet.utils.system import GPUMonitor
-        GPUMonitor(logger).await_and_set_free_GPU(num_GPUs, stop_after=True)
+        GPUMonitor().await_and_set_free_GPU(num_GPUs, stop_after=True)
 
 
 def plot_hypnogram(out_dir, pred, id_, true=None):
