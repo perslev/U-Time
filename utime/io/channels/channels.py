@@ -4,6 +4,10 @@ from numpy import ndarray
 _ALLOWED_CHAN_SYNONYMS = {"A1": "M1",
                           "A2": "M2",
                           "ROC": "E2",
+                          "EOGR": "E2",
+                          "EOGH": "E2",
+                          "EOGL": "E1",
+                          "EOGV": "E1",
                           "LOC": "E1"}
 _REPLACE_RULES = (("(", ""), (")", ""))
 
