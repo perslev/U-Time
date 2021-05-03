@@ -91,7 +91,7 @@ def prepare_output_dir(out_dir, overwrite):
                                                                      files))
 
 
-def get_logger(out_dir, overwrite, name="evaluation_log"):
+def get_logger(out_dir, overwrite, name="evaluation_log", warnings_name="warnings"):
     """
     Returns a Logger object for the given out_dir.
     The logger will throw an OSError if the dir exists and overwrite=False, in
@@ -102,6 +102,7 @@ def get_logger(out_dir, overwrite, name="evaluation_log"):
         logger = Logger(out_dir,
                         active_file=name,
                         overwrite_existing=overwrite,
+                        warnings_file=warnings_name,
                         no_sub_folder=True)
     except OSError:
         from sys import exit

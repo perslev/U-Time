@@ -389,7 +389,8 @@ def run(args, return_prediction=False, dump_args=None):
 
     # Get a logger
     log_dir, log_file_name = os.path.split(args.logging_out_path)
-    logger = get_logger(log_dir, True, name=log_file_name)
+    warnings_file_name = os.path.splitext(log_file_name)[0] + ".warnings"
+    logger = get_logger(log_dir, True, name=log_file_name, warnings_name=warnings_file_name)
     if dump_args:
         logger("Args dump: \n{}".format(vars(args)))
 
