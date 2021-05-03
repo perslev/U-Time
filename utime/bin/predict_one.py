@@ -318,12 +318,13 @@ def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_
         assert len(channel_groups) == 1, "Cannot use channel groups with --auto_reference_types."
         channels_to_load, channel_types = infer_channel_refs(channel_names=channels_to_load,
                                                              channel_types=channel_types,
-                                                             types=auto_reference_types)
+                                                             types=auto_reference_types,
+                                                             on_already_ref="warn")
         channel_groups = [channels_to_load]
-        logger.warning(f"OBS: Auto referencing returned channels: {channels_to_load}")
+        logger.warn(f"OBS: Auto referencing returned channels: {channels_to_load}")
     if isinstance(auto_channel_grouping, list):
         channel_groups = get_channel_groups(channels_to_load, channel_types, auto_channel_grouping)
-        logger.warning(f"OBS: Auto channel grouping returned groups: {channel_groups}")
+        logger.warn(f"OBS: Auto channel grouping returned groups: {channel_groups}")
 
     # Add channel inds to groups
     channel_set = namedtuple("ChannelSet", ["channel_names", "channel_indices"])
