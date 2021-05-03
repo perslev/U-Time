@@ -1,9 +1,10 @@
 import numpy as np
 import re
+import warnings
 from utime.io.channels import ChannelMontageTuple, ChannelMontage, infer_channel_types, assert_channel_types
 
 
-def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",)):
+def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",), on_already_ref="raise"):
     """
     Attempts to automatically infer referencing of all channels of type in "types".
     Referencing is done to MASTOID classified channels on opposite hemisphere.
@@ -11,6 +12,7 @@ def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",)):
 
     TODO: Simplify / Split into sub functions
     """
+    assert on_already_ref.lower() in ("raise", "warn", "warning")
     assert_channel_types(types, ("EEG", "EOG"))
     channel_names = ChannelMontageTuple(channel_names, relax=True)
     inferred_types = infer_channel_types(channel_names)
@@ -32,8 +34,13 @@ def auto_infer_referencing(channel_names, channel_types=None, types=("EEG",)):
         if type_ not in types:
             referenced.append(channel.original_name)
         elif channel.reference is not None:
-            raise ValueError(f"Could not infer referencing for channel {channel}, which seems to already be "
-                             f"referenced to {channel.reference}.")
+            err = f"Could not infer referencing for channel {channel}, which seems to already be " \
+                  f"referenced to {channel.reference}."
+            if on_already_ref.lower() == "raise":
+                raise ValueError(err)
+            else:
+                referenced.append(channel.original_name)
+                warnings.warn(err + " Using channel as-is.", RuntimeWarning)
         else:
             numbers = list(map(int, re.findall(r"\d", channel.channel)))
             check_string = channel.channel.replace(type_, "")
