@@ -33,6 +33,8 @@ def get_argparser():
                         help="Normalize the CM to show fraction of total trues")
     parser.add_argument("--show_pairs", action="store_true",
                         help="Show the paired files (for debugging)")
+    parser.add_argument("--group_non_rem", action="store_true",
+                        help="Group all non-rem stages (N1, N2, N3) into one.")
     parser.add_argument("--round", type=int, default=3,
                         help="Round float numbers, only applicable "
                              "with --normalized.")
@@ -134,11 +136,19 @@ def run(args):
         np_pairs = wake_trim(np_pairs,
                              args.wake_trim_min,
                              args.period_length_sec)
-    true, pred = concatenate_true_pred_pairs(pairs=np_pairs)
+    true, pred = map(lambda x: x.astype(np.uint8).reshape(-1, 1), concatenate_true_pred_pairs(pairs=np_pairs))
     labels = None
     if args.ignore_classes:
         print("OBS: Ignoring class(es): {}".format(args.ignore_classes))
         labels = list((set(np.unique(true)) | set(np.unique(pred))) - set(args.ignore_classes))
+
+    if args.group_non_rem:
+        ones = np.ones_like(true)
+        true = np.where(np.isin(true, [1, 2, 3]), ones, true)
+        pred = np.where(np.isin(pred, [1, 2, 3]), ones, pred)
+        labels.pop(labels.index(2))
+        labels.pop(labels.index(3))
+
     cm = confusion_matrix(true, pred, labels=labels)
     if args.normalized:
         cm = cm.astype(np.float64)
