@@ -235,6 +235,7 @@ def find_psg_and_hyp(subject_dir,
     header_file = None
     if header_regex is not None:
         header_file = match_n_in_folder(subject_dir, header_regex, num_expected_matches=1)[0]
+        header_file = os.path.join(subject_dir, header_file)
     return psg_file, hyp_file or None, header_file
 
 
