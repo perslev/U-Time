@@ -20,7 +20,7 @@ from utime.io.header.header_standardizers import (_standardized_edf_header,
                                                   _standardized_bin_header)
 
 
-def extract_edf_header(file_path):
+def extract_edf_header(file_path, **unused_kwargs):
     """
     Header reader function for .edf extension files.
     Redirects to mne.io.read_raw_edf.
@@ -49,7 +49,7 @@ def extract_edf_header(file_path):
     return header
 
 
-def extract_wfdb_header(file_path):
+def extract_wfdb_header(file_path, **unused_kwargs):
     """
     Header reader function for .dat and .mat WFDB extension files.
     Redirects to the wfdb.io.rdheader function.
@@ -62,7 +62,7 @@ def extract_wfdb_header(file_path):
     return _standardized_wfdb_header(header)
 
 
-def extract_h5_header(h5_path, try_channel_dir_names=("channels", "signals", "psg")):
+def extract_h5_header(h5_path, try_channel_dir_names=("channels", "signals", "psg"), **unused_kwargs):
     """
     Header reader function for .h5 extension files.
 
@@ -84,10 +84,9 @@ def extract_h5_header(h5_path, try_channel_dir_names=("channels", "signals", "ps
                                  f"would not be valid).")
 
 
-def extract_bin_header(bin_path, bin_dtype=np.dtype("<f4"), header_rename_func=lambda x: x.rpartition("_")[0] + "_ChannelInfo.txt"):
-    header_path = header_rename_func(bin_path)
+def extract_bin_header(bin_path, header_file_path, bin_dtype=np.dtype("<f4"), **unused_kwargs):
     lines = []
-    with open(header_path, "r") as in_f:
+    with open(header_file_path, "r") as in_f:
         for line in in_f:
             split_sep = "\t" if "\t" in line else " "
             lines.append(list(map(lambda x: x.strip(" .:\n\t"), filter(None, line.split(split_sep)))))
@@ -97,7 +96,7 @@ def extract_bin_header(bin_path, bin_dtype=np.dtype("<f4"), header_rename_func=l
     # Infer data length attribute here
     bytes_in_file = os.path.getsize(bin_path)
     n_channels = len(header["NAME"])
-    assert not bytes_in_file % n_channels, f"Number of channels in header file {header_path} does" \
+    assert not bytes_in_file % n_channels, f"Number of channels in header file {header_file_path} does" \
                                            f" not match data in bin file {bin_dtype}"
     length = int(int(bytes_in_file / n_channels) / bin_dtype.itemsize)
     assert not length % int(header["FS"][0]), "Inferred length of data does not match sample rate specified in header"
@@ -115,9 +114,13 @@ _EXT_TO_LOADER = {
 }
 
 
-def extract_header(psg_file_path, **kwargs):
+def extract_header(psg_file_path, header_file_path=None, **kwargs):
     """
     Loads the header from a PSG-type file at path 'psg_file_path'.
+
+    header_file_path: Optional path to header file. Often not used as headers are
+                      stored in the PSG file itself or in a file inferrable from the
+                      PSG file name. May be useful for implementing custom data formats.
 
     Returns:
         dictionary of header information
@@ -125,7 +128,7 @@ def extract_header(psg_file_path, **kwargs):
     fname = os.path.split(os.path.abspath(psg_file_path))[-1]
     _, ext = os.path.splitext(fname)
     load_func = _EXT_TO_LOADER[ext[1:]]
-    header = load_func(psg_file_path, **kwargs)
+    header = load_func(psg_file_path, header_file_path=header_file_path, **kwargs)
     # Add file location data
     file_path, file_name = os.path.split(psg_file_path)
     header['data_dir'] = file_path

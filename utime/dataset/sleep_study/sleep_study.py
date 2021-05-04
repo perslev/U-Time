@@ -33,6 +33,7 @@ class SleepStudy(SubjectDirSleepStudyBase):
                  subject_dir,
                  psg_regex=None,
                  hyp_regex=None,
+                 header_regex=None,
                  period_length_sec=None,
                  no_hypnogram=None,
                  annotation_dict=None,
@@ -59,6 +60,9 @@ class SleepStudy(SubjectDirSleepStudyBase):
                                        subject data.
             psg_regex:        (str)    Optional regex used to select PSG file
             hyp_regex:        (str)    Optional regex used to select HYP file
+            header_regex:     (str)    Optional regex used to select a header file
+                                       OBS: Rarely used as most formats store headers internally, or
+                                        have header paths which are inferrable from the psg_path.
             period_length_sec (int)    Sleep 'epoch' (segment/period) length in
                                        seconds
             no_hypnogram      (bool)   Initialize without ground truth data.
@@ -71,6 +75,7 @@ class SleepStudy(SubjectDirSleepStudyBase):
             subject_dir=subject_dir,
             psg_regex=psg_regex,
             hyp_regex=hyp_regex,
+            header_regex=header_regex,
             period_length_sec=period_length_sec,
             no_hypnogram=no_hypnogram,
             annotation_dict=annotation_dict,
@@ -302,7 +307,8 @@ class SleepStudy(SubjectDirSleepStudyBase):
                 temp = self.load_time_random_channel_selector
                 psg, header = load_psg(psg_file_path=self.psg_file_path,
                                        load_channels=channel_set or None,
-                                       load_time_channel_selector=temp)
+                                       load_time_channel_selector=temp,
+                                       header_file_path=self.header_file_path)
                 return psg, header
             except errors.ChannelNotFoundError as e:
                 if i < len(channel_sets) - 1:

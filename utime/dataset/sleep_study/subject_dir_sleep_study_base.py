@@ -14,6 +14,7 @@ class SubjectDirSleepStudyBase(AbstractBaseSleepStudy):
                  subject_dir,
                  psg_regex=None,
                  hyp_regex=None,
+                 header_regex=None,
                  period_length_sec=None,
                  no_hypnogram=None,
                  annotation_dict=None,
@@ -39,6 +40,9 @@ class SubjectDirSleepStudyBase(AbstractBaseSleepStudy):
                                        subject data.
             psg_regex:        (str)    Optional regex used to select PSG file
             hyp_regex:        (str)    Optional regex used to select HYP file
+            header_regex:     (str)    Optional regex used to select a header file
+                                       OBS: Rarely used as most formats store headers internally, or
+                                            have header paths which are inferrable from the psg_path.
             period_length_sec (int)    Sleep 'epoch' (segment/period) length in
                                        seconds
             no_hypnogram      (bool)   Initialize without ground truth data.
@@ -54,10 +58,11 @@ class SubjectDirSleepStudyBase(AbstractBaseSleepStudy):
         )
         self.subject_dir = os.path.abspath(subject_dir)
         try:
-            psg, hyp = find_psg_and_hyp(subject_dir=self.subject_dir,
-                                        psg_regex=psg_regex,
-                                        hyp_regex=hyp_regex,
-                                        no_hypnogram=no_hypnogram)
+            psg, hyp, header = find_psg_and_hyp(subject_dir=self.subject_dir,
+                                                psg_regex=psg_regex,
+                                                hyp_regex=hyp_regex,
+                                                header_regex=header_regex,
+                                                no_hypnogram=no_hypnogram)
         except (ValueError, RuntimeError) as e:
             raise ValueError("Could not uniquely infer PSG/HYP files in subject"
                              " directory {}. Consider specifying/correcting "
@@ -67,6 +72,7 @@ class SubjectDirSleepStudyBase(AbstractBaseSleepStudy):
                              "subject dir.".format(repr(subject_dir))) from e
         self.psg_file_path = psg
         self.hyp_file_path = hyp if not no_hypnogram else None
+        self.header_file_path = header  # OBS: Most often None
 
     @property
     def identifier(self):

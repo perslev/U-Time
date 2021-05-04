@@ -29,6 +29,8 @@ def get_argparser():
                              "'.ids' (init-duration-stage (string) format text file) and '.npy' (numpy array "
                              "of shape [N, 1] storing stages (ints)). "
                              "If any other or no extension is specified, '.npy' is assumed.")
+    parser.add_argument("--header_file_name", type=str, default=None,
+                        help='Optional header file name. Header must be in the same folder of the input file, see -f.')
     parser.add_argument("--logging_out_path", type=str, default=None,
                         help='Optional path to store prediction log. If not set, <out_folder>/<file_name>.log is used.')
     parser.add_argument("--channels", nargs='+', type=str, default=None,
@@ -109,6 +111,11 @@ def get_processed_args(args):
 
     # Set absolute input file path
     args.f = os.path.abspath(args.f)
+
+    # Check header exists if specified
+    if args.header_file_name and not os.path.exists(os.path.join(os.path.split(args.f)[0], args.header_file_name)):
+        raise ValueError(f"Could not find header file with name {args.header_file_path} in the "
+                         f"folder where input file {args.f} is stored.")
 
     # Set output file path
     if os.path.isdir(args.o):
@@ -341,6 +348,7 @@ def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_
 def get_sleep_study(psg_path,
                     logger,
                     channels,
+                    header_file_name=None,
                     auto_channel_grouping=False,
                     auto_reference_types=False,
                     **params):
@@ -358,6 +366,7 @@ def get_sleep_study(psg_path,
     from utime.dataset.sleep_study import SleepStudy
     dir_, regex = os.path.split(os.path.abspath(psg_path))
     study = SleepStudy(subject_dir=dir_, psg_regex=regex,
+                       header_regex=header_file_name,
                        no_hypnogram=True,
                        period_length_sec=params.get('period_length_sec', 30),
                        logger=logger)
@@ -404,6 +413,7 @@ def run(args, return_prediction=False, dump_args=None):
     hparams['prediction_params']['channels'] = args.channels
     hparams['prediction_params']['strip_func']['strip_func_str'] = args.strip_func
     study, channel_groups = get_sleep_study(psg_path=args.f,
+                                            header_file_name=args.header_file_name,
                                             logger=logger,
                                             auto_channel_grouping=args.auto_channel_grouping,
                                             auto_reference_types=args.auto_reference_types,

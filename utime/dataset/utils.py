@@ -193,6 +193,7 @@ def find_psg_file(subject_dir,
 def find_psg_and_hyp(subject_dir,
                      psg_regex=None,
                      hyp_regex=None,
+                     header_regex=None,
                      no_hypnogram=False):
     """
     Wrapper around the find_psg and find_hyp functions.
@@ -205,6 +206,9 @@ def find_psg_and_hyp(subject_dir,
         subject_dir:  A path to a directory that stores a PSG/data file
         psg_regex:    Optional regex used to match select the PSG/data file
         hyp_regex:    Optional regex used to match select the HYP/labels file
+        header_regex: Optional regex used to select a header file
+                      OBS: Rarely used as most formats store headers internally, or
+                           have header paths which are inferrable from the psg_path.
         no_hypnogram: Do not look for a hypnogram/sleep stage/label file
 
     Returns:
@@ -228,7 +232,10 @@ def find_psg_and_hyp(subject_dir,
     psg_file = os.path.join(subject_dir, psg_file)
     if not no_hypnogram:
         hyp_file = os.path.join(subject_dir, hyp_file)
-    return psg_file, hyp_file or None
+    header_file = None
+    if header_regex is not None:
+        header_file = match_n_in_folder(subject_dir, header_regex, num_expected_matches=1)[0]
+    return psg_file, hyp_file or None, header_file
 
 
 def find_subject_folders(data_dir, folder_regex=None):

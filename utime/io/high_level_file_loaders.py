@@ -16,6 +16,7 @@ from utime.errors import ChannelNotFoundError
 
 
 def load_psg(psg_file_path,
+             header_file_path=None,
              load_channels=None,
              ignore_reference_channels=False,
              load_time_channel_selector=None,
@@ -26,6 +27,9 @@ def load_psg(psg_file_path,
 
     Args:
         psg_file_path: Path to PSG file
+        header_file_path: Optional path to header file. Often not used as headers are
+                          stored in the PSG file itself or in a file inferrable from the
+                          PSG file name. May be useful for implementing custom data formats.
         load_channels: A list of channel name strings or a ChannelMontageTuple
                        storing ChannelMontage objects representing all channels
                        to load.
@@ -38,7 +42,7 @@ def load_psg(psg_file_path,
         A dictionary of header information
     """
     # Load the header of a PSG file. Stores e.g. channel names and sample rates
-    header = extract_header(psg_file_path=psg_file_path)
+    header = extract_header(psg_file_path=psg_file_path, header_file_path=header_file_path)
 
     if load_time_channel_selector:
         # Randomly select from the available channels in groups according to
