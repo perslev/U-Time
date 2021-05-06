@@ -71,7 +71,8 @@ def extract_from_h5(h5_file_path, include_channels, header, **kwargs):
     return data.T
 
 
-def extract_from_bin(bin_path, include_channels, exclude_channels, header, bin_dtype=np.dtype("<f4"), **kwargs):
+def extract_from_bin(bin_path, include_channels, exclude_channels, header,
+                     reshape_order="F", bin_dtype=np.dtype("<f4"), **kwargs):
     """
     TODO.
 
@@ -81,7 +82,7 @@ def extract_from_bin(bin_path, include_channels, exclude_channels, header, bin_d
         ndarray, shape NxC
     """
     with open(bin_path, "rb") as in_f:
-        data = np.fromfile(in_f, bin_dtype).reshape((-1, header["n_channels"]))
+        data = np.fromfile(in_f, bin_dtype).reshape((-1, header["n_channels"]), order=reshape_order)
     assert data.shape[0] == header["length"]
     org_channel_names = header["channel_names"].original_names
     if not np.all(np.isin(include_channels, org_channel_names)):
