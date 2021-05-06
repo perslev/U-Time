@@ -93,6 +93,13 @@ def extract_bin_header(bin_path, header_file_path, bin_dtype=np.dtype("<f4"), **
     columns = list(zip(*lines))
     header = {col[0].upper(): col[1:] for col in columns}
 
+    # Assert header format is OK
+    required_columns = ("CHX", "NAME", "TYPE", "FS")
+    if not np.all(np.isin(required_columns, list(header.keys()))):
+        raise ValueError("Invalid .bin header format. Header should contain the following "
+                         f"columns: {required_columns}, but the following were found "
+                         f"{list(header.keys())}")
+
     # Infer data length attribute here
     bytes_in_file = os.path.getsize(bin_path)
     n_channels = len(header["NAME"])
