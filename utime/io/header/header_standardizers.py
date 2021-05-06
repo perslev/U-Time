@@ -258,6 +258,13 @@ def _standardized_bin_header(raw_header):
     # Assert upper case keys
     raw_header = {key.upper(): values for key, values in raw_header.items()}
 
+    # Order header entries according to CHX column
+    order = np.argsort(np.array(raw_header['CHX'], dtype=np.int))
+    raw_header = {key: ([entry[i] for i in order]
+                        if isinstance(entry, (list, tuple, np.ndarray))
+                        else entry)
+                  for key, entry in raw_header.items()}
+
     # Assert that all samples rates are equal
     sample_rates = np.array(raw_header["FS"], dtype=np.int32)
     if not (sample_rates[0] == sample_rates).all():
