@@ -384,8 +384,13 @@ class AbstractBaseSleepStudy(ABC):
             raise ValueError("Must specify either period_idx or period_sec.")
         from utime.visualization.psg_plotting import plot_period
         period_sec = period_sec or self.period_idx_to_sec(period_idx)
-        x, y = self.get_period_at_sec(period_sec)
-        plot_period(X=x, y=Defaults.get_class_int_to_stage_string()[y],
+        x = self.get_psg_period_at_sec(period_sec)
+        if not self.no_hypnogram:
+            y = self.get_stage_at_sec(period_sec)
+            y = Defaults.get_class_int_to_stage_string()[y]
+        else:
+            y = None
+        plot_period(X=x, y=y,
                     channel_names=self.select_channels,
                     init_second=period_sec,
                     sample_rate=self.sample_rate,
@@ -409,9 +414,14 @@ class AbstractBaseSleepStudy(ABC):
                                               period_idxs))
         if any(np.diff(period_secs) != self.period_length_sec):
             raise ValueError("Periods to plot must be consecutive.")
-        x, y = zip(*map(self.get_period_at_sec, period_secs))
-        plot_periods(X=x,
-                     y=[Defaults.get_class_int_to_stage_string()[y_] for y_ in y],
+        xs = list(map(self.get_psg_period_at_sec, period_secs))
+        if not self.no_hypnogram:
+            ys = list(map(self.get_stage_at_sec, period_secs))
+            ys = [Defaults.get_class_int_to_stage_string()[y] for y in ys]
+        else:
+            ys = None
+        plot_periods(X=xs,
+                     y=ys,
                      channel_names=self.select_channels,
                      init_second=period_secs[0],
                      sample_rate=self.sample_rate,

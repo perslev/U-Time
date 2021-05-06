@@ -1,5 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from utime.io.channels import ChannelMontageTuple
+
+
+def set_equal_ylims(axes):
+    mins, maxs = list(zip(*[ax.get_ylim() for ax in axes]))
+    min_, max_ = np.min(mins), np.max(maxs)
+    for ax in axes:
+        ax.set_ylim(min_, max_)
 
 
 def plot_period(X, y=None,
@@ -7,7 +15,8 @@ def plot_period(X, y=None,
                 init_second=None,
                 sample_rate=None,
                 out_path=None,
-                return_fig=False):
+                return_fig=False,
+                equal_y_lims=True):
     """
     Plots one period (typically 30 seconds) of PSG data with its annotation.
     If neither out_path and return_fig are set, displays the figure and blocks.
@@ -24,6 +33,7 @@ def plot_period(X, y=None,
         out_path:           (string) Optional path to save the figure to
         return_fig:         (bool)   Return the figure instead of saving
                                      (out_path is ignored)
+        equal_y_lims        (bool)   All axes share ylims
 
     Returns:
         Figure and axes objects if return_fig=True, otherwise None
@@ -46,6 +56,8 @@ def plot_period(X, y=None,
                         linewidth=1.5)
         axes[i].set_xlim(xs[0], xs[-1])
         if channel_names:
+            if isinstance(channel_names, ChannelMontageTuple):
+                channel_names = channel_names.original_names
             axes[i].annotate(
                 s=channel_names[i],
                 size=max(23-(2*len(channel_names)), 7),
@@ -62,6 +74,8 @@ def plot_period(X, y=None,
         axes[0].set_title(p, size=26)
     if isinstance(y, str):
         fig.suptitle("Sleep stage: {}".format(y), size=18)
+    if equal_y_lims:
+        set_equal_ylims(axes)
 
     # Return, save or show the figure
     if not return_fig:
@@ -78,6 +92,7 @@ def plot_periods(X, y=None,
                  highlight_periods=True,
                  out_path=None,
                  return_fig=False,
+                 equal_y_lims=True,
                  **kwargs):
     """
     Plots multiple consecutive periods of PSG data with annotated labels.
@@ -90,14 +105,16 @@ def plot_periods(X, y=None,
         out_path:           (string) Optional path to save the figure to
         return_fig:         (bool)   Return the figure instead of saving
                                      (out_path is ignored)
+        equal_y_lims        (bool)   All axes share ylims
         **kwargs:           (dict)   Parameters passed to 'plot_period'
 
     Returns:
         Figure and axes objects if return_fig=True, otherwise None
     """
     X = np.array(X)
-    if X.ndim == 3:
-        X = np.concatenate(X, axis=0)
+    assert X.ndim == 3
+    n_periods = len(X)
+    X = np.concatenate(X, axis=0)
     if y is not None:
         if len(y) < 15:
             ys = '-'.join(y)
@@ -106,13 +123,15 @@ def plot_periods(X, y=None,
     else:
         ys = "<Not specified>"
     fig, axes = plot_period(X, ys, return_fig=True, **kwargs)
-    x_sepparations = [(len(X)//len(y)) * i for i in range(1, len(y))]
+    x_sepparations = [(len(X)//n_periods) * i for i in range(1, n_periods)]
     if highlight_periods:
         for ax in axes:
             for sep in x_sepparations:
                 ax.axvline(sep, color='red',
                            linestyle='--',
                            linewidth=1.5)
+    if equal_y_lims:
+        set_equal_ylims(axes)
 
     # Return, save or show the figure
     if not return_fig:
