@@ -1,5 +1,6 @@
+import warnings
 from utime.io.channels import ChannelMontageTuple, ChannelMontageCreator
-from utime.errors import ChannelNotFoundError
+from utime.errors import ChannelNotFoundError, DuplicateChannelError, DuplicateChannelWarning
 
 
 def can_create_channels(asked_channels, channels_in_file):
@@ -12,6 +13,26 @@ def can_create_channels(asked_channels, channels_in_file):
         return True
     except ValueError:
         return False
+
+
+def check_duplicate_channels(channels, ref_channels=None, raise_or_warn="raise"):
+    raise_or_warn = raise_or_warn.lower()
+    assert raise_or_warn in ("warning", "warn", "raise")
+    ref_channels = ChannelMontageTuple(ref_channels or channels, relax=True)
+    channels = ChannelMontageTuple(channels, relax=True)
+    for channel in channels:
+        if ref_channels.count(channel) > 1:
+            s = f"File header contains a channel with name \"{channel.original_name}\" " \
+                f"which occurs multiple times in the file: {ref_channels.original_names}). " \
+                f"This may cause an error to be raised now or later when the file is loaded " \
+                f"if the file is loaded using that channel. " \
+                f"Duplicate channel names could result from longer channel names " \
+                f"being truncated to identical, shorter names due to limitations in the used file format. " \
+                f"Please rename your channels uniquely and try again."
+            if raise_or_warn.lower() == "raise":
+                raise DuplicateChannelError(s)
+            elif raise_or_warn.lower() in ("warn", "warning"):
+                warnings.warn(s, DuplicateChannelWarning)
 
 
 def get_org_include_exclude_channel_montages(load_channels, header,
@@ -63,14 +84,7 @@ def get_org_include_exclude_channel_montages(load_channels, header,
     else:
         include_channels = channels_in_file
     if check_duplicates:
-        for channel in include_channels:
-            if channels_in_file.count(channel) > 1:
-                raise ValueError(f"Cannot load channel with name \"{channel.original_name}\" as this channel "
-                                 f"name occurs multiple times in the file: {channels_in_file.original_names}). "
-                                 f"This is most likely a result of longer channel names which were truncated to "
-                                 f"identical, shorter names due to limitations in the used file format. "
-                                 f"E.g. EDF files may only store channel names at most 16 characters in length. "
-                                 f"Please rename your channels and try again.")
+        check_duplicate_channels(load_channels, channels_in_file, raise_or_warn="raise")
     exclude_channels = [c for c in channels_in_file if c not in include_channels]
     exclude_channels = ChannelMontageTuple(exclude_channels)
     return channels_in_file, include_channels, exclude_channels, channel_montage_creator
