@@ -20,6 +20,7 @@ import warnings
 import numpy as np
 import h5py
 from datetime import datetime
+from utime.io.channels.utils import check_duplicate_channels
 from utime.errors import (MissingHeaderFieldError, HeaderFieldTypeError,
                           LengthZeroSignalError, H5VariableAttributesError,
                           VariableSampleRateError, FloatSampleRateWarning)
@@ -53,6 +54,8 @@ def _assert_header(header):
     if header['length'] <= 0:
         raise LengthZeroSignalError(f"Expected key 'length' to be a non-zero integer, "
                                     f"but header {header} has value {header['length']}")
+    # Warn on duplicate channels
+    check_duplicate_channels(header['channels'], raise_or_warn="warn")
     return header
 
 
