@@ -55,7 +55,7 @@ def _assert_header(header):
         raise LengthZeroSignalError(f"Expected key 'length' to be a non-zero integer, "
                                     f"but header {header} has value {header['length']}")
     # Warn on duplicate channels
-    check_duplicate_channels(header['channels'], raise_or_warn="warn")
+    check_duplicate_channels(header['channel_names'], raise_or_warn="warn")
     return header
 
 
