@@ -28,7 +28,7 @@ def check_duplicate_channels(channels, ref_channels=None, raise_or_warn="raise")
                 f"if the file is loaded using that channel. " \
                 f"Duplicate channel names could result from longer channel names " \
                 f"being truncated to identical, shorter names due to limitations in the used file format. " \
-                f"Please rename your channels uniquely and try again."
+                f"Consider renaming your channels uniquely and then try again."
             if raise_or_warn.lower() == "raise":
                 raise DuplicateChannelError(s)
             elif raise_or_warn.lower() in ("warn", "warning"):
