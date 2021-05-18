@@ -33,6 +33,9 @@ class HeaderFieldTypeError(TypeError): pass
 class LengthZeroSignalError(ValueError): pass
 
 
+class DuplicateChannelError(ValueError): pass
+
+
 class NotLoadedError(ResourceWarning): pass
 
 
@@ -46,4 +49,10 @@ class MarginError(ValueError):
 
 
 """ Warnings """
-class FloatSampleRateWarning(UserWarning): pass
+class HeaderWarning(UserWarning): pass
+
+
+class FloatSampleRateWarning(HeaderWarning): pass
+
+
+class DuplicateChannelWarning(HeaderWarning): pass
