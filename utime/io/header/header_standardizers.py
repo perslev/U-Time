@@ -87,11 +87,15 @@ def _sample_rate_as_int(sample_rate, raise_or_warn='warn'):
     return new_sample_rate
 
 
-def _standardized_edf_header(raw_edf):
+def _standardized_edf_header(raw_edf, channel_names_overwrite=None):
     """
     Header extraction function for RawEDF and Raw objects.
     Reads the number of channels, channel names and sample rate properties
     If existing, reads the date information as well.
+
+    channel_names_overwrite allows passing a list of channel names to use instead of
+    those loaded by MNE per default. This is useful e.g. to set the raw EDF names in the
+    header instead of the truncated / renamed (on duplicates) used by MNE.
 
     Returns:
         Header information as dict
@@ -117,6 +121,7 @@ def _standardized_edf_header(raw_edf):
                                            "- got {}".format(org, value)) from e
         header[renamed] = value
     header["length"] = len(raw_edf)
+    header["channel_names"] = list(channel_names_overwrite) or header["channel_names"]
     return _assert_header(header)
 
 

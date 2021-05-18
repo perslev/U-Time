@@ -20,6 +20,16 @@ from utime.io.header.header_standardizers import (_standardized_edf_header,
                                                   _standardized_bin_header)
 
 
+def _read_raw_edf_channel_names(edf_file_path):
+    with open(edf_file_path, "rb") as in_f:
+        in_f.seek(252)
+        n_channels = int(in_f.read(4).decode().rstrip('\x00'))
+        channel_names = [in_f.read(16).strip().decode('latin-1') for _ in range(n_channels)]
+    # Ignore EDF TAL channels, as is done in MNE too (v0.21)
+    channel_names = [chan for chan in channel_names if "EDF Annotatio" not in chan]
+    return channel_names
+
+
 def extract_edf_header(file_path, **unused_kwargs):
     """
     Header reader function for .edf extension files.
@@ -33,19 +43,13 @@ def extract_edf_header(file_path, **unused_kwargs):
         warnings.filterwarnings('default')
         raw_edf = read_raw_edf(file_path, preload=False,
                                stim_channel=None, verbose=False)
-    header = _standardized_edf_header(raw_edf)
 
     # Manually read channel names as-are in file without renaming, truncations etc. that
     # may be applied by MNE (as of v0.21) to ensure we exclude using the proper names.
-    with open(file_path, "rb") as in_f:
-        in_f.seek(252)
-        n_channels = int(in_f.read(4).decode().rstrip('\x00'))
-        channel_names = [in_f.read(16).strip().decode('latin-1') for _ in range(n_channels)]
-        # Ignore EDF TAL channels, as is done in MNE too (v0.21)
-        channel_names = [chan for chan in channel_names if "EDF Annotatio" not in chan]
-        assert len(channel_names) == header["n_channels"], "Manually loaded number of channels " \
-                                                           "does not match number read by MNE"
-        header["channel_names"] = channel_names
+    channel_names = _read_raw_edf_channel_names(file_path)
+    assert len(channel_names) == raw_edf.info['nchan'], "Manually loaded number of channels " \
+                                                        "does not match number read by MNE"
+    header = _standardized_edf_header(raw_edf, channel_names_overwrite=channel_names)
     return header
 
 
