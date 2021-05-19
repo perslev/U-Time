@@ -63,8 +63,13 @@ def get_argparser():
                              "channels C3-A2 and C4-A1 will be used instead.")
     parser.add_argument("--strip_func", type=str, default='trim_psg_trailing',
                         help="Strip function to use, default = 'trim_psg_trailing'.")
-    parser.add_argument("--project_dir", type=str, default="./",
-                        help='Path to U-Time project folder')
+    parser.add_argument("--model", type=str, default=None,
+                        help="Specify a model by string identifier of format <model_name>:<model_version> "
+                             "available in the U-Sleep package. OBS: The U-Sleep package must be installed or an "
+                             "error is raised. Cannot specify both --model and --project_dir")
+    parser.add_argument("--project_dir", type=str, default=None,
+                        help='Path to U-Time project folder. Cannot specify both --model and --project_dir. '
+                             'If neither are specified, --project_dir defaults to the current working directory.')
     parser.add_argument("--data_per_prediction", type=int, default=None,
                         help='Number of samples that should make up each sleep'
                              ' stage scoring. Defaults to sample_rate*30, '
@@ -103,11 +108,26 @@ def get_processed_args(args):
     args = Namespace(**modified_args)
     assert args.num_GPUs >= 0, "--num_GPUs must be positive or 0."
 
+    if args.model:
+        if args.project_dir is not None:
+            raise ValueError("Specifying both the --model and --project_dir flags is "
+                             "ambiguous and is not allowed.")
+        try:
+            import usleep
+        except ImportError as e:
+            raise RuntimeError("Cannot use the --model flag when the U-Sleep package is "
+                               "not installed.") from e
+        model_name, model_version = args.model.split(":")
+        project_dir = usleep.get_model_path(model_name, model_version)
+    else:
+        project_dir = os.path.abspath(args.project_dir or "./")
+
     # Check project folder is valid
     from utime.utils.scriptutils.scriptutils import assert_project_folder
-    project_dir = os.path.abspath(args.project_dir)
     assert_project_folder(project_dir, evaluation=True)
     args.project_dir = project_dir
+
+    print(args.project_dir)
 
     # Set absolute input file path
     args.f = os.path.abspath(args.f)
