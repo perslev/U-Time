@@ -127,8 +127,6 @@ def get_processed_args(args):
     assert_project_folder(project_dir, evaluation=True)
     args.project_dir = project_dir
 
-    print(args.project_dir)
-
     # Set absolute input file path
     args.f = os.path.abspath(args.f)
 
