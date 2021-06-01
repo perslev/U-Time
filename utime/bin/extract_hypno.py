@@ -1,6 +1,9 @@
 from argparse import ArgumentParser
 from glob import glob
 import os
+from pathlib import Path
+from mpunet.logging import Logger
+from utime.io.hypnogram import extract_ids_from_hyp_file
 
 
 def get_argparser():
@@ -20,71 +23,50 @@ def get_argparser():
 def to_ids(start, durs, stage, out):
     with open(out, "w") as out_f:
         for i, d, s in zip(start, durs, stage):
-            out_f.write("{},{},{}\n".format(i, d, s))
+            out_f.write("{},{},{}\n".format(int(i), int(d), s))
 
 
-def load_xml(file_):
-    import xml.etree.ElementTree as ET
-    events = ET.parse(file_).findall('ScoredEvents')
-    assert len(events) == 1
-    stage_dict = {
-        "Wake|0": "W",
-        "Stage 1 sleep|1": "N1",
-        "Stage 2 sleep|2": "N2",
-        "Stage 3 sleep|3": "N3",
-        "Stage 4 sleep|4": "N3",
-        "REM sleep|5": "REM",
-        "Movement|6": "UNKNOWN",
-        "Unscored|9": "UNKNOWN"
-    }
-    starts, durs, stages = [], [], []
-    for event in events[0]:
-        if not event[0].text == "Stages|Stages":
-            continue
-        stage = stage_dict[event[1].text]
-        start = int(float(event[2].text))
-        dur = int(float(event[3].text))
-        starts.append(start)
-        durs.append(dur)
-        stages.append(stage)
-    return starts, durs, stages
-
-
-EXT_TO_FUNC = {
-    "xml": load_xml
-}
-
-
-def run(file_regex, out_dir, overwrite):
-    files = glob(file_regex)
-    out_dir = os.path.abspath(out_dir)
+def run(args):
+    files = glob(args.file_regex)
+    out_dir = Path(args.out_dir).absolute()
+    out_dir.mkdir(parents=True, exist_ok=True)
     n_files = len(files)
-    print("Found {} files matching glob statement".format(n_files))
+    logger = Logger(out_dir,
+                    active_file='hyp_extraction_log',
+                    overwrite_existing=args.overwrite)
+    logger("Args dump: {}".format(vars(args)))
+    logger("Found {} files matching glob statement".format(n_files))
     if n_files == 0:
         return
-    print("Saving .ids files to '{}'".format(out_dir))
+    logger("Saving .ids files to '{}'".format(out_dir))
+    if n_files == 0:
+        return
 
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     for i, file_ in enumerate(files):
-        name = os.path.splitext(os.path.split(file_)[-1])[0]
-        out = os.path.join(out_dir, name + ".ids")
+        file_name = os.path.splitext(os.path.split(file_)[-1])[0]
+        folder_name = os.path.split(os.path.split(file_)[0])[-1]
+        out_dir_subject = os.path.join(out_dir, folder_name)
+        out = os.path.join(out_dir_subject, file_name + ".ids")
+        logger("{}/{} Processing {}".format(i+1, n_files, file_name))
+        logger("-- In path    {}".format(file_))
+        logger("-- Out path   {}".format(out))
+        if not os.path.exists(out_dir_subject):
+            os.mkdir(out_dir_subject)
         if os.path.exists(out):
-            if not overwrite:
+            if not args.overwrite:
                 continue
             os.remove(out)
-        print("  {}/{} Processing {}".format(i+1, n_files, name),
-              flush=True, end="\r")
-        func = EXT_TO_FUNC[os.path.splitext(file_)[-1][1:]]
-        start, dur, stage = func(file_)
+        start, dur, stage = extract_ids_from_hyp_file(file_)
         to_ids(start, dur, stage, out)
 
 
 def entry_func(args=None):
     # Get the script to execute, parse only first input
     parser = get_argparser()
-    args = vars(parser.parse_args(args))
-    run(**args)
+    args = parser.parse_args(args)
+    run(args)
 
 
 if __name__ == "__main__":
