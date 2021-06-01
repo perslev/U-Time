@@ -4,6 +4,7 @@ A set of functions for needed for running training in various settings
 
 import os
 from mpunet.logging.default_logger import ScreenLogger
+from utime.dataset.sleep_study_dataset.single_h5_dataset import H5Dataset
 
 
 def get_train_and_val_datasets(hparams, no_val, train_on_val, logger):
@@ -162,7 +163,7 @@ def get_data_queues(datasets,
                         f"'{EagerQueue.__name__}' (because max_loaded_per_dataset = {max_loaded_per_dataset} "
                         f">= len(dataset) = {len(dataset)})")
             queue_type = EagerQueue
-        if queue_type is EagerQueue and \
+        if queue_type is EagerQueue and not isinstance(dataset, H5Dataset) and \
                 (any([getattr(ss, 'load_time_random_channel_selector', False) or
                       getattr(ss, 'access_time_random_channel_selector', False) for ss in dataset])):
             raise NotImplementedError(
