@@ -7,7 +7,7 @@ ut extract --file_regex '[LOCAL_PATH]/sleep-edf-extended/ST*/*PSG.edf' --out_dir
 
 #### Extract hypno command
 ```
-ut extract_hypno --file_regex '[LOCAL_PATH]/sleep-edf-extended/ST*/*Hypnogram.edf' --out_dir '[LOCAL_PATH]/processed/sedf-st/'
+ut extract_hypno --file_regex '[LOCAL_PATH]/sleep-edf-extended/ST*/*Hypnogram.edf' --out_dir '[LOCAL_PATH]/processed/sedf-st/' --fill_blanks 'Sleep stage ?'
 ```
 
 #### Views command
