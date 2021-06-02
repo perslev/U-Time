@@ -2,20 +2,20 @@
 
 #### Extract command
 ```
-ut extract --file_regex '[LOCAL_PATH]/abc/polysomnography/edfs/*/*.edf' --out_dir '[LOCAL_PATH]/processed/abc/' --resample 128 --channels F3-M2 F4-M1 C3-M2 C4-M1 O1-M2 O2-M1 E1-M2 E2-M1
+ut extract --file_regex '[LOCAL_PATH]/physionet-2018-challenge/tr*/*.mat' --out_dir [LOCAL_PATH]/processed/phys/ --resample 128 --channels F3-M2 F4-M1 C3-M2 C4-M1 O1-M2 O2-M1 E1-M2
 ```
 
 #### Extract hypno command
 ```
-ut extract_hypno --file_regex '[LOCAL_PATH]/abc/polysomnography/annotations-events-nsrr/*/*.xml' --out_dir '[LOCAL_PATH]/processed/abc/'
+ut extract_hypno --file_regex '[LOCAL_PATH]/physionet-2018-challenge/tr*/*HYP.ids' --out_dir '[LOCAL_PATH]/processed/phys/'
 ```
 
 #### Views command
 ```
-ut cv_split --data_dir '[LOCAL_PATH]/processed/abc/' --subject_dir_pattern 'abc*' --CV 1 --validation_fraction 0.10 --max_validation_subjects 50 --test_fraction 0.15 --max_test_subjects 100 --subject_matching_regex '.*?-.*?-(.*)'
+ut cv_split --data_dir '[LOCAL_PATH]/processed/phys/ --subject_dir_pattern 'tr*' --CV 1 --validation_fraction 0.10 --max_validation_subjects 50 --test_fraction 0.15 --max_test_subjects 100
 ```
 
-Notes: 
-- 3 visits: 'baseline', 'month09', 'month18'
-- example nameing: abc-baseline-900001, abc-month18-900001, abc-month09-900001
-- match regex: .*?-.*?-(.*)
+Notes:
+- No subject relations specified
+- example nameing: 'tr13-0566'
+- match regex: None
