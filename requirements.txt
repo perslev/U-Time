@@ -15,3 +15,4 @@ tensorflow-probability==0.8.0
 wfdb==3.1.1
 ruamel.yaml==0.16.0
 scikit_learn==0.23.0
+requests==2.25.1

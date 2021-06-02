@@ -1,6 +1,6 @@
 import os
 import hashlib
-import subprocess
+import requests
 
 
 def get_checksums_and_file_names(path):
@@ -32,10 +32,15 @@ def download_and_validate(download_url, sha256, out_path):
             return
         else:
             print("... File exists, but invalid SHA256, re-downloading")
-    p = subprocess.Popen(["wget", download_url, "-O", out_path],
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-    p.communicate()
+
+    response = requests.get(download_url, allow_redirects=True)
+    if response.ok:
+        with open(out_path, "wb") as out_f:
+            out_f.write(response.content)
+    else:
+        raise ValueError("Could not download file from URL {}. "
+                         "Received HTTP response with status code {}".format(download_url,
+                                                                             response.status_code))
     if not validate_sha256(out_path, sha256):
         os.remove(out_path)
         raise ValueError(f"Invalid sha256 for file at {download_url} "

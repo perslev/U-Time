@@ -6,12 +6,12 @@ from utime.preprocessing.dataset_preparation.utils import (download_and_validate
 _FILE_PATH = os.path.split(__file__)[0]
 
 # SEDF-SC globals
-_SERVER_URL_SC = "https://physionet.org/physiobank/database/sleep-edfx/sleep-cassette"
+_SERVER_URL_SC = "https://physionet.org/files/sleep-edfx/1.0.0/sleep-cassette"
 _CHECKSUM_FILE_SC = "{}/sedf_sc_checksums.txt".format(_FILE_PATH)
 
 # SEDF-ST globals
-_SERVER_URL_ST = "https://physionet.org/physiobank/database/sleep-edfx/sleep-telemetry"
-_CHECKSUM_FILE_ST = "{}/sedf_sc_checksums.txt".format(_FILE_PATH)
+_SERVER_URL_ST = "https://physionet.org/files/sleep-edfx/1.0.0/sleep-telemetry"
+_CHECKSUM_FILE_ST = "{}/sedf_st_checksums.txt".format(_FILE_PATH)
 
 
 def _download(out_dataset_folder, server_url, checksums_path, N_first=None):
