@@ -111,6 +111,6 @@ fit:
   # Callbacks
   callbacks: [*TB, *MCP_CLEAN, *TIMER, *CSV, *ES]
 
-__VERSION__: 0.0.1
-__BRANCH__: master
-__COMMIT__: d8fcd78
+__VERSION__: Null
+__BRANCH__: Null
+__COMMIT__: Null
