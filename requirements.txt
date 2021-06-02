@@ -10,7 +10,7 @@ scipy==1.4.1
 tables==3.6.1
 tabulate==0.8.6
 tensorflow-addons==0.7.0
-tensorflow==2.1.0
+tensorflow==2.5.0
 tensorflow-probability==0.8.0
 wfdb==3.1.1
 ruamel.yaml==0.16.0
