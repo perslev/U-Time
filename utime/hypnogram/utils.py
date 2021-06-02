@@ -285,6 +285,57 @@ def sparse_hypnogram_from_ids_format(ids_tuple, period_length_sec, ann_to_class)
     return sparse_hyp, ann_to_class
 
 
+def hyp_has_gaps(init_times_sec, durations_sec):
+    """
+    Checks if a hypnogram as specified by a list of init times in seconds and a list of
+    same length or length N-1 of durations in seconds has any gaps.
+
+    :param init_times_sec: list of integer start times, length N
+    :param durations_sec: list of integer duration times, length N or N-1
+    :return: bool
+    """
+    if len(durations_sec) == len(init_times_sec):
+        durations_sec = durations_sec[:-1]
+    actual_diffs = np.diff(init_times_sec)
+    return np.any(~np.isclose(actual_diffs, durations_sec))
+
+
+def fill_hyp_gaps(init_times_sec, durations_sec, stages, fill_value):
+    """
+    Fill gaps in a hypnogram in inits, durs, stages form with a value 'fill_value'.
+
+    E.g.:
+
+    Inits: [0, 10, 50]
+    Durs: [10, 10, 10]
+    Stages: ['W', 'N1', 'N1']
+
+    and fill_value 'UNKNOWN', returns:
+
+    Inits: [0, 10, 20, 50]
+    Durs: [10, 10, 30, 10]
+    Stages: ['W', 'N1', 'UNKNOWN', 'N1']
+    """
+    if not hyp_has_gaps(init_times_sec, durations_sec):
+        # Do nothing
+        return init_times_sec, durations_sec, stages
+    assert len(init_times_sec) == len(durations_sec) == len(stages), "Inits, durations and stages must have equal length"
+    actual_diffs = np.diff(init_times_sec)
+    gap_lengths = actual_diffs - durations_sec[:-1]
+    gap_inds = np.where(gap_lengths)[0]
+    init_times_sec, durations_sec, stages = map(list, (init_times_sec, durations_sec, stages))
+    for ind in gap_inds:
+        if ind == 0 or ind >= len(gap_lengths):
+            raise NotImplementedError("The implementation has not yet been tested for its handling "
+                                      "of this situation. Please raise an issue on GitHub.")
+        # Insert gap section
+        length = gap_lengths[ind]
+        init_times_sec.insert(ind+1, init_times_sec[ind] + durations_sec[ind])
+        durations_sec.insert(ind+1, length)
+        stages.insert(ind+1, fill_value)
+    return tuple(map(tuple, (init_times_sec, durations_sec, stages)))
+
+
 def load_events_file(events_file_path):
     """
     Load an .ids events file.
