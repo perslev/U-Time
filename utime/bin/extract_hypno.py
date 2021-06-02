@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from mpunet.logging import Logger
 from utime.io.hypnogram import extract_ids_from_hyp_file
+from utime.hypnogram.utils import fill_hyp_gaps
 
 
 def get_argparser():
@@ -15,6 +16,9 @@ def get_argparser():
     parser.add_argument("--out_dir", type=str,
                         help="Directory in which extracted files will be "
                              "stored")
+    parser.add_argument("--fill_blanks", type=str, default=None,
+                        help="A stage string value to insert into the hypnogram when gaps "
+                             "occour, e.g. 'UNKNOWN' or 'Not Scored', etc.")
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name")
     return parser
@@ -59,6 +63,8 @@ def run(args):
                 continue
             os.remove(out)
         start, dur, stage = extract_ids_from_hyp_file(file_)
+        if args.fill_blanks:
+            start, dur, stage = fill_hyp_gaps(start, dur, stage, args.fill_blanks)
         to_ids(start, dur, stage, out)
 
 
