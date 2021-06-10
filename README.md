@@ -78,7 +78,7 @@ On a Linux machine with at least 1 CUDA enabled GPU available and `anaconda` or 
 git clone https://github.com/perslev/U-Time.git
 conda env create --file U-Time/environment.yaml
 conda activate u-sleep
-pip install mpunet==0.2.11 --no-deps
+pip install mpunet==0.2.12 --no-deps
 pip install U-Time/
 ```
 
