@@ -203,7 +203,7 @@ def save_npy(path, pred, **kwargs):
     """
     Save predictions as a numpy file storing a [N, 1] array of integer stages
     """
-    np.save(path, pred.reshape(-1, 1))
+    np.save(path, pred.reshape(len(pred), -1))
 
 
 def save_prediction(pred, out_path, period_length_sec, logger):
