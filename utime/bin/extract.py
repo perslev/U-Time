@@ -147,6 +147,8 @@ def extract(files, out_dir, channels, renamed_channels, logger, args):
 def run(args):
     files = glob(args.file_regex)
     out_dir = os.path.abspath(args.out_dir)
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
     logger = Logger(out_dir,
                     active_file='extraction_log',
                     overwrite_existing=args.overwrite,
