@@ -206,7 +206,7 @@ def save_npy(path, pred, **kwargs):
     np.save(path, pred.reshape(len(pred), -1))
 
 
-def save_prediction(pred, out_path, period_length_sec, logger):
+def save_prediction(pred, out_path, period_length_sec, no_argmax, logger):
     dir_, fname = os.path.split(out_path)
     if dir_:
         os.makedirs(dir_, exist_ok=True)
@@ -215,10 +215,12 @@ def save_prediction(pred, out_path, period_length_sec, logger):
         # Save as plain text of 1 stage per line
         out_path = os.path.join(dir_, basename + ext)
         save_func = save_hyp
+        assert not no_argmax, "Cannot save to .hyp format with the --no_argmax flag. Please use .npy."
     elif ext == ".ids":
         # Save as plain text in IDS format
         out_path = os.path.join(dir_, basename + ext)
         save_func = save_ids
+        assert not no_argmax, "Cannot save to .ids format with the --no_argmax flag. Please use .npy."
     else:
         # Save as npy
         out_path = os.path.join(dir_, basename + ".npy")
@@ -457,6 +459,7 @@ def run(args, return_prediction=False, dump_args=None):
         save_prediction(pred=pred,
                         out_path=args.o,
                         period_length_sec=hparams.get('period_length_sec', 30),
+                        no_argmax=args.no_argmax,
                         logger=logger)
 
 
