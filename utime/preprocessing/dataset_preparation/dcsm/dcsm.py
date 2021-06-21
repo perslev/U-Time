@@ -29,5 +29,5 @@ def download_dcsm(out_dataset_folder, N_first=None):
         server_url=_SERVER_URL,
         checksums_path=_CHECKSUM_FILE,
         paths_func=dcsm_paths_func,
-        N_first=N_first*2  # Two items per subject
+        N_first=N_first*2 if N_first else None  # Two items per subject
     )

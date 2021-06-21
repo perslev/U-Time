@@ -30,7 +30,7 @@ def download_phys(out_dataset_folder, N_first=None):
         server_url=_SERVER_URL,
         checksums_path=_CHECKSUM_FILE,
         paths_func=phys_paths_func,
-        N_first=N_first*3  # Four items per subject
+        N_first=N_first*3 if N_first else None  # Three items per subject
     )
 
 
