@@ -325,11 +325,11 @@ ut cm --true 'eval/test_data/dataset_1/files/*/true.npz' \
 ut summary --csv_pattern 'eval/test_data/*/evaluation_dice.csv' \
            --print_all
 
-<b># Output sleep stages for every 3 seconds of 100 Hz signal </b>
+<b># Output sleep stages for every 3 seconds of 128 Hz signal </b>
 <b># Here, the 'folder_regex' matches 2 files in the dataset </b>
-ut predict --folder_regex '../datasets/sleep-EDF-153/SC400[1-2]E0' \
+ut predict --folder_regex '../datasets/sedf_sc/SC400[1-2]E0' \
            --out_dir high_res_pred \
-           --data_per_prediction 300 \
+           --data_per_prediction 384 \
            --one_shot
 </pre>
 
