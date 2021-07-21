@@ -333,6 +333,8 @@ def predict_on(study_pair, seq, model=None, model_func=None, n_aug=None,
                 pred += pred_func(study_pair, seq, model, y) / n_aug
             seq.augmentation_enabled = False
             print()
+    if callable(getattr(pred, "numpy", None)):
+        pred = pred.numpy()
     if argmax:
         pred = pred.argmax(-1)
     return y, pred
