@@ -118,7 +118,8 @@ def get_prediction_channel_sets(sleep_study, dataset):
                                   "psg_file_path attribute. "
                                   "Not yet implemented.")
     else:
-        return [None, None]
+        # Use default select channels
+        return [(None, None)]
 
 
 def get_datasets(hparams, args, logger):
@@ -134,7 +135,8 @@ def get_datasets(hparams, args, logger):
             # Replace the set strip function
             set_new_strip_func(dataset_hparams, args.strip_func)
         # Check if load-time channel selector is set
-        channel_groups = dataset_hparams.get('load_time_channel_sampling_groups')
+        channel_groups = dataset_hparams.get('load_time_channel_sampling_groups') or \
+                         dataset_hparams.get('access_time_channel_sampling_groups')
         if channel_groups:
             # Add the channel groups to a separate field, handled at pred. time
             # Make sure all available channels are available in the misc attr.
@@ -297,10 +299,9 @@ def run_pred(dataset,
     seq = get_sequencer(dataset, hparams)
 
     # Predict on all samples
-    skip = True
     for i, sleep_study_pair in enumerate(dataset):
         logger("[{}/{}] Predicting on SleepStudy: {}".format(i+1, len(dataset),
-                                                                 sleep_study_pair.identifier))
+                                                             sleep_study_pair.identifier))
 
         # Get list of channel sets to predict on
         channel_sets = get_prediction_channel_sets(sleep_study_pair, dataset)
@@ -351,7 +352,7 @@ def run(args):
         logger("Evaluating using channels {}".format(args.channels))
 
     # Get model
-    #set_gpu_vis(args.num_GPUs, args.force_GPU, logger)
+    set_gpu_vis(args.num_GPUs, args.force_GPU, logger)
     model, model_func = None, None
     if args.one_shot:
         # Model is initialized for each sleep study later
@@ -363,7 +364,7 @@ def run(args):
         model = get_and_load_model(project_dir, hparams, logger,
                                    args.weights_file_name)
 
-    # Get all datasets to predict on
+    # Run pred on all datasets
     for dataset in get_datasets(hparams, args, logger):
         dataset = dataset[0]
         if "/" in dataset.identifier:
