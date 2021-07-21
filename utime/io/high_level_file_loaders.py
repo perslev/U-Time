@@ -65,7 +65,7 @@ def load_psg(psg_file_path,
     # Work out which channels to include and exclude during loading
     org_channels, include_channels, exclude_channels, montage_creator = \
         get_org_include_exclude_channel_montages(
-            load_channels=load_channels,
+            load_channels=load_channels or header["channel_names"],
             header=header,
             ignore_reference_channels=ignore_reference_channels,
             check_num_channels=check_num_channels,
@@ -131,7 +131,7 @@ def open_h5_archive(h5_file_path,
     header = {'channel_names': list(h5_obj[dataset_name].keys())}
 
     # Work out which channels to include and exclude during loading
-    org_channels, include_channels, _ = \
+    org_channels, include_channels, _, _ = \
         get_org_include_exclude_channel_montages(
             load_channels=load_channels,
             header=header,
