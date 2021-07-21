@@ -123,7 +123,7 @@ def run(args):
         print("PAIRS:\n{}".format(pairs))
     # Load the pairs
     print("Loading {} pairs...".format(len(pairs)))
-    l = lambda x: [np.load(f)["arr_0"] if os.path.splitext(f)[-1] == "npy" else np.load(f) for f in x]
+    l = lambda x: [np.load(f)["arr_0"] if os.path.splitext(f)[-1] == ".npz" else np.load(f) for f in x]
     np_pairs = list(map(l, pairs))
     for i, (p1, p2) in enumerate(np_pairs):
         if len(p1) != len(p2):
