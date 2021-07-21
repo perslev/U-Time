@@ -185,7 +185,7 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
     """
     Initializes a SleepStudy dataset and applies prep. function
     'select_sample_strip_scale_quality' from all subject folders that match
-    the a regex statement.
+    a regex statement.
 
     Args:
         regex_pattern: A string regex pattern used to match to all subject dirs
@@ -199,17 +199,22 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
     """
     from utime.dataset.sleep_study_dataset import SleepStudyDataset
     ann_dict = hparams.get("sleep_stage_annotations")
-    params = hparams.get("train_data") or hparams['prediction_params']
+    if 'prediction_params' in hparams:
+        period_length_sec = hparams['prediction_params'].get('period_length_sec', None)
+        pre_proc_params = hparams['prediction_params']
+    else:
+        period_length_sec = (hparams.get("train_data") or
+                             hparams.get("test_data")).get('period_length_sec', None)
+        pre_proc_params = hparams
     data_dir, pattern = os.path.split(os.path.abspath(regex_pattern))
-    params["data_dir"] = data_dir
     ssd = SleepStudyDataset(folder_regex=pattern,
-                            data_dir=data_dir,
-                            # **params,
                             logger=logger,
+                            data_dir=data_dir,
+                            period_length_sec=period_length_sec,
                             annotation_dict=ann_dict)
     # Apply transformations, scaler etc.
     from utime.utils.scriptutils import select_sample_strip_scale_quality
-    select_sample_strip_scale_quality(ssd, hparams=params, logger=logger)
+    select_sample_strip_scale_quality(ssd, hparams=pre_proc_params, logger=logger)
     return ssd
 
 
