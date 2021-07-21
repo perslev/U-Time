@@ -182,6 +182,9 @@ class BaseSequence(_BaseSequence):
         else:
             self.batch_scaler = None
 
+    def get_pairs(self):
+        return self.dataset_queue.get_pairs()
+
     @requires_all_loaded
     def get_class_counts(self):
         """

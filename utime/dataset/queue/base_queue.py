@@ -19,6 +19,9 @@ class BaseQueue:
         self.dataset = dataset
         self.logger = logger or ScreenLogger()
 
+    def get_pairs(self):
+        return self.dataset.pairs
+
     @property
     def all_loaded(self):
         raise NotImplemented

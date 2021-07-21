@@ -3,7 +3,7 @@ import pandas as pd
 
 
 def get_eval_df(sequencer):
-    ids = [ss.identifier for ss in sequencer.pairs]
+    ids = [ss.identifier for ss in sequencer.get_pairs()]
     classes = ["mean"] + ["cls {}".format(i) for i in range(sequencer.n_classes)]
     return pd.DataFrame(columns=ids, index=classes)
 
