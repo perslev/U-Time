@@ -83,7 +83,7 @@ class H5SleepStudy(AbstractBaseSleepStudy):
         for i, channel_set in enumerate(channel_sets):
             try:
                 # Work out which channels to include and exclude during loading
-                org_channels, include_channels, _ = \
+                org_channels, include_channels, _, _ = \
                     get_org_include_exclude_channel_montages(
                         load_channels=channel_set,
                         header={'channel_names': channels_in_file}
