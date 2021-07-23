@@ -16,8 +16,8 @@ from utime.errors import ChannelNotFoundError
 
 
 def load_psg(psg_file_path,
-             header_file_path=None,
              load_channels=None,
+             header_file_path=None,
              ignore_reference_channels=False,
              load_time_channel_selector=None,
              check_num_channels=True):

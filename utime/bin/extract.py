@@ -78,7 +78,8 @@ def _extract(file_,
     logger("[*] Output channels: " + ", ".join(chan_creator.output_channels.names))
     logger("[*] Channels to load: " + ", ".join(chan_creator.channels_to_load.names))
     try:
-        psg, header = load_psg(file_, chan_creator.channels_to_load,
+        psg, header = load_psg(file_,
+                               load_channels=chan_creator.channels_to_load,
                                check_num_channels=False)
     except ChannelNotFoundError as e:
         logger("\n-----\nCHANNEL ERROR ON FILE {}".format(file_))
