@@ -114,7 +114,7 @@ class Trainer(object):
                                 "'SparseCategoricalCrossentropy'. If "
                                 "you implemented a custom loss function, "
                                 "please raise an issue on GitHub.")
-            if ignore_class_int:
+            if ignore_class_int is not None:
                 # Mask out class
                 losses[i] = ignore_class_wrapper(losses[i], ignore_class_int, self.logger)
         metrics = init_metrics(metrics, self.logger, **kwargs)
