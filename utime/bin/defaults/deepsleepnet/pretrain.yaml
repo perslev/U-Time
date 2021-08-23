@@ -60,6 +60,10 @@ fit:
   loss: "SparseCategoricalCrossentropy"
   metrics: ["sparse_categorical_accuracy"]
 
+  # Ignore class in loss computation (e.g. to ignore 'UNKNOWN'/'MOVEMENT' other rare classes)
+  # Comment out or set to Null to not ignore any classes
+  ignore_class_int: 5
+
   # Optimization
   batch_size: 100
   n_epochs: 2000

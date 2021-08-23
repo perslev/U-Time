@@ -73,7 +73,8 @@ class Trainer(object):
         self.org_model = org_model
 
     def compile_model(self, optimizer, loss, metrics, reduction,
-                      check_sparse=False, optimizer_kwargs={}, loss_kwargs={}, **kwargs):
+                      ignore_class_int=None, check_sparse=False,
+                      optimizer_kwargs={}, loss_kwargs={}, **kwargs):
         """
         Compile the stored tf.keras Model instance stored in self.model
         Sets the loss function, optimizer and metrics
@@ -113,9 +114,9 @@ class Trainer(object):
                                 "'SparseCategoricalCrossentropy'. If "
                                 "you implemented a custom loss function, "
                                 "please raise an issue on GitHub.")
-            else:
-                # Mask out class 5: TODO: Make optional
-                losses[i] = ignore_class_wrapper(losses[i], self.model.n_classes, self.logger)
+            if ignore_class_int:
+                # Mask out class
+                losses[i] = ignore_class_wrapper(losses[i], ignore_class_int, self.logger)
         metrics = init_metrics(metrics, self.logger, **kwargs)
 
         # Compile the model
