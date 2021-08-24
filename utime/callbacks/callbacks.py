@@ -104,8 +104,10 @@ class Validation(Callback):
 
                 # Compute counts
                 if hasattr(pred, "numpy"):
-                    pred = pred.numpy()
-                tps, rel, sel = self._compute_counts(pred=pred,
+                    pred_numpy = pred.numpy()
+                else:
+                    pred_numpy = pred
+                tps, rel, sel = self._compute_counts(pred=pred_numpy,
                                                      true=y,
                                                      ignore_class=5)
                 true_pos[id_] += tps
