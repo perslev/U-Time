@@ -47,6 +47,7 @@ class Validation(Callback):
         self.IDs = val_sequence.IDs
         self.print_round = 3
         self.log_round = 4
+        self._supports_tf_logs = True
 
     def _compute_counts(self, pred, true, ignore_class=None):
         # Argmax and CM elements
@@ -69,7 +70,7 @@ class Validation(Callback):
 
     def predict(self):
         # Get tensors to run and their names
-        metrics = self.model.loss_functions + self.model.metrics
+        metrics = getattr(self.model, "loss_functions", self.model.losses) + self.model.metrics
         metrics_names = self.model.metrics_names
         self.model.reset_metrics()
         assert len(metrics_names) == len(metrics)
@@ -102,7 +103,9 @@ class Validation(Callback):
                     pred = self.model.predict_on_batch(x)
 
                 # Compute counts
-                tps, rel, sel = self._compute_counts(pred=pred.numpy(),
+                if hasattr(pred, "numpy"):
+                    pred = pred.numpy()
+                tps, rel, sel = self._compute_counts(pred=pred,
                                                      true=y,
                                                      ignore_class=5)
                 true_pos[id_] += tps
@@ -111,7 +114,10 @@ class Validation(Callback):
 
                 # Run all metrics
                 for metric, name in zip(metrics, metrics_names):
-                    per_study_metrics[name].append(metric(y, pred).numpy())
+                    res = metric(y, pred)
+                    if hasattr(pred, "numpy"):
+                        res = res.numpy()
+                    per_study_metrics[name].append(res)
 
             # Compute mean metrics for the dataset
             metrics_results[id_] = {}
@@ -172,11 +178,11 @@ class Validation(Callback):
 
         # Print the df to screen
         self.logger(highlighted(("[%s] Validation Results for "
-                            "Epoch %i" % (name, epoch)).lstrip(" ")))
+                                 "Epoch %i" % (name, epoch)).lstrip(" ")))
         print_string = val_results.round(self.print_round).to_string()
         self.logger(print_string.replace("NaN", "---") + "\n")
 
-    def on_epoch_end(self, epoch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
         self.logger("\n")
         # Predict and get CM
         TPs, relevant, selected, metrics = self.predict()
