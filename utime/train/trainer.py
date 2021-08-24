@@ -11,7 +11,7 @@ from tensorflow.python.framework.errors_impl import (ResourceExhaustedError,
 from mpunet.callbacks import (init_callback_objects,
                               remove_validation_callbacks)
 from mpunet.logging import ScreenLogger
-from mpunet.callbacks import (DividerLine, LearningCurve)
+from mpunet.callbacks import (DividerLine, LearningCurve, MeanReduceLogArrays)
 from mpunet.utils import ensure_list_or_tuple
 from mpunet.train.utils import (ensure_sparse,
                                 init_losses,
@@ -203,7 +203,7 @@ class Trainer(object):
             # Important: Should be first in callbacks list as other CBs may
             # depend on the validation metrics/loss
             validation = Validation(val, logger=self.logger, verbose=verbose)
-            callbacks = [validation] + callbacks
+            callbacks = [validation, MeanReduceLogArrays()] + callbacks
 
         # Add various callbacks for plotting learning curves etc.
         callbacks.append(MemoryConsumption(max_gib=45, logger=self.logger))
