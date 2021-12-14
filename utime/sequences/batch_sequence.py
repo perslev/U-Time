@@ -190,7 +190,7 @@ class BatchSequence(BaseSequence):
         if new_margin < 0:
             raise ValueError("Margin must be >= 0, got {}".format(new_margin))
         self._margin = new_margin
-        if self.all_loaded:
+        if self.all_loaded and self._cum_periods_per_pair_minus_margins is not None:
             # Compute cum. number of periods per pair minus newly set margin
             minus_margin_cum_periods = np.cumsum(self.periods_per_pair -
                                                  (new_margin*2))
@@ -206,7 +206,7 @@ class BatchSequence(BaseSequence):
 
     def __len__(self):
         """ Returns the total number of batches in this dataset """
-        if self.all_loaded:
+        if self.all_loaded and self._cum_periods_per_pair_minus_margins is not None:
             return int(np.ceil(self.total_periods_minus_margins/self.batch_size))
         else:
             # We don't really know, return some reasonably large number (this number is not really used anyway)

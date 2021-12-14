@@ -173,8 +173,12 @@ class BaseSequence(_BaseSequence):
         self.augmentation_enabled = bool(augmenters)
         self.batch_size = batch_size
         if self.all_loaded:
-            self._periods_per_pair = np.array([ss.n_periods for ss in self.dataset_queue])
-            self._cum_periods_per_pair = np.cumsum(self.periods_per_pair)
+            try:
+                self._periods_per_pair = np.array([ss.n_periods for ss in self.dataset_queue])
+            except NotImplementedError:
+                pass
+            else:
+                self._cum_periods_per_pair = np.cumsum(self.periods_per_pair)
         if batch_scaler not in (None, False):
             if not assert_scaler(batch_scaler):
                 raise ValueError("Invalid batch scaler {}".format(batch_scaler))
