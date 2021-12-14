@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
+import matplotlib.transforms as transforms
 import numpy as np
+from utime import Defaults
 from utime.io.channels import ChannelMontageTuple
 
 
@@ -14,9 +16,11 @@ def plot_period(X, y=None,
                 channel_names=None,
                 init_second=None,
                 sample_rate=None,
+                horizontal_line=True,
                 out_path=None,
                 return_fig=False,
-                equal_y_lims=True):
+                equal_y_lims=True,
+                **plot_kwargs):
     """
     Plots one period (typically 30 seconds) of PSG data with its annotation.
     If neither out_path and return_fig are set, displays the figure and blocks.
@@ -42,7 +46,6 @@ def plot_period(X, y=None,
     if X.ndim == 1:
         X = np.expand_dims(X, -1)
     n_chans = X.shape[-1]
-    assert len(channel_names) == n_chans
     fig, axes = plt.subplots(figsize=(14, 7), ncols=1, nrows=n_chans,
                              sharex=True)
     fig.subplots_adjust(hspace=0)
@@ -51,15 +54,17 @@ def plot_period(X, y=None,
 
     xs = np.arange(len(X))
     for i in range(n_chans):
-        axes[i].plot(xs, X[:, i], color="black")
-        axes[i].axhline(0, color='red',
-                        linewidth=1.5)
+        axes[i].plot(xs, X[:, i], color="black", **plot_kwargs)
+        if horizontal_line:
+            axes[i].axhline(0, color='red',
+                            linewidth=1.5)
         axes[i].set_xlim(xs[0], xs[-1])
         if channel_names:
+            assert len(channel_names) == n_chans
             if isinstance(channel_names, ChannelMontageTuple):
                 channel_names = channel_names.original_names
             axes[i].annotate(
-                s=channel_names[i],
+                text=channel_names[i],
                 size=max(23-(2*len(channel_names)), 7),
                 xy=(1.025, 0.5),
                 xycoords=axes[i].transAxes,
@@ -89,11 +94,13 @@ def plot_period(X, y=None,
 
 
 def plot_periods(X, y=None,
+                 channel_names=None,
                  highlight_periods=True,
                  out_path=None,
                  return_fig=False,
                  equal_y_lims=True,
-                 **kwargs):
+                 sample_rate=None,
+                 **plot_kwargs):
     """
     Plots multiple consecutive periods of PSG data with annotated labels.
     If neither out_path and return_fig are set, displays the figure and blocks.
@@ -106,7 +113,7 @@ def plot_periods(X, y=None,
         return_fig:         (bool)   Return the figure instead of saving
                                      (out_path is ignored)
         equal_y_lims        (bool)   All axes share ylims
-        **kwargs:           (dict)   Parameters passed to 'plot_period'
+        **plot_kwargs:      (dict)   Parameters passed to 'plot_period'
 
     Returns:
         Figure and axes objects if return_fig=True, otherwise None
@@ -114,16 +121,22 @@ def plot_periods(X, y=None,
     X = np.array(X)
     assert X.ndim == 3
     n_periods = len(X)
+    period_length = X.shape[1]
     X = np.concatenate(X, axis=0)
-    if y is not None:
-        if len(y) < 15:
-            ys = '-'.join(y)
-        else:
-            ys = "{} stages (too long to show)".format(len(y))
-    else:
-        ys = "<Not specified>"
-    fig, axes = plot_period(X, ys, return_fig=True, **kwargs)
+
+    # Plot period data
+    fig, axes = plot_period(X, channel_names=channel_names, return_fig=True, **plot_kwargs)
     x_sepparations = [(len(X)//n_periods) * i for i in range(1, n_periods)]
+    transform = transforms.blended_transform_factory(axes[0].transData, axes[0].transAxes)
+    if y is not None:
+        for ind, stage in enumerate(y):
+            axes[0].annotate(
+                text=str(stage),
+                xy=(period_length * ind + (period_length//2), 1.02),
+                xycoords=transform,
+                ha="center",
+                va="bottom"
+            )
     if highlight_periods:
         for ax in axes:
             for sep in x_sepparations:
@@ -132,6 +145,16 @@ def plot_periods(X, y=None,
                            linewidth=1.5)
     if equal_y_lims:
         set_equal_ylims(axes)
+
+    # Set ticks at all period separation points
+    axes[1].set_xticks(np.linspace(0, len(X), n_periods+1).astype(np.int))
+
+    if sample_rate is not None:
+        # Set seconds on xaxis
+        plt.draw()
+        axes[1].set_xticklabels([str(int(tick_lab.get_text())//sample_rate) + "s"
+                                 for tick_lab in axes[1].get_xticklabels()],
+                                rotation=90)
 
     # Return, save or show the figure
     if not return_fig:
