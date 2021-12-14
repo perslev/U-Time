@@ -47,6 +47,8 @@ def get_argparser():
                         help='Re-sample the selected channels before storage.')
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name")
+    parser.add_argument("--continue_", action="store_true",
+                        help="Skip already existing files.")
     parser.add_argument("--use_dir_names", action="store_true",
                         help='Each PSG file will be saved as '
                              '<parent directory>.h5 instead of <file_name>.h5')
@@ -131,10 +133,13 @@ def extract(files, out_dir, channels, renamed_channels, logger, args):
             os.mkdir(out_dir_subject)
         out_path = os.path.join(out_dir_subject, name + ".h5")
         if os.path.exists(out_path):
-            if not args.overwrite:
+            if args.continue_:
                 logger("-- Skipping (already exists, overwrite=False)")
                 continue
-            os.remove(out_path)
+            elif not args.overwrite:
+                raise OSError(f"File already exists at '{out_path}' abd neither --overwrite nor --continue was set.")
+            else:
+                os.remove(out_path)
         _extract(
             file_=file_,
             out_path=out_path,
@@ -150,9 +155,12 @@ def run(args):
     out_dir = os.path.abspath(args.out_dir)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
+    if args.overwrite and args.continue_:
+        raise RuntimeError("Only one of the flags '--continue' and '--overwrite' may be used.")
     logger = Logger(out_dir,
                     active_file='extraction_log',
                     overwrite_existing=args.overwrite,
+                    append_existing=args.continue_,
                     print_calling_method=False)
     logger("Args dump: {}".format(vars(args)))
     logger("Found {} files matching glob statement".format(len(files)))
