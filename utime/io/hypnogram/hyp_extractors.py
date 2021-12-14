@@ -45,7 +45,6 @@ def extract_from_start_dur_stage(file_path, **kwargs):
     Returns:
         A StartDurationStageFormat object
     """
-    import pandas as pd
     df = pd.read_csv(file_path, header=None)
     return StartDurationStageFormat(zip(*df.to_numpy()))
 
@@ -90,7 +89,6 @@ def extract_from_np(file_path, period_length_sec, sample_rate):
     Returns:
         A StartDurationStageFormat object
     """
-    import numpy as np
     arr = np.load(file_path)
     if not isinstance(arr, np.ndarray):
         # npz
@@ -105,8 +103,6 @@ def extract_from_np(file_path, period_length_sec, sample_rate):
 
 
 def extract_from_stg_txt(file_path, period_length_sec, sample_rate):
-    import pandas as pd
-    import numpy as np
     df = pd.read_csv(file_path, delimiter="\t")
     epoch, stages = df['Epoch'].values, df['User-Defined Stage'].values
     map_ = np.vectorize(
