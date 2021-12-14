@@ -1,5 +1,5 @@
 test_data:
-  data_dir: [LOCAL_PATH]/mass-c3/
+  data_dir: LOCAL_PATH/mass-c3/
   period_length_sec: 30
   identifier: "TEST"
   psg_regex: .*-PSG.h5

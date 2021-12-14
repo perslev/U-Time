@@ -1,5 +1,5 @@
 test_data:
-  data_dir: [LOCAL_PATH]/dod/dod_o/
+  data_dir: LOCAL_PATH/dod/dod_o/
   period_length_sec: 30
   identifier: "TEST"
   psg_regex: signals.h5

@@ -1,5 +1,5 @@
 test_data:
-  data_dir: [LOCAL_PATH]/svuh
+  data_dir: LOCAL_PATH/svuh
   period_length_sec: 30
   identifier: "TEST"
   psg_regex: .*[.]h5
