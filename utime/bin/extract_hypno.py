@@ -19,6 +19,9 @@ def get_argparser():
     parser.add_argument("--fill_blanks", type=str, default=None,
                         help="A stage string value to insert into the hypnogram when gaps "
                              "occour, e.g. 'UNKNOWN' or 'Not Scored', etc.")
+    parser.add_argument("--extract_func", type=str, default=None,
+                        help="Name of hyp extraction function. If not specified, the file extension defines the "
+                             "function to use.")
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name")
     return parser
@@ -49,7 +52,7 @@ def run(args):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     for i, file_ in enumerate(files):
-        file_name = os.path.splitext(os.path.split(file_)[-1])[0]
+        file_name = os.path.split(file_)[-1].split(".", 1)[0]
         folder_name = os.path.split(os.path.split(file_)[0])[-1]
         out_dir_subject = os.path.join(out_dir, folder_name)
         out = os.path.join(out_dir_subject, file_name + ".ids")
@@ -62,7 +65,7 @@ def run(args):
             if not args.overwrite:
                 continue
             os.remove(out)
-        start, dur, stage = extract_ids_from_hyp_file(file_)
+        start, dur, stage = extract_ids_from_hyp_file(file_, period_length_sec=30, extract_func=args.extract_func)
         if args.fill_blanks:
             start, dur, stage = fill_hyp_gaps(start, dur, stage, args.fill_blanks)
         to_ids(start, dur, stage, out)
