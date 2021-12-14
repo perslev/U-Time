@@ -66,7 +66,7 @@ def infer_channels(channel_str, relax=False):
 
     """
     channel_str_standard = preprocess_channel_string(channel_str)
-    split_channel_str = channel_str_standard.split("-")
+    split_channel_str = channel_str_standard.rsplit("-", 1)
     for i, chan in enumerate(split_channel_str):
         if not relax and chan not in ALLOWED_CHANNELS:
             new_chan = split_by_valid_chan(chan)
