@@ -324,15 +324,15 @@ def fill_hyp_gaps(init_times_sec, durations_sec, stages, fill_value):
     gap_lengths = actual_diffs - durations_sec[:-1]
     gap_inds = np.where(gap_lengths)[0]
     init_times_sec, durations_sec, stages = map(list, (init_times_sec, durations_sec, stages))
-    for ind in gap_inds:
-        if ind == 0 or ind >= len(gap_lengths):
+    for insert_idx, ind in enumerate(sorted(gap_inds)):
+        if ind >= len(gap_lengths):
             raise NotImplementedError("The implementation has not yet been tested for its handling "
                                       "of this situation. Please raise an issue on GitHub.")
         # Insert gap section
         length = gap_lengths[ind]
-        init_times_sec.insert(ind+1, init_times_sec[ind] + durations_sec[ind])
-        durations_sec.insert(ind+1, length)
-        stages.insert(ind+1, fill_value)
+        init_times_sec.insert(ind+1+insert_idx, init_times_sec[ind+insert_idx] + durations_sec[ind+insert_idx])
+        durations_sec.insert(ind+1+insert_idx, length)
+        stages.insert(ind+1+insert_idx, fill_value)
     return tuple(map(tuple, (init_times_sec, durations_sec, stages)))
 
 
