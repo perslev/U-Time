@@ -40,10 +40,14 @@ class USleep(Model):
                  padding="same",
                  init_filters=5,
                  complexity_factor=2,
+                 kernel_initializer=tf.keras.initializers.glorot_uniform,
+                 bias_initializer=tf.keras.initializers.zeros,
                  l2_reg=None,
                  data_per_prediction=None,
                  logger=None,
                  build=True,
+                 no_log=False,
+                 name="",
                  **kwargs):
         """
         n_classes (int):
@@ -80,8 +84,6 @@ class USleep(Model):
         build (bool):
             TODO
         """
-        super(USleep, self).__init__()
-
         # Set logger or standard print wrapper
         self.logger = logger or ScreenLogger()
 
@@ -97,6 +99,8 @@ class USleep(Model):
         self.kernel_size = int(kernel_size)
         self.transition_window = transition_window
         self.activation = activation
+        self.kernel_initializer = kernel_initializer
+        self.bias_initializer = bias_initializer
         self.l2_reg = l2_reg
         self.depth = depth
         self.n_crops = 0
@@ -115,14 +119,15 @@ class USleep(Model):
 
         if build:
             # Build model and init base keras Model class
-            super().__init__(*self.init_model())
+            super().__init__(*self.init_model(name_prefix=name))
 
             # Compute receptive field
             ind = [x.__class__.__name__ for x in self.layers].index("UpSampling2D")
             self.receptive_field = compute_receptive_fields(self.layers[:ind])[-1][-1]
 
             # Log the model definition
-            self.log()
+            if not no_log:
+                self.log()
         else:
             self.receptive_field = [None]
 
@@ -137,7 +142,8 @@ class USleep(Model):
                        complexity_factor,
                        regularizer=None,
                        name="encoder",
-                       name_prefix=""):
+                       name_prefix="",
+                       **other_conv_params):
         name = "{}{}".format(name_prefix, name)
         residual_connections = []
         for i in range(depth):
@@ -147,7 +153,7 @@ class USleep(Model):
                           kernel_regularizer=regularizer,
                           bias_regularizer=regularizer,
                           dilation_rate=dilation,
-                          name=l_name + "_conv1")(in_)
+                          name=l_name + "_conv1", **other_conv_params)(in_)
             bn = BatchNormalization(name=l_name + "_BN1")(conv)
             s = bn.get_shape()[1]
             if s % 2:
@@ -166,7 +172,7 @@ class USleep(Model):
                       kernel_regularizer=regularizer,
                       bias_regularizer=regularizer,
                       dilation_rate=1,
-                      name=name + "_conv1")(in_)
+                      name=name + "_conv1", **other_conv_params)(in_)
         encoded = BatchNormalization(name=name + "_BN1")(conv)
         return encoded, residual_connections, filters
 
@@ -182,7 +188,8 @@ class USleep(Model):
                         complexity_factor,
                         regularizer=None,
                         name="upsample",
-                        name_prefix=""):
+                        name_prefix="",
+                        **other_conv_params):
         name = "{}{}".format(name_prefix, name)
         residual_connections = res_conns[::-1]
         for i in range(depth):
@@ -197,7 +204,7 @@ class USleep(Model):
                           padding=padding,
                           kernel_regularizer=regularizer,
                           bias_regularizer=regularizer,
-                          name=l_name + "_conv1")(up)
+                          name=l_name + "_conv1", **other_conv_params)(up)
             bn = BatchNormalization(name=l_name + "_BN1")(conv)
 
             # Crop and concatenate
@@ -209,7 +216,7 @@ class USleep(Model):
                           activation=activation, padding=padding,
                           kernel_regularizer=regularizer,
                           bias_regularizer=regularizer,
-                          name=l_name + "_conv2")(merge)
+                          name=l_name + "_conv2", **other_conv_params)(merge)
             in_ = BatchNormalization(name=l_name + "_BN2")(conv)
         return in_
 
@@ -221,13 +228,14 @@ class USleep(Model):
                               regularizer,
                               complexity_factor,
                               name_prefix="",
-                              **kwargs):
+                              **other_conv_params):
         cls = Conv2D(filters=int(filters*complexity_factor),
                      kernel_size=(1, 1),
                      kernel_regularizer=regularizer,
                      bias_regularizer=regularizer,
                      activation=dense_classifier_activation,
-                     name="{}dense_classifier_out".format(name_prefix))(in_)
+                     name="{}dense_classifier_out".format(name_prefix),
+                     **other_conv_params)(in_)
         s = (self.n_periods * self.input_dims) - cls.get_shape().as_list()[1]
         out = self.crop_nodes_to_match(
             node1=ZeroPadding2D(padding=[[s // 2, s // 2 + s % 2], [0, 0]])(cls),
@@ -244,7 +252,8 @@ class USleep(Model):
                             transition_window,
                             activation,
                             regularizer=None,
-                            name_prefix=""):
+                            name_prefix="",
+                            **other_conv_params):
         cls = AveragePooling2D((data_per_period, 1),
                                name="{}average_pool".format(name_prefix))(in_)
         out = Conv2D(filters=n_classes,
@@ -253,14 +262,16 @@ class USleep(Model):
                      kernel_regularizer=regularizer,
                      bias_regularizer=regularizer,
                      padding="same",
-                     name="{}sequence_conv_out_1".format(name_prefix))(cls)
+                     name="{}sequence_conv_out_1".format(name_prefix),
+                     **other_conv_params)(cls)
         out = Conv2D(filters=n_classes,
                      kernel_size=(transition_window, 1),
                      activation="softmax",
                      kernel_regularizer=regularizer,
                      bias_regularizer=regularizer,
                      padding="same",
-                     name="{}sequence_conv_out_2".format(name_prefix))(out)
+                     name="{}sequence_conv_out_2".format(name_prefix),
+                     **other_conv_params)(out)
         s = [-1, n_periods, input_dims//data_per_period, n_classes]
         if s[2] == 1:
             s.pop(2)  # Squeeze the dim
@@ -293,6 +304,8 @@ class USleep(Model):
             "dilation": self.dilation,
             "padding": self.padding,
             "regularizer": regularizer,
+            "kernel_initializer": self.kernel_initializer,
+            "bias_initializer": self.bias_initializer,
             "name_prefix": name_prefix,
             "complexity_factor": self.cf
         }
