@@ -305,11 +305,11 @@ def run_pred(dataset,
 
         # Get list of channel sets to predict on
         channel_sets = get_prediction_channel_sets(sleep_study_pair, dataset)
-        if len(channel_sets) > 10:
-            logger.warn("Many ({}) combinations of channels in channel "
-                        "groups!".format(len(channel_sets)))
+        if len(channel_sets) > 20:
+            logger("OBS: Many ({}) combinations of channels in channel "
+                   "groups. Prediction for this study may take a while.".format(len(channel_sets)))
         if len(channel_sets) == 0:
-            logger.warn("Found no valid channel sets... Skipping sample")
+            logger(f"Found no valid channel sets for study {sleep_study_pair}. Skipping study.")
         else:
             run_pred_on_pair(
                 sleep_study_pair=sleep_study_pair,
