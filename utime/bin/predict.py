@@ -309,18 +309,18 @@ def run_pred(dataset,
             logger.warn("Many ({}) combinations of channels in channel "
                         "groups!".format(len(channel_sets)))
         if len(channel_sets) == 0:
-            logger.warn("Found no valid channel sets...")
-
-        run_pred_on_pair(
-            sleep_study_pair=sleep_study_pair,
-            seq=seq,
-            model=model,
-            model_func=model_func,
-            out_dir=out_dir,
-            channel_sets=channel_sets,
-            logger=logger,
-            args=args
-        )
+            logger.warn("Found no valid channel sets... Skipping sample")
+        else:
+            run_pred_on_pair(
+                sleep_study_pair=sleep_study_pair,
+                seq=seq,
+                model=model,
+                model_func=model_func,
+                out_dir=out_dir,
+                channel_sets=channel_sets,
+                logger=logger,
+                args=args
+            )
 
 
 def run(args):
