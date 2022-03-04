@@ -7,7 +7,7 @@ See docstring below.
 
 import numpy as np
 from utime.sequences.base_sequence import BaseSequence, requires_all_loaded
-from utime.errors import MarginError
+from sleeputils.errors import MarginError
 
 
 def _infer_n_classes(n_classes, queue):

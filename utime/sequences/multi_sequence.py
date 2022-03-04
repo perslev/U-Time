@@ -1,7 +1,7 @@
 import numpy as np
-from utime.sequences.base_sequence import _BaseSequence
 from mpunet.logging import ScreenLogger
-from utime.errors import NotLoadedError
+from utime.sequences.base_sequence import _BaseSequence
+from sleeputils.errors import NotLoadedError
 
 
 def _assert_comparable_sequencers(sequencers):

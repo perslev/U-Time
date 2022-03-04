@@ -1,13 +1,13 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 from tensorflow.keras.utils import Sequence
-from multiprocessing import current_process
-from mpunet.logging import ScreenLogger
-from utime import Defaults
-from utime.preprocessing.scaling import apply_scaling, assert_scaler
-from utime.utils import assert_all_loaded
-from utime.errors import NotLoadedError
 from functools import wraps
+from multiprocessing import current_process
+from utime import Defaults
+from sleeputils.errors import NotLoadedError
+from sleeputils.preprocessing.scaling import apply_scaling, assert_scaler
+from sleeputils.dataset.utils import assert_all_loaded
+from mpunet.logging import ScreenLogger
 
 
 def requires_all_loaded(method):
@@ -68,7 +68,7 @@ class _BaseSequence(Sequence):
         while True:
             for i in range(len(self)):
                 x, y = self.__getitem__(i)  # index does not matter
-                yield (tf.convert_to_tensor(x), tf.convert_to_tensor(y))
+                yield tf.convert_to_tensor(x), tf.convert_to_tensor(y)
 
     def __getitem__(self, idx):
         raise NotImplemented

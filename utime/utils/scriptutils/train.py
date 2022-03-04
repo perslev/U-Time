@@ -4,7 +4,10 @@ A set of functions for needed for running training in various settings
 
 import os
 from mpunet.logging.default_logger import ScreenLogger
-from utime.dataset.sleep_study_dataset.single_h5_dataset import H5Dataset
+from utime.utils.scriptutils import get_all_dataset_hparams
+from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
+from sleeputils.dataset.sleep_study_dataset import SingleH5Dataset
+from sleeputils.errors import NotLoadedError
 
 
 def get_train_and_val_datasets(hparams, no_val, train_on_val, logger):
@@ -90,17 +93,12 @@ def get_h5_train_and_val_datasets(hparams, no_val, train_on_val, logger):
     if train_on_val:
         raise NotImplementedError("Training on validation data is not yet "
                                   "implemented for preprocessed H5 datasets.")
-
-    from utime.dataset.sleep_study_dataset import SingleH5Dataset
-    from utime.utils.scriptutils import get_all_dataset_hparams
     data_hparams = get_all_dataset_hparams(hparams)
-
     h5_dataset = None
     train_datasets, val_datasets = [], []
     for dataset_id, hparams in data_hparams.items():
         if h5_dataset is None:
-            h5_dataset = SingleH5Dataset(hparams['train_data']['data_dir'],
-                                         logger=logger)
+            h5_dataset = SingleH5Dataset(hparams['train_data']['data_dir'])
         train = _get_dataset(
             h5_dataset=h5_dataset,
             regex=f'/{dataset_id}/TRAIN',
@@ -116,77 +114,8 @@ def get_h5_train_and_val_datasets(hparams, no_val, train_on_val, logger):
             )
             ds.append(val)
             val_datasets.append(val)
-        from utime.utils.scriptutils import select_sample_strip_scale_quality
-        select_sample_strip_scale_quality(*ds, hparams=hparams, logger=logger)
-
+        select_sample_strip_scale_quality(*ds, hparams=hparams)
     return train_datasets, val_datasets
-
-
-def get_data_queues(datasets,
-                    queue_type,
-                    max_loaded_per_dataset,
-                    num_access_before_reload,
-                    logger,
-                    study_loader=None):
-    """
-    TODO.
-
-    Args:
-
-    Returns:
-
-    """
-    from utime.dataset.queue import (StudyLoader, LimitationQueue,
-                                     LazyQueue, EagerQueue)
-    map_ = {'eager': EagerQueue,
-            'lazy': LazyQueue,
-            'limitation': LimitationQueue}
-    queue_type = map_[queue_type.lower()]
-    logger("Using data queue type:", queue_type.__name__)
-
-    if queue_type is LimitationQueue:
-        if study_loader is None:
-            logger("Creating study loader...")
-            # Get loader for limitation queue(s)
-            max_loaded = (max_loaded_per_dataset or 0) * len(datasets)
-            study_loader = StudyLoader(n_threads=7,
-                                       max_queue_size=max_loaded or None,
-                                       logger=logger)
-    else:
-        study_loader = None
-
-    dataset_queues = []
-    for dataset in datasets:
-        if max_loaded_per_dataset >= len(dataset) and queue_type is LimitationQueue:
-            # TODO: Implement load/access_time_random_channel_selector for EagerQueue, see NotImplementedError below.
-            logger.warn(f"Using '{queue_type.__name__}' for dataset {dataset} even though max_loaded_per_dataset = {max_loaded_per_dataset} "
-                        f">= len(dataset) = {len(dataset)})")
-            # queue_type = EagerQueue
-        if queue_type is EagerQueue and not isinstance(dataset, H5Dataset) and \
-                (any([getattr(ss, 'load_time_random_channel_selector', False) or
-                      getattr(ss, 'access_time_random_channel_selector', False) for ss in dataset])):
-            raise NotImplementedError(
-                "The 'eager' data loading queue currently does not support datasets with "
-                "the 'load_time_channel_sampling_groups' or "
-                "'access_time_channel_sampling_groups' attributes set. "
-                "If you want to train using random channel combinations, either "
-                "pre-process the data using the 'ut preprocess' command and then re-run "
-                "training using 'ut train --preprocessed', or run training with the "
-                "limitation queue loader using the '--train_queue_type "
-                "limitation' command."
-            )
-        dataset_queues.append(queue_type(
-            dataset=dataset,
-            max_loaded=max_loaded_per_dataset,
-            num_access_before_reload=num_access_before_reload,  # TODO
-            preload_now=True,
-            await_preload=False,
-            study_loader=study_loader,
-            logger=logger
-        ))
-    if study_loader:
-        study_loader.join()
-    return dataset_queues
 
 
 def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
@@ -314,7 +243,6 @@ def get_samples_per_epoch(train_seq, max_train_samples_per_epoch):
     Returns:
         Number of samples to take in training and validation
     """
-    from utime.errors import NotLoadedError
     try:
         train_samples_per_epoch = min(train_seq.total_periods,
                                       max_train_samples_per_epoch)

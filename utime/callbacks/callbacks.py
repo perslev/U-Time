@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from carbontracker.tracker import CarbonTracker
 from tensorflow.keras.callbacks import Callback
-from utime.utils import get_memory_usage
+from sleeputils.utils import get_memory_usage
 from mpunet.utils import highlighted
 from mpunet.logging import ScreenLogger
 from collections import defaultdict
