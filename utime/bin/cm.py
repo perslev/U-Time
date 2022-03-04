@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 from argparse import ArgumentParser
 from glob import glob
-from utime.evaluation import concatenate_true_pred_pairs
 from sklearn.metrics import confusion_matrix
+from utime.evaluation import concatenate_true_pred_pairs
 from utime.evaluation import (f1_scores_from_cm, precision_scores_from_cm,
                               recall_scores_from_cm)
 

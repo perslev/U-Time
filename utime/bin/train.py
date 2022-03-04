@@ -8,7 +8,19 @@ ut init).
 import numpy as np
 import os
 import utime
+import tables
 from argparse import ArgumentParser
+from mpunet.logging import Logger
+from utime.train import Trainer
+from utime.hyperparameters import YAMLHParams
+from utime.utils.scriptutils import assert_project_folder, make_multi_gpu_model
+from utime.utils.scriptutils.train import (get_train_and_val_datasets,
+                                           get_h5_train_and_val_datasets,
+                                           get_generators,
+                                           find_and_set_gpus,
+                                           get_samples_per_epoch,
+                                           save_final_weights)
+from sleeputils.dataset.queue.utils import get_data_queues
 
 
 def get_argparser():
@@ -112,7 +124,6 @@ def update_hparams_with_command_line_arguments(hparams, args):
     Args:
         hparams: (YAMLHparams) The hyperparameter object to write parameters to
         args:    (Namespace)   Passed command-line arguments
-        logger:  (Logger)      A Logger instance
     """
     if isinstance(args.n_epochs, int) and args.n_epochs > 0:
         hparams.set_value(subdir="fit",
@@ -162,19 +173,6 @@ def run(args, gpu_mon):
         gpu_mon: (GPUMonitor) Initialized mpunet GPUMonitor object
     """
     assert_args(args)
-    from mpunet.logging import Logger
-    from utime.train import Trainer
-    from utime.hyperparameters import YAMLHParams
-    from utime.utils.scriptutils import (assert_project_folder,
-                                         make_multi_gpu_model)
-    from utime.utils.scriptutils.train import (get_train_and_val_datasets,
-                                               get_h5_train_and_val_datasets,
-                                               get_data_queues,
-                                               get_generators,
-                                               find_and_set_gpus,
-                                               get_samples_per_epoch,
-                                               save_final_weights)
-
     project_dir = os.path.abspath("./")
     assert_project_folder(project_dir)
     if args.overwrite and not args.continue_training:
@@ -217,8 +215,7 @@ def run(args, gpu_mon):
         datasets=train_datasets,
         queue_type=train_queue_type,
         max_loaded_per_dataset=args.max_loaded_per_dataset,
-        num_access_before_reload=args.num_access_before_reload,
-        logger=logger
+        num_access_before_reload=args.num_access_before_reload
     )
     if val_datasets:
         val_dataset_queues = get_data_queues(
@@ -226,8 +223,7 @@ def run(args, gpu_mon):
             queue_type=val_queue_type,
             max_loaded_per_dataset=args.max_loaded_per_dataset,
             num_access_before_reload=args.num_access_before_reload,
-            study_loader=getattr(train_datasets_queues[0], 'study_loader', None),
-            logger=logger
+            study_loader=getattr(train_datasets_queues[0], 'study_loader', None)
         )
     else:
         val_dataset_queues = None
@@ -253,13 +249,13 @@ def run(args, gpu_mon):
         parameter_file = args.initialize_from  # most often is None
 
     # Set the GPU visibility
-    num_GPUs = find_and_set_gpus(gpu_mon, args.force_GPU, args.num_GPUs)
+    num_gpus = find_and_set_gpus(gpu_mon, args.force_GPU, args.num_GPUs)
     # Initialize and potential load parameters into the model
     from utime.models.model_init import init_model, load_from_file
     org_model = init_model(hparams["build"], logger)
     if parameter_file:
         load_from_file(org_model, parameter_file, logger, by_name=True)
-    model, org_model = make_multi_gpu_model(org_model, num_GPUs)
+    model, org_model = make_multi_gpu_model(org_model, num_gpus)
 
     # Prepare a trainer object. Takes care of compiling and training.
     trainer = Trainer(model, org_model=org_model, logger=logger)
@@ -299,7 +295,6 @@ def entry_func(args=None):
         run(args=args, gpu_mon=gpu_mon)
     finally:
         gpu_mon.stop()
-        import tables
         tables.file._open_files.close_all()
 
 

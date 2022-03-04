@@ -10,13 +10,71 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras import regularizers
-from tensorflow.keras.layers import Input, BatchNormalization, Cropping2D, \
-                                    Concatenate, MaxPooling2D, Dense, \
-                                    UpSampling2D, ZeroPadding2D, Lambda, Conv2D, \
-                                    AveragePooling2D, DepthwiseConv2D
+from tensorflow.keras.layers import Input, BatchNormalization, \
+                                    Concatenate, MaxPooling2D, \
+                                    UpSampling2D, Conv2D, \
+                                    AveragePooling2D, Layer
 from mpunet.logging import ScreenLogger
 from mpunet.utils.conv_arithmetics import compute_receptive_fields
 from mpunet.train.utils import init_activation
+
+
+def shape_safe(input, dim=None):
+    if dim is not None:
+        return input.shape[dim] or tf.shape(input)[dim]
+    else:
+        return [shape_safe(input, d) for d in range(len(input.shape))]
+
+
+class InputReshape(Layer):
+    def __init__(self, seq_length, n_channels, name=None, **kwargs):
+        super(InputReshape, self).__init__(name=name, **kwargs)
+        self.seq_length = seq_length
+        self.n_channels = n_channels
+
+    def call(self, inputs, **kwargs):
+        shape = tf.shape(inputs)
+        inputs_reshaped = tf.reshape(inputs, shape=[shape[0], self.seq_length or shape[1]*shape[2], 1, self.n_channels])
+        return inputs_reshaped
+
+
+class OutputReshape(Layer):
+    def __init__(self, n_periods, name=None, **kwargs):
+        super(OutputReshape, self).__init__(name=name, **kwargs)
+        self.n_periods = n_periods
+
+    def call(self, inputs, **kwargs):
+        shape = tf.shape(inputs)
+        return tf.reshape(inputs, shape=[shape[0], self.n_periods or shape[1], inputs.shape[-1]])
+
+
+class PadEndToEvenLength(Layer):
+    def __init__(self, name=None, **kwargs):
+        super(PadEndToEvenLength, self).__init__(name=name, **kwargs)
+
+    def call(self, inputs, **kwargs):
+        return tf.pad(inputs,
+                      paddings=[[0, 0], [0, shape_safe(inputs, 1) % 2], [0, 0], [0, 0]])
+
+
+class PadToMatch(Layer):
+    def __init__(self, name=None, **kwargs):
+        super(PadToMatch, self).__init__(name=name, **kwargs)
+
+    def call(self, inputs, **kwargs):
+        s = tf.maximum(0, shape_safe(inputs[1], 1) - shape_safe(inputs[0], 1))
+        return tf.pad(inputs[0],
+                      paddings=[[0, 0], [s // 2, s // 2 + (s % 2)], [0, 0], [0, 0]])
+
+
+class CropToMatch(Layer):
+    def __init__(self, name=None, **kwargs):
+        super(CropToMatch, self).__init__(name=name, **kwargs)
+
+    def call(self, inputs, **kwargs):
+        diff = tf.maximum(0, shape_safe(inputs[0], 1) - shape_safe(inputs[1], 1))
+        start = diff//2 + diff % 2
+        return inputs[0][:, start:start+shape_safe(inputs[1], 1), :, :]
 
 
 class USleep(Model):
@@ -40,8 +98,8 @@ class USleep(Model):
                  padding="same",
                  init_filters=5,
                  complexity_factor=2,
-                 kernel_initializer=tf.keras.initializers.glorot_uniform,
-                 bias_initializer=tf.keras.initializers.zeros,
+                 kernel_initializer=tf.keras.initializers.glorot_uniform(),
+                 bias_initializer=tf.keras.initializers.zeros(),
                  l2_reg=None,
                  data_per_prediction=None,
                  logger=None,
@@ -103,7 +161,6 @@ class USleep(Model):
         self.bias_initializer = bias_initializer
         self.l2_reg = l2_reg
         self.depth = depth
-        self.n_crops = 0
         self.padding = padding.lower()
         if self.padding != "same":
             raise ValueError("Currently, must use 'same' padding.")
@@ -155,10 +212,7 @@ class USleep(Model):
                           dilation_rate=dilation,
                           name=l_name + "_conv1", **other_conv_params)(in_)
             bn = BatchNormalization(name=l_name + "_BN1")(conv)
-            s = bn.get_shape()[1]
-            if s % 2:
-                bn = ZeroPadding2D(padding=[[1, 0], [0, 0]],
-                                   name=l_name + "_padding")(bn)
+            bn = PadEndToEvenLength(name=l_name + "_padding")(bn)
             in_ = MaxPooling2D(pool_size=(2, 1), name=l_name + "_pool")(bn)
 
             # add bn layer to list for residual conn.
@@ -197,8 +251,7 @@ class USleep(Model):
             l_name = name + "_L%i" % i
 
             # Up-sampling block
-            up = UpSampling2D(size=(2, 1),
-                              name=l_name + "_up")(in_)
+            up = UpSampling2D(size=(2, 1), name=l_name + "_up")(in_)
             conv = Conv2D(int(filters*complexity_factor), (2, 1),
                           activation=activation,
                           padding=padding,
@@ -209,9 +262,8 @@ class USleep(Model):
 
             # Crop and concatenate
             res_con = residual_connections[i]
-            cropped_bn = self.crop_nodes_to_match(bn, res_con)
-            merge = Concatenate(axis=-1,
-                                name=l_name + "_concat")([res_con, cropped_bn])
+            cropped_bn = CropToMatch(name=l_name + "_crop")([bn, res_con])
+            merge = Concatenate(axis=-1, name=l_name + "_concat")([res_con, cropped_bn])
             conv = Conv2D(int(filters*complexity_factor), (kernel_size, 1),
                           activation=activation, padding=padding,
                           kernel_regularizer=regularizer,
@@ -236,12 +288,9 @@ class USleep(Model):
                      activation=dense_classifier_activation,
                      name="{}dense_classifier_out".format(name_prefix),
                      **other_conv_params)(in_)
-        s = (self.n_periods * self.input_dims) - cls.get_shape().as_list()[1]
-        out = self.crop_nodes_to_match(
-            node1=ZeroPadding2D(padding=[[s // 2, s // 2 + s % 2], [0, 0]])(cls),
-            node2=in_reshaped
-        )
-        return out
+        cls = PadToMatch(name="{}dense_classifier_out_pad".format(name_prefix))([cls, in_reshaped])
+        cls = CropToMatch(name="{}dense_classifier_out_crop".format(name_prefix))([cls, in_reshaped])
+        return cls
 
     @staticmethod
     def create_seq_modeling(in_,
@@ -272,24 +321,18 @@ class USleep(Model):
                      padding="same",
                      name="{}sequence_conv_out_2".format(name_prefix),
                      **other_conv_params)(out)
-        s = [-1, n_periods, input_dims//data_per_period, n_classes]
-        if s[2] == 1:
-            s.pop(2)  # Squeeze the dim
-        out = Lambda(lambda x: tf.reshape(x, s),
-                     name="{}sequence_classification_reshaped".format(name_prefix))(out)
+        out = OutputReshape(n_periods=n_periods, name="{}output_reshape".format(name_prefix))(out)
         return out
 
     def init_model(self, inputs=None, name_prefix=""):
         """
         Build the UNet model with the specified input image shape.
         """
+        seq_length = self.n_periods * self.input_dims if self.n_periods else None
         if inputs is None:
-            inputs = Input(shape=[self.n_periods,
-                                  self.input_dims,
-                                  self.n_channels])
-        reshaped = [-1, self.n_periods*self.input_dims, 1, self.n_channels]
-        in_reshaped = Lambda(lambda x: tf.reshape(x, reshaped))(inputs)
-
+            inputs = Input(shape=[self.n_periods, self.input_dims, self.n_channels])
+        inputs_reshaped = InputReshape(seq_length, self.n_channels)(inputs)
+        
         # Apply regularization if not None or 0
         regularizer = regularizers.l2(self.l2_reg) if self.l2_reg else None
 
@@ -313,7 +356,7 @@ class USleep(Model):
         """
         Encoding path
         """
-        enc, residual_cons, filters = self.create_encoder(in_=in_reshaped,
+        enc, residual_cons, filters = self.create_encoder(in_=inputs_reshaped,
                                                           **settings)
 
         """
@@ -326,7 +369,7 @@ class USleep(Model):
         Dense class modeling layers
         """
         cls = self.create_dense_modeling(in_=up,
-                                         in_reshaped=in_reshaped,
+                                         in_reshaped=inputs_reshaped,
                                          filters=self.n_classes,
                                          dense_classifier_activation=self.dense_classifier_activation,
                                          regularizer=regularizer,
@@ -348,27 +391,10 @@ class USleep(Model):
 
         return [inputs], [out]
 
-    def crop_nodes_to_match(self, node1, node2):
-        """
-        If necessary, applies Cropping2D layer to node1 to match shape of node2
-        """
-        s1 = np.array(node1.get_shape().as_list())[1:-2]
-        s2 = np.array(node2.get_shape().as_list())[1:-2]
-
-        if np.any(s1 != s2):
-            self.n_crops += 1
-            c = (s1 - s2).astype(np.int)
-            cr = np.array([c // 2, c // 2]).flatten()
-            cr[self.n_crops % 2] += c % 2
-            cropped_node1 = Cropping2D([list(cr), [0, 0]])(node1)
-        else:
-            cropped_node1 = node1
-        return cropped_node1
-
     def log(self):
         self.logger("{} Model Summary\n"
                     "-------------------".format(__class__.__name__))
-        self.logger("N periods:         {}".format(self.n_periods))
+        self.logger("N periods:         {}".format(self.n_periods or "ANY"))
         self.logger("Input dims:        {}".format(self.input_dims))
         self.logger("N channels:        {}".format(self.n_channels))
         self.logger("N classes:         {}".format(self.n_classes))
@@ -384,7 +410,7 @@ class USleep(Model):
         self.logger("Padding:           {}".format(self.padding))
         self.logger("Conv activation:   {}".format(self.activation))
         self.logger("Receptive field:   {}".format(self.receptive_field[0]))
-        self.logger("Seq length.:       {}".format(self.n_periods*self.input_dims))
+        self.logger("Seq length.:       {}".format(self.n_periods*self.input_dims if self.n_periods else "ANY"))
         self.logger("N params:          {}".format(self.count_params()))
         self.logger("Input:             {}".format(self.input))
         self.logger("Output:            {}".format(self.output))

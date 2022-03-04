@@ -3,9 +3,11 @@ Small utility script that groups files stored in a directory into sub-dirs
 according to shared prefixes in their respective file names.
 """
 
-from argparse import ArgumentParser
 import os
 import shutil
+from argparse import ArgumentParser
+from utime.bin.cv_split import pair_by_names
+from sleeputils.dataset.utils import filter_by_regex
 
 
 def get_argparser():
@@ -54,8 +56,6 @@ def move_files(pairs, out_dir, subject_dir_name):
 
 def run(args):
     """ Run script with the specified args. See argparser for details. """
-    from utime.bin.cv_split import pair_by_names
-    from utime.dataset.utils import filter_by_regex
     out_dir = os.path.abspath(args.out_dir)
     if not os.path.exists(out_dir):
         raise OSError("'out_dir' {} does not exist".format(out_dir))

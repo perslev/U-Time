@@ -6,9 +6,9 @@ paper. Support for more datasets (hopefully all) will be added over time.
 import os
 from sys import exit
 from argparse import ArgumentParser
-from utime.preprocessing.dataset_preparation import (download_dataset,
-                                                     preprocess_dataset,
-                                                     DOWNLOAD_FUNCS)
+from sleeputils.downloads import (download_dataset,
+                                  preprocess_dataset,
+                                  DOWNLOAD_FUNCS)
 
 
 # list of currently supported datasets

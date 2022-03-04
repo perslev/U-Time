@@ -5,7 +5,8 @@ matching a glob pattern.
 
 from argparse import ArgumentParser
 from glob import glob
-from utime.io.file_loaders import read_psg_header
+from sleeputils.io.header import extract_header
+from sleeputils.dataset import SleepStudy
 import os
 
 
@@ -22,7 +23,6 @@ def run(subject_dir_pattern, psg_regex):
     if len(files) == 0:
         print("No subject dirs match pattern {}".format(subject_dir_pattern))
     else:
-        from utime.dataset import SleepStudy
         print("Channels:")
         for subject_dir in files:
             psg_regex = psg_regex or None
@@ -32,7 +32,7 @@ def run(subject_dir_pattern, psg_regex):
                             psg_regex=psg_regex,
                             no_hypnogram=True,
                             period_length_sec=30)
-            header = read_psg_header(ss.psg_file_path)
+            header = extract_header(ss.psg_file_path)
             print(header['channel_names'],
                   header['sample_rate'], " Hz")
 

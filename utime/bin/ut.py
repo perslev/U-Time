@@ -9,12 +9,12 @@ ut [--help] script [script args]... [--seed]
 import argparse
 import os
 import sys
-import utime
+import importlib
+import pkgutil
+from utime import bin, __version__, Defaults
 
 
 def get_parser():
-    from utime import bin, __version__
-    import pkgutil
     mods = pkgutil.iter_modules(bin.__path__)
 
     ids = "U-Time ({})".format(__version__)
@@ -61,10 +61,9 @@ def entry_func():
     parsed, script_args = get_parser().parse_known_args(args or help_agrs)
     script = parsed.script
     if parsed.seed is not None:
-        utime.Defaults.set_global_seed(parsed.seed)
+        Defaults.set_global_seed(parsed.seed)
 
     # Import the script
-    import importlib
     mod = importlib.import_module("utime.bin." + script)
 
     # Call entry function with remaining arguments

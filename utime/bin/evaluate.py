@@ -7,6 +7,7 @@ import os
 import numpy as np
 from argparse import ArgumentParser
 from utime import Defaults
+from sleeputils.dataset.queue import LazyQueue
 
 
 def get_argparser():
@@ -356,7 +357,6 @@ def get_sequencer(dataset, hparams):
         A BatchSequence object
     """
     # Wrap dataset in LazyQueue object
-    from utime.dataset.queue import LazyQueue
     dataset_queue = LazyQueue(dataset)
 
     from utime.sequences import get_batch_sequence

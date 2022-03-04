@@ -11,9 +11,9 @@ scores, see utime.bin.cm
 
 import os
 import sys
+import pandas as pd
 from glob import glob
 from argparse import ArgumentParser
-import pandas as pd
 
 
 def get_argparser():

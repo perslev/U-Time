@@ -9,11 +9,12 @@ originally described in the hyperparameter files.
 import os
 import numpy as np
 from argparse import ArgumentParser
+from utime import Defaults
 from utime.bin.evaluate import (set_gpu_vis, predict_on, get_logger,
                                 prepare_output_dir, get_and_load_model,
                                 get_and_load_one_shot_model, get_sequencer,
                                 get_out_dir)
-from utime import Defaults
+from sleeputils.io.channels import filter_non_available_channels
 
 
 def get_argparser():
@@ -100,7 +101,6 @@ def get_prediction_channel_sets(sleep_study, dataset):
     # If channel_groups are set in dataset.misc, run on all pairs of channels
     channel_groups = dataset.misc.get('channel_groups')
     if channel_groups and hasattr(sleep_study, 'psg_file_path'):
-        from utime.io.channels import filter_non_available_channels
         channel_groups = filter_non_available_channels(
             channel_groups=channel_groups,
             psg_file_path=sleep_study.psg_file_path

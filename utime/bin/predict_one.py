@@ -1,19 +1,16 @@
-"""
-
-"""
-
 import os
 import numpy as np
+from pprint import pformat
+from collections import namedtuple
 from argparse import ArgumentParser, Namespace
 from utime.bin.evaluate import (set_gpu_vis,
                                 get_and_load_one_shot_model,
                                 get_logger)
-from utime.hypnogram.utils import dense_to_sparse
-from utime.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
-from utime.io.channels import auto_infer_referencing as infer_channel_refs
 from utime import Defaults
-from pprint import pformat
-from collections import namedtuple
+from sleeputils.dataset.sleep_study import SleepStudy
+from sleeputils.hypnogram.utils import dense_to_sparse
+from sleeputils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
+from sleeputils.io.channels import auto_infer_referencing as infer_channel_refs
 
 
 def get_argparser():
@@ -383,7 +380,6 @@ def get_sleep_study(psg_path,
         raise NotImplementedError("Batch-wise scaling is currently not "
                                   "supported. Use ut predict/evaluate instead")
     logger("Evaluating using parameters:\n{}".format(pformat(params)))
-    from utime.dataset.sleep_study import SleepStudy
     dir_, regex = os.path.split(os.path.abspath(psg_path))
     study = SleepStudy(subject_dir=dir_, psg_regex=regex,
                        header_regex=header_file_name,
