@@ -4,8 +4,8 @@ from argparse import ArgumentParser
 from glob import glob
 from pathlib import Path
 from mpunet.logging import Logger
-from utime.io.hypnogram import extract_ids_from_hyp_file
-from utime.hypnogram.utils import fill_hyp_gaps
+from sleeputils.io.hypnogram import extract_ids_from_hyp_file
+from sleeputils.hypnogram.utils import fill_hyp_gaps
 
 
 def get_argparser():
