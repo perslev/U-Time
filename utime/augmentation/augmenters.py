@@ -1,5 +1,5 @@
 from .elastic_deformation import elastic_transform
-from utime.utils import exactly_one_specified
+from sleeputils.utils import exactly_one_specified
 import numpy as np
 
 
