@@ -9,4 +9,4 @@ dependencies:
   - setuptools>=52.0.0
   - tk>=8.6.10
   - wheel>=0.37.0
-  - numpy>=1.19.2
+  - numpy>=1.21.5
