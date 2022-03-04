@@ -6,4 +6,3 @@ from .scriptutils import (assert_project_folder,
                           get_dataset_splits_from_hparams_file,
                           get_all_dataset_hparams,
                           make_multi_gpu_model)
-from .extract import to_h5_file
