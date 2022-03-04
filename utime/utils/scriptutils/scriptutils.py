@@ -234,6 +234,7 @@ def make_multi_gpu_model(model, num_GPUs, logger=None):
     """
     org_model = model
     if num_GPUs > 1:
+        raise NotImplementedError("Not yet implemented for TF 2.5+")
         from tensorflow.keras.utils import multi_gpu_model
         model = multi_gpu_model(org_model, gpus=num_GPUs,
                                 cpu_merge=False, cpu_relocation=False)
