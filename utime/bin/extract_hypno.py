@@ -1,6 +1,7 @@
+import os
+import numpy as np
 from argparse import ArgumentParser
 from glob import glob
-import os
 from pathlib import Path
 from mpunet.logging import Logger
 from utime.io.hypnogram import extract_ids_from_hyp_file
@@ -22,6 +23,8 @@ def get_argparser():
     parser.add_argument("--extract_func", type=str, default=None,
                         help="Name of hyp extraction function. If not specified, the file extension defines the "
                              "function to use.")
+    parser.add_argument("--remove_offset", action="store_true",
+                        help="Remove potential offsets so that the first sleep stage always starts at init sec 0.")
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name")
     return parser
@@ -31,6 +34,20 @@ def to_ids(start, durs, stage, out):
     with open(out, "w") as out_f:
         for i, d, s in zip(start, durs, stage):
             out_f.write("{},{},{}\n".format(int(i), int(d), s))
+
+
+def remove_offset(inits):
+    offset = inits[0]
+    for i in range(len(inits)):
+        new_init = inits[i] - offset
+        rounded_new_init = np.round(new_init)
+        if new_init - rounded_new_init > 1e-6:
+            raise ValueError(f"Unexpectedly large difference of {new_init - rounded_new_init} between new_init of "
+                             f"{new_init} and round(new_init) of {rounded_new_init} when "
+                             "removing offset. The implementation expects inits to land on whole-seconds, not "
+                             "fractions.")
+        inits[i] = new_init
+    return inits
 
 
 def run(args):
@@ -65,10 +82,16 @@ def run(args):
             if not args.overwrite:
                 continue
             os.remove(out)
-        start, dur, stage = extract_ids_from_hyp_file(file_, period_length_sec=30, extract_func=args.extract_func)
+        inits, durs, stages = extract_ids_from_hyp_file(file_, period_length_sec=30, extract_func=args.extract_func)
+        if args.remove_offset:
+            try:
+                inits = remove_offset(inits)
+            except ValueError:
+                import shutil
+                shutil.move(file_, "missing_labels")
         if args.fill_blanks:
-            start, dur, stage = fill_hyp_gaps(start, dur, stage, args.fill_blanks)
-        to_ids(start, dur, stage, out)
+            inits, durs, stages = fill_hyp_gaps(inits, durs, stages, args.fill_blanks)
+        to_ids(inits, durs, stages, out)
 
 
 def entry_func(args=None):
