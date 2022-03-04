@@ -91,7 +91,6 @@ def get_batch_sequence(dataset_queue,
                           margin=margin,
                           augmenters=augmenters,
                           batch_scaler=scaler if batch_wise_scaling else None,
-                          logger=dataset_queue.logger,
                           identifier=dataset_queue.dataset.identifier,
                           no_log=no_log,
                           **kwargs)
