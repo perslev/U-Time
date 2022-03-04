@@ -1,11 +1,12 @@
-name: u-sleep
+name: u-sleep-test
 channels:
   - defaults
+  - conda-forge
 dependencies:
-  - pip=20.1.1
-  - python=3.7.7
-  - readline=8.0
-  - setuptools=47.3.1
-  - tk=8.6.10
-  - wheel=0.34.2
-  - numpy==1.18.1
+  - conda>=4.10.3
+  - python>=3.7.7
+  - pip>=21.2.4
+  - setuptools>=52.0.0
+  - tk>=8.6.10
+  - wheel>=0.37.0
+  - numpy>=1.19.2
