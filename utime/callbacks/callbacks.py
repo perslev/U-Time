@@ -70,7 +70,8 @@ class Validation(Callback):
 
     def predict(self):
         # Get tensors to run and their names
-        metrics = getattr(self.model, "loss_functions", self.model.losses) + self.model.metrics
+        metrics = getattr(self.model, "loss_functions", self.model.losses) or self.model.loss + self.model.metrics
+        metrics = list(filter(lambda m: not type(m) is tf.keras.metrics.Mean, metrics))
         metrics_names = self.model.metrics_names
         self.model.reset_metrics()
         assert len(metrics_names) == len(metrics)
@@ -120,6 +121,11 @@ class Validation(Callback):
                     if hasattr(pred, "numpy"):
                         res = res.numpy()
                     per_study_metrics[name].append(res)
+                    if getattr(metric, "stateful", False):
+                        if hasattr(metric, "reset_states"):
+                            metric.reset_states()
+                        else:
+                            metric.reset_state()
 
             # Compute mean metrics for the dataset
             metrics_results[id_] = {}
