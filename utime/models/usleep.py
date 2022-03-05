@@ -32,6 +32,14 @@ class InputReshape(Layer):
         self.seq_length = seq_length
         self.n_channels = n_channels
 
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "seq_length": self.seq_length,
+            "n_channels": self.n_channels,
+        })
+        return config
+
     def call(self, inputs, **kwargs):
         shape = tf.shape(inputs)
         inputs_reshaped = tf.reshape(inputs, shape=[shape[0], self.seq_length or shape[1]*shape[2], 1, self.n_channels])
@@ -42,6 +50,13 @@ class OutputReshape(Layer):
     def __init__(self, n_periods, name=None, **kwargs):
         super(OutputReshape, self).__init__(name=name, **kwargs)
         self.n_periods = n_periods
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({
+            "n_periods": self.n_periods
+        })
+        return config
 
     def call(self, inputs, **kwargs):
         shape = tf.shape(inputs)
