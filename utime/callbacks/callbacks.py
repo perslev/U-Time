@@ -118,7 +118,7 @@ class Validation(Callback):
 
                 # Run all metrics
                 for metric, name in zip(metrics, metrics_names):
-                    res = metric(y, pred)
+                    res = tf.reduce_mean(metric(y, pred))
                     if hasattr(pred, "numpy"):
                         res = res.numpy()
                     per_study_metrics[name].append(res)
