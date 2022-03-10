@@ -1,6 +1,9 @@
+import logging
+import os
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+
+logger = logging.getLogger(__name__)
 
 
 def get_hypnogram(y_pred, y_true=None, id_=None):

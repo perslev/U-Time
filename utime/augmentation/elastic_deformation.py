@@ -1,6 +1,9 @@
+import logging
 import numpy as np
 from mpunet.interpolation import RegularGridInterpolator
 from scipy.ndimage.filters import gaussian_filter
+
+logger = logging.getLogger(__name__)
 
 
 def elastic_transform(signal, labels, alpha, sigma, bg_value=0.0):

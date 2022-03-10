@@ -3,11 +3,13 @@ Functions for initializing models from build hyperparameters and loading of
 parameters.
 """
 
-from mpunet.logging import ScreenLogger
+import logging
 import os
 
+logger = logging.getLogger(__name__)
 
-def init_model(build_hparams, logger=None, clear_previous=True):
+
+def init_model(build_hparams, clear_previous=True):
     """
     From a set of hyperparameters 'build_hparams' (dict) initializes the
     model specified under build_hparams['model_class_name'].
@@ -17,39 +19,35 @@ def init_model(build_hparams, logger=None, clear_previous=True):
 
     Args:
         build_hparams:  A dictionary of model build hyperparameters
-        logger:         A Logger instance
         clear_previous: Clear previous tf sessions
 
     Returns:
         A tf.keras Model instance
     """
     from utime import models
-    logger = logger or ScreenLogger()
     if clear_previous:
         import tensorflow as tf
         tf.keras.backend.clear_session()
     # Build new model of the specified type
     cls_name = build_hparams["model_class_name"]
-    logger("Creating new model of type '%s'" % cls_name)
-    return models.__dict__[cls_name](logger=logger, **build_hparams)
+    logger.info(f"Creating new model of type '{cls_name}'")
+    return models.__dict__[cls_name](**build_hparams)
 
 
-def load_from_file(model, file_path, logger=None, by_name=True):
+def load_from_file(model, file_path, by_name=True):
     """
     Load parameters from file 'file_path' into model 'model'.
 
     Args:
         model:      A tf.keras Model instance
         file_path:  A path to a parameter file (h5 format typically)
-        logger:     An optional Logger instance
         by_name:    Load parameters by layer names instead of order (default).
     """
     model.load_weights(file_path, by_name=by_name)
-    logger = logger or ScreenLogger()
-    logger("Loading parameters from:\n{}".format(file_path))
+    logger.info(f"Loading parameters from: {file_path}")
 
 
-def init_and_load_model(hparams, weights_file, logger=None, by_name=True):
+def init_and_load_model(hparams, weights_file, by_name=True):
     """
     Initializes a model according to hparams. Then sets its parameters from
     the parameters in h5 file 'weights_file'.
@@ -57,18 +55,17 @@ def init_and_load_model(hparams, weights_file, logger=None, by_name=True):
     Args:
         hparams:      A YAMLHparams object of hyperparameters
         weights_file: A path to a h5 parameter file to load
-        logger:       Optional Logger object
         by_name:    Load parameters by layer names instead of order (default).
 
     Returns:
         A tf.keras Model instance
     """
-    model = init_model(build_hparams=hparams["build"], logger=logger)
-    load_from_file(model, weights_file, logger, by_name=by_name)
+    model = init_model(build_hparams=hparams["build"])
+    load_from_file(model, weights_file, by_name=by_name)
     return model
 
 
-def init_and_load_best_model(hparams, model_dir, logger=None, by_name=True):
+def init_and_load_best_model(hparams, model_dir, by_name=True):
     """
     Initializes a model according to hparams. Then finds the best model in
     model_dir and loads it (see mpunet.utils.get_best_model).
@@ -76,7 +73,6 @@ def init_and_load_best_model(hparams, model_dir, logger=None, by_name=True):
     Args:
         hparams:    A YAMLHparams object of hyperparameters
         model_dir:  A path to the directory that stores model param files
-        logger:     Optional Logger object
         by_name:    Load parameters by layer names instead of order (default).
 
     Returns:
@@ -84,14 +80,14 @@ def init_and_load_best_model(hparams, model_dir, logger=None, by_name=True):
         The file name of the parameter file that was loaded
     """
     from mpunet.utils import get_best_model
-    model = init_model(hparams["build"], logger)
+    model = init_model(hparams["build"])
     model_path = get_best_model(model_dir)
-    load_from_file(model, model_path, logger, by_name=by_name)
+    load_from_file(model, model_path, by_name=by_name)
     model_file_name = os.path.split(model_path)[-1]
     return model, model_file_name
 
 
-def init_and_load_latest_model(hparams, model_dir, logger=None, by_name=True):
+def init_and_load_latest_model(hparams, model_dir, by_name=True):
     """
     Initializes a model according to hparams. Then finds the latest model in
     model_dir and loads it (see mpunet.utils.get_latest_model).
@@ -99,7 +95,6 @@ def init_and_load_latest_model(hparams, model_dir, logger=None, by_name=True):
     Args:
         hparams:    A YAMLHparams object of hyperparameters
         model_dir:  A path to the directory that stores model param files
-        logger:     Optional Logger object
         by_name:    Load parameters by layer names instead of order (default).
 
     Returns:
@@ -108,17 +103,17 @@ def init_and_load_latest_model(hparams, model_dir, logger=None, by_name=True):
         The epoch of training that the file corresponds to
     """
     from mpunet.utils import get_last_model
-    model = init_model(hparams["build"], logger)
+    model = init_model(hparams["build"])
     model_path, epoch = get_last_model(model_dir)
     if model_path is None:
         raise OSError("Did not find any model files in "
                       "directory {}".format(model_dir))
-    load_from_file(model, model_path, logger, by_name=by_name)
+    load_from_file(model, model_path, by_name=by_name)
     model_file_name = os.path.split(model_path)[-1]
     return model, model_file_name, epoch
 
 
-def prepare_for_continued_training(hparams, project_dir, logger=None):
+def prepare_for_continued_training(hparams, project_dir):
     """
     Prepares the hyperparameter set and project directory for continued
     training.
@@ -140,7 +135,6 @@ def prepare_for_continued_training(hparams, project_dir, logger=None):
     Args:
         hparams:      (YAMLHParams) The hyperparameters to use for training
         project_dir:  (string)      The path to the current project directory
-        logger:       (Logger)      An optional Logger instance
 
     Returns:
         A path to the model weight files to use for continued training.
@@ -165,11 +159,8 @@ def prepare_for_continued_training(hparams, project_dir, logger=None):
     lr, name = get_lr_at_epoch(epoch, os.path.join(project_dir, "logs"))
     if lr:
         hparams["fit"]["optimizer_kwargs"][name] = lr
-    logger = logger or ScreenLogger()
-    logger("[NOTICE] Training continues from:\n"
-           "Model: {}\n"
-           "Epoch: {}\n"
-           "LR:    {}".format(model_name or "<No model found - "
-                                            "Starting for scratch!>",
-                              epoch, lr))
+    logger.info(f"[NOTICE] Training continues from:\n"
+                f"Model: {model_name or '<No model found - Starting for scratch!>'}\n"
+                f"Epoch: {epoch}\n"
+                f"LR:    {lr}")
     return model_path

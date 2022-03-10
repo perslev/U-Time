@@ -1,6 +1,9 @@
+import logging
 import numpy as np
 from tensorflow.keras.utils import to_categorical
 from scipy.signal import convolve2d
+
+logger = logging.getLogger(__name__)
 
 
 def smooth_by_neighbours(labels, kernel, n_classes):

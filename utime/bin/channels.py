@@ -3,11 +3,14 @@ Small script that prints the channels found in one or more PSG files
 matching a glob pattern.
 """
 
+import os
+import logging
 from argparse import ArgumentParser
 from glob import glob
 from sleeputils.io.header import extract_header
 from sleeputils.dataset import SleepStudy
-import os
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -21,9 +24,9 @@ def get_argparser():
 def run(subject_dir_pattern, psg_regex):
     files = glob(subject_dir_pattern)
     if len(files) == 0:
-        print("No subject dirs match pattern {}".format(subject_dir_pattern))
+        logger.info(f"No subject dirs match pattern {subject_dir_pattern}")
     else:
-        print("Channels:")
+        logger.info("Channels:")
         for subject_dir in files:
             psg_regex = psg_regex or None
             if not psg_regex and os.path.isfile(subject_dir):
@@ -33,8 +36,7 @@ def run(subject_dir_pattern, psg_regex):
                             no_hypnogram=True,
                             period_length_sec=30)
             header = extract_header(ss.psg_file_path)
-            print(header['channel_names'],
-                  header['sample_rate'], " Hz")
+            logger.info(header['channel_names'], header['sample_rate'], " Hz")
 
 
 def entry_func(args=None):

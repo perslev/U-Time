@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -5,9 +6,10 @@ from carbontracker.tracker import CarbonTracker
 from tensorflow.keras.callbacks import Callback
 from sleeputils.utils import get_memory_usage
 from mpunet.utils import highlighted
-from mpunet.logging import ScreenLogger
 from collections import defaultdict
 from datetime import timedelta
+
+logger = logging.getLogger(__name__)
 
 
 class Validation(Callback):
@@ -28,21 +30,13 @@ class Validation(Callback):
     mechanism is to calculate certain metrics over the entire epoch of data as
     opposed to averaged batch-wise computations.
     """
-    def __init__(self,
-                 val_sequence,
-                 max_val_studies_per_dataset=20,
-                 logger=None, verbose=True):
+    def __init__(self, val_sequence, max_val_studies_per_dataset=20):
         """
         Args:
             val_sequence: A deepsleep ValidationMultiSequence object
-            logger:       An instance of a MultiPlanar Logger that prints to
-                          screen and/or file
-            verbose:      Print progress to screen - OBS does not use Logger
         """
         super().__init__()
-        self.logger = logger or ScreenLogger()
         self.sequences = val_sequence.sequences
-        self.verbose = verbose
         self.max_studies = max_val_studies_per_dataset
         self.n_classes = val_sequence.n_classes
         self.IDs = val_sequence.IDs
@@ -186,13 +180,11 @@ class Validation(Callback):
         val_results = val_results.loc[:, cols]
 
         # Print the df to screen
-        self.logger(highlighted(("[%s] Validation Results for "
-                                 "Epoch %i" % (name, epoch)).lstrip(" ")))
+        logger.info("\n" + highlighted(f"[{name}] Validation Results for Epoch {epoch}").lstrip(" "))
         print_string = val_results.round(self.print_round).to_string()
-        self.logger(print_string.replace("NaN", "---") + "\n")
+        logger.info(print_string.replace("NaN", "---") + "\n")
 
     def on_epoch_end(self, epoch, logs=None):
-        self.logger("\n")
         # Predict and get CM
         TPs, relevant, selected, metrics = self.predict()
         for id_ in self.IDs:
@@ -208,20 +200,17 @@ class Validation(Callback):
             for m_name, value in metrics[id_].items():
                 logs[f"{n}val_{m_name}"] = value.round(self.log_round)
 
-            if self.verbose:
-                self._print_val_results(precisions=precisions,
-                                        recalls=recalls,
-                                        dices=dices,
-                                        metrics=metrics[id_],
-                                        epoch=epoch,
-                                        name=id_,
-                                        classes=classes)
+            self._print_val_results(precisions=precisions,
+                                    recalls=recalls,
+                                    dices=dices,
+                                    metrics=metrics[id_],
+                                    epoch=epoch,
+                                    name=id_,
+                                    classes=classes)
 
         if len(self.IDs) > 1:
             # Print cross-dataset mean values
-            if self.verbose:
-                self.logger(highlighted(f"[ALL DATASETS] Means Across Classes"
-                                        f" for Epoch {epoch}"))
+            logger.info(highlighted(f"[ALL DATASETS] Means Across Classes for Epoch {epoch}"))
             fetch = ("val_dice", "val_precision", "val_recall")
             m_fetch = tuple(["val_" + s for s in self.model.metrics_names])
             to_print = {}
@@ -230,24 +219,22 @@ class Validation(Callback):
                 res = np.mean(scores)
                 logs[f] = res.round(self.log_round)  # Add to log file
                 to_print[f.split("_")[-1]] = list(scores) + [res]
-            if self.verbose:
-                df = pd.DataFrame(to_print)
-                df.index = self.IDs + ["mean"]
-                self.logger(df.round(self.print_round))
-            self.logger("")
+            df = pd.DataFrame(to_print)
+            df.index = self.IDs + ["mean"]
+            logger.info(str(df.round(self.print_round)) + "\n")
 
 
 class MemoryConsumption(Callback):
-    def __init__(self, max_gib=None, round_=2, logger=None, set_limit=False):
+    def __init__(self, max_gib=None, round_=2, set_limit=False):
+        super().__init__()
         self.max_gib = max_gib
-        self.logger = logger
         self.round_ = round_
         if set_limit:
             import resource
             _, hard = resource.getrlimit(resource.RLIMIT_AS)
             resource.setrlimit(resource.RLIMIT_AS,
                                (self._gib_to_bytes(max_gib), hard))
-            self.logger("Setting memory limit to {} GiB".format(max_gib))
+            logger.info(f"Setting memory limit to {max_gib} GiB")
 
     @staticmethod
     def _gib_to_bytes(gib):
@@ -262,14 +249,14 @@ class MemoryConsumption(Callback):
         mem_gib = round(self._bytes_to_gib(mem_bytes), self.round_)
         logs['memory_usage_gib'] = mem_gib
         if self.max_gib and mem_gib >= self.max_gib:
-            self.logger.warn("Stopping training from callback 'MemoryConsumption'! "
-                             "Total memory consumption of {} GiB exceeds limitation"
-                             " (self.max_gib = {}) ".format(mem_gib, self.max_gib))
+            logger.warning(f"Stopping training from callback 'MemoryConsumption'! "
+                           f"Total memory consumption of {mem_gib} GiB exceeds limitation"
+                           f" (self.max_gib = {self.max_gib})")
             self.model.stop_training = True
 
 
 class MaxTrainingTime(Callback):
-    def __init__(self, max_minutes, log_name='train_time_total', logger=None):
+    def __init__(self, max_minutes, log_name='train_time_total'):
         """
         TODO
         Args:
@@ -277,7 +264,6 @@ class MaxTrainingTime(Callback):
         super().__init__()
         self.max_minutes = int(max_minutes)
         self.log_name = log_name
-        self.logger = logger or ScreenLogger()
 
     def on_epoch_end(self, epochs, logs={}):
         """
@@ -292,8 +278,7 @@ class MaxTrainingTime(Callback):
         """
         train_time_str = logs.get(self.log_name, None)
         if not train_time_str:
-            self.logger.warn("Did not find log entry '{}' (needed in callback "
-                             "'MaxTrainingTime')".format(self.log_name))
+            logger.warning(f"Did not find log entry '{self.log_name}' (needed in callback 'MaxTrainingTime')")
             return
         train_time_m = timedelta(
             days=int(train_time_str[:2]),
@@ -303,9 +288,8 @@ class MaxTrainingTime(Callback):
         ).total_seconds() / 60
         if train_time_m >= self.max_minutes:
             # Stop training
-            self.warn("Stopping training from callback 'MaxTrainingTime'! "
-                      "Total training length of {} minutes exceeded (now {}) "
-                      "".format(self.max_minutes, train_time_m))
+            logger.warning(f"Stopping training from callback 'MaxTrainingTime'! "
+                           f"Total training length of {self.max_minutes} minutes exceeded (now {train_time_m})")
             self.model.stop_training = True
 
 

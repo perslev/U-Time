@@ -6,15 +6,18 @@ Can also be used to predict on (a) individual file(s) outside of the datasets
 originally described in the hyperparameter files.
 """
 
+import logging
 import os
 import numpy as np
 from argparse import ArgumentParser
 from utime import Defaults
-from utime.bin.evaluate import (set_gpu_vis, predict_on, get_logger,
+from utime.bin.evaluate import (set_gpu_vis, predict_on,
                                 prepare_output_dir, get_and_load_model,
                                 get_and_load_one_shot_model, get_sequencer,
                                 get_out_dir)
 from sleeputils.io.channels import filter_non_available_channels
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -122,7 +125,7 @@ def get_prediction_channel_sets(sleep_study, dataset):
         return [(None, None)]
 
 
-def get_datasets(hparams, args, logger):
+def get_datasets(hparams, args):
     from utime.utils.scriptutils import (get_dataset_from_regex_pattern,
                                          get_dataset_splits_from_hparams,
                                          get_all_dataset_hparams)
@@ -150,8 +153,7 @@ def get_datasets(hparams, args, logger):
         # handle this new, undescribed dataset
         dataset_hparams = list(all_dataset_hparams.values())[0]
         datasets = [(get_dataset_from_regex_pattern(args.folder_regex,
-                                                    hparams=dataset_hparams,
-                                                    logger=logger),)]
+                                                    hparams=dataset_hparams),)]
     else:
         # predict on datasets described in the hyperparameter files
         datasets = []
@@ -159,15 +161,14 @@ def get_datasets(hparams, args, logger):
             datasets.append(get_dataset_splits_from_hparams(
                 hparams=dataset_hparams,
                 splits_to_load=(args.data_split,),
-                logger=logger,
                 id=dataset_id
             ))
     return datasets
 
 
-def predict_study(sleep_study_pair, seq, model, model_func, logger, num_test_time_augment=0, no_argmax=False):
+def predict_study(sleep_study_pair, seq, model, model_func, num_test_time_augment=0, no_argmax=False):
     # Predict
-    with logger.disabled_in_context(), sleep_study_pair.loaded_in_context():
+    with sleep_study_pair.loaded_in_context():
         y, pred = predict_on(study_pair=sleep_study_pair,
                              seq=seq,
                              model=model,
@@ -193,15 +194,13 @@ def get_save_path(out_dir, file_name, sub_folder_name=None):
     return out_path
 
 
-def save_file(path, arr, argmax, logger):
+def save_file(path, arr, argmax):
     path = os.path.abspath(path)
     dir_ = os.path.split(path)[0]
     os.makedirs(dir_, exist_ok=True)
     if argmax:
         arr = arr.argmax(-1)
-    logger("* Saving array of shape {} to {}".format(
-        arr.shape, path
-    ))
+    logger.info(f"* Saving array of shape {arr.shape} to {path}")
     np.save(path, arr)
 
 
@@ -213,13 +212,12 @@ def get_updated_majority_voted(majority_voted, pred):
     return majority_voted
 
 
-def run_pred_on_channels(sleep_study_pair, seq, model, model_func, logger, num_test_time_augment=0):
+def run_pred_on_channels(sleep_study_pair, seq, model, model_func, num_test_time_augment=0):
     pred, y, org_pred_shape = predict_study(
         sleep_study_pair=sleep_study_pair,
         seq=seq,
         model=model,
         model_func=model_func,
-        logger=logger,
         num_test_time_augment=num_test_time_augment,
         no_argmax=True
     )
@@ -228,7 +226,7 @@ def run_pred_on_channels(sleep_study_pair, seq, model, model_func, logger, num_t
     return pred, y
 
 
-def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_sets, logger, args):
+def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_sets, args):
     majority_voted = None
     path_mj = get_save_path(out_dir, sleep_study_pair.identifier + "_PRED.npy", "majority")
     path_true = get_save_path(out_dir, sleep_study_pair.identifier + "_TRUE.npy", None)
@@ -238,14 +236,14 @@ def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_
 
         # If not --overwrite set, and path exists, we skip it here
         if os.path.exists(path_pred) and not args.overwrite:
-            logger("Skipping (channels={}) - already exists and --overwrite not set.".format(channels_to_load))
+            logger.info(f"Skipping (channels={channels_to_load}) - already exists and --overwrite not set.")
             # Load and increment the majority_voted array before continue
             majority_voted = get_updated_majority_voted(majority_voted, np.load(path_pred))
             continue
 
         # Load and predict on the set channels
         if channels_to_load:
-            logger(" -- Channels: {}".format(channels_to_load))
+            logger.info(f" -- Channels: {channels_to_load}")
             sleep_study_pair.select_channels = channels_to_load
 
         # Get the prediction and true values
@@ -254,7 +252,6 @@ def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_
             seq=seq,
             model=model,
             model_func=model_func,
-            logger=logger,
             num_test_time_augment=args.num_test_time_augment
         )
         # Sum the predictions into the majority_voted array
@@ -264,14 +261,14 @@ def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_
             # Save true to disk, only save once if multiple channel sets
             # Note that we save the true values to the folder storing
             # results for each channel if multiple channel sets
-            save_file(path_true, arr=y, argmax=False, logger=logger)
+            save_file(path_true, arr=y, argmax=False)
         # Save prediction
-        save_file(path_pred, arr=pred, argmax=not args.no_argmax, logger=logger)
+        save_file(path_pred, arr=pred, argmax=not args.no_argmax)
     if args.majority:
         if not os.path.exists(path_mj) or args.overwrite:
-            save_file(path_mj, arr=majority_voted, argmax=not args.no_argmax, logger=logger)
+            save_file(path_mj, arr=majority_voted, argmax=not args.no_argmax)
         else:
-            logger("Skipping (channels=MAJORITY) - already exists and --overwrite not set.")
+            logger.info("Skipping (channels=MAJORITY) - already exists and --overwrite not set.")
 
 
 def run_pred(dataset,
@@ -279,8 +276,7 @@ def run_pred(dataset,
              model,
              model_func,
              hparams,
-             args,
-             logger):
+             args):
     """
     Run prediction on a all entries of a SleepStudyDataset
 
@@ -293,23 +289,21 @@ def run_pred(dataset,
         model_func:  A callable that returns an initialized model for pred.
         hparams:     An YAMLHparams object storing all hyperparameters
         args:        Passed command-line arguments
-        logger:      A Logger object
     """
-    logger("\nPREDICTING ON {} STUDIES".format(len(dataset.pairs)))
+    logger.info(f"\nPREDICTING ON {len(dataset.pairs)} STUDIES")
     seq = get_sequencer(dataset, hparams)
 
     # Predict on all samples
     for i, sleep_study_pair in enumerate(dataset):
-        logger("[{}/{}] Predicting on SleepStudy: {}".format(i+1, len(dataset),
-                                                             sleep_study_pair.identifier))
+        logger.info(f"[{i+1}/{len(dataset)}] Predicting on SleepStudy: {sleep_study_pair.identifier}")
 
         # Get list of channel sets to predict on
         channel_sets = get_prediction_channel_sets(sleep_study_pair, dataset)
         if len(channel_sets) > 20:
-            logger("OBS: Many ({}) combinations of channels in channel "
-                   "groups. Prediction for this study may take a while.".format(len(channel_sets)))
+            logger.info(f"OBS: Many ({len(channel_sets)}) combinations of channels in channel "
+                        f"groups. Prediction for this study may take a while.")
         if len(channel_sets) == 0:
-            logger(f"Found no valid channel sets for study {sleep_study_pair}. Skipping study.")
+            logger.info(f"Found no valid channel sets for study {sleep_study_pair}. Skipping study.")
         else:
             run_pred_on_pair(
                 sleep_study_pair=sleep_study_pair,
@@ -318,7 +312,6 @@ def run_pred(dataset,
                 model_func=model_func,
                 out_dir=out_dir,
                 channel_sets=channel_sets,
-                logger=logger,
                 args=args
             )
 
@@ -339,33 +332,32 @@ def run(args):
     else:
         out_dir = args.out_dir
     prepare_output_dir(out_dir, True)
-    logger = get_logger(out_dir, args.overwrite or args.continue_, name="prediction_log")
-    logger("Args dump: \n{}".format(vars(args)))
+    raise NotImplementedError("Implement logging")
+    # logger = get_logger(out_dir, args.overwrite or args.continue_, name="prediction_log")
+    logger.info(f"Args dump: \n{vars(args)}")
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir), logger)
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir))
     hparams["build"]["data_per_prediction"] = args.data_per_prediction
     if args.channels:
         hparams["select_channels"] = args.channels
         hparams["channel_sampling_groups"] = None
-        logger("Evaluating using channels {}".format(args.channels))
+        logger.info(f"Evaluating using channels {args.channels}")
 
     # Get model
-    set_gpu_vis(args.num_GPUs, args.force_GPU, logger)
+    set_gpu_vis(args.num_GPUs, args.force_GPU)
     model, model_func = None, None
     if args.one_shot:
         # Model is initialized for each sleep study later
         def model_func(n_periods):
             return get_and_load_one_shot_model(n_periods, project_dir,
-                                               hparams, logger,
-                                               args.weights_file_name)
+                                               hparams, args.weights_file_name)
     else:
-        model = get_and_load_model(project_dir, hparams, logger,
-                                   args.weights_file_name)
+        model = get_and_load_model(project_dir, hparams, args.weights_file_name)
 
     # Run pred on all datasets
-    for dataset in get_datasets(hparams, args, logger):
+    for dataset in get_datasets(hparams, args):
         dataset = dataset[0]
         if "/" in dataset.identifier:
             # Multiple datasets, separate results into sub-folders
@@ -375,15 +367,14 @@ def run(args):
                 os.mkdir(ds_out_dir)
         else:
             ds_out_dir = out_dir
-        logger("[*] Running eval on dataset {}\n"
-               "    Out dir: {}".format(dataset, ds_out_dir))
+        logger.info(f"[*] Running eval on dataset {dataset}\n"
+                    f"    Out dir: {ds_out_dir}")
         run_pred(dataset=dataset,
                  out_dir=ds_out_dir,
                  model=model,
                  model_func=model_func,
                  hparams=hparams,
-                 args=args,
-                 logger=logger)
+                 args=args)
 
 
 def entry_func(args=None):

@@ -1,7 +1,9 @@
+import logging
 import numpy as np
-from mpunet.logging import ScreenLogger
 from utime.sequences.base_sequence import _BaseSequence
 from sleeputils.errors import NotLoadedError
+
+logger = logging.getLogger(__name__)
 
 
 def _assert_comparable_sequencers(sequencers):
@@ -22,8 +24,7 @@ def _assert_comparable_sequencers(sequencers):
             list_.append(getattr(s, key))
     for list_, key in tests:
         if not all(np.asarray(list_) == list_[0]):
-            raise ValueError("All sequences must have the same '{}' "
-                             "property. Got {}.".format(key, list_))
+            raise ValueError(f"All sequences must have the same '{key}' property. Got {list_}.")
 
 
 class MultiSequence(_BaseSequence):
@@ -41,7 +42,7 @@ class MultiSequence(_BaseSequence):
                  sequencers,
                  batch_size,
                  dataset_sample_alpha=0.5,
-                 no_log=False, logger=None):
+                 no_log=False):
         """
         TODO
 
@@ -50,13 +51,11 @@ class MultiSequence(_BaseSequence):
             batch_size:
             dataset_sample_alpha:  TODO
             no_log:
-            logger:
         """
         # Make sure we can use the 0th sequencer as a reference that respects
         # all the sequences (same batch-size, margins etc.)
         _assert_comparable_sequencers(sequencers)
         super().__init__()
-        self.logger = logger or ScreenLogger()
         self.sequences = sequencers
         self.sequences_idxs = np.arange(len(self.sequences))
         self.batch_size = batch_size
@@ -83,14 +82,11 @@ class MultiSequence(_BaseSequence):
             self.log()
 
     def log(self):
-        self.logger("[*] MultiSequence initialized:\n"
-                    "    --- Contains {} sequences\n"
-                    "    --- Sequence IDs: {}\n"
-                    "    --- Sequence sample probs (alpha={}): {}\n"
-                    "    --- Batch shape: {}"
-                    "".format(len(self.sequences),
-                              ", ".join(s.identifier for s in self.sequences),
-                              self.alpha, self.sample_prob, self.batch_shape))
+        logger.info(f"[*] MultiSequence initialized:\n"
+                    f"    --- Contains {len(self.sequences)} sequences\n"
+                    f"    --- Sequence IDs: {', '.join(s.identifier for s in self.sequences)}\n"
+                    f"    --- Sequence sample probs (alpha={self.alpha}): {self.sample_prob}\n"
+                    f"    --- Batch shape: {self.batch_shape}")
 
     def __len__(self):
         """ Returns the sum over stored sequencer lengths """
@@ -169,21 +165,18 @@ class ValidationMultiSequence:
     Inherits from _BaseSequence and implements a select set of methods that
     are distributed across the members of this MultiSequence..
     """
-    def __init__(self, sequences, no_log=False, logger=None):
+    def __init__(self, sequences, no_log=False):
         _assert_comparable_sequencers(sequences)
         self.sequences = sequences
         self.IDs = [s.identifier.split("/")[0] for s in self.sequences]
         self.n_classes = self.sequences[0].n_classes
-        self.logger = logger or ScreenLogger()
         if not no_log:
             self.log()
 
     def log(self):
-        self.logger("[*] ValidationMultiSequence initialized:\n"
-                    "    --- Contains {} sequences\n"
-                    "    --- Sequence IDs: {}"
-                    "".format(len(self.sequences),
-                              ", ".join(self.IDs)))
+        logger.info(f"[*] ValidationMultiSequence initialized:\n"
+                    f"    --- Contains {len(self.sequences)} sequences\n"
+                    f"    --- Sequence IDs: {', '.join(self.IDs)}")
 
     def __len__(self):
         """ Returns the sum over stored sequencer lengths """

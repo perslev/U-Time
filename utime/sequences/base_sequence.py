@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.utils import Sequence
@@ -7,7 +8,8 @@ from utime import Defaults
 from sleeputils.errors import NotLoadedError
 from sleeputils.preprocessing.scaling import apply_scaling, assert_scaler
 from sleeputils.dataset.utils import assert_all_loaded
-from mpunet.logging import ScreenLogger
+
+logger = logging.getLogger(__name__)
 
 
 def requires_all_loaded(method):
@@ -22,9 +24,8 @@ def requires_all_loaded(method):
     @wraps(method)
     def check_loaded_and_raise(self, *args, **kwargs):
         if not self.all_loaded:
-            raise NotLoadedError("Method '{}' requires all stored SleepStudy "
-                                 "objects to be "
-                                 "loaded.".format(method.__name__))
+            raise NotLoadedError(f"Method '{method.__name__}' requires all stored SleepStudy "
+                                 "objects to be loaded.")
         return method(self, *args, **kwargs)
     return check_loaded_and_raise
 
@@ -144,7 +145,6 @@ class BaseSequence(_BaseSequence):
                  batch_size,
                  augmenters,
                  batch_scaler,
-                 logger=None,
                  require_all_loaded=False,
                  identifier=""):
         """
@@ -158,7 +158,6 @@ class BaseSequence(_BaseSequence):
             batch_scaler:      (string) The name of a sklearn.preprocessing
                                         Scaler object to apply to each sampled
                                         batch (optional)
-            logger:            (Logger) A Logger object
             identifier:        (string) A string identifier name
         """
         super().__init__()
@@ -168,7 +167,6 @@ class BaseSequence(_BaseSequence):
         self.dataset_queue = dataset_queue
         self.n_classes = int(n_classes)
         self.n_channels = int(n_channels)
-        self.logger = logger or ScreenLogger()
         self.augmenters = augmenters or []
         self.augmentation_enabled = bool(augmenters)
         self.batch_size = batch_size
@@ -240,19 +238,17 @@ class BaseSequence(_BaseSequence):
                 xs.append(ss.extract_from_psg(start, start+seconds_per_study))
             batches.extend(xs)
         mean, std = np.abs(np.mean(batches)), np.std(batches)
-        self.logger("Mean assertion ({} periods from each of {} studies):  "
-                    "{:.3f}".format(periods_per_study, n_studies, mean))
-        self.logger("Scale assertion ({} periods from each of {} studies):  "
-                    "{:.3f}".format(periods_per_study, n_studies, std))
+        logger.info(f"Mean assertion ({periods_per_study} periods from each of {n_studies} studies): {mean:.3f}")
+        logger.info(f"Scale assertion ({periods_per_study} periods from each of {n_studies} studies):  {std:.3f}")
         if mean > warn_mean or std > warn_std:
-            self.logger.warn("OBS: Found large abs(mean) and std values over 5"
-                             " sampled batches ({:.3f} and {:.3f})."
-                             " Make sure scaling is active at either the "
-                             "global level (attribute 'scaler' has been set on"
-                             " individual SleepStudy objects, typically via the"
-                             " SleepStudyDataset set_scaler method), or "
-                             "batch-wise via the batch_scaler attribute of the"
-                             " Sequence object.".format(mean, std))
+            logger.warning("OBS: Found large abs(mean) and std values over 5"
+                           f" sampled batches ({mean:.3f} and {std:.3f})."
+                           " Make sure scaling is active at either the "
+                           "global level (attribute 'scaler' has been set on"
+                           " individual SleepStudy objects, typically via the"
+                           " SleepStudyDataset set_scaler method), or "
+                           "batch-wise via the batch_scaler attribute of the"
+                           " Sequence object.")
 
     @property
     def augmentation_enabled(self):
@@ -328,8 +324,7 @@ class BaseSequence(_BaseSequence):
             for d in list_of_augs:
                 cls = augmenters.__dict__[d["cls_name"]]
                 init_aug.append(cls(**d["kwargs"]))
-                self.logger("Setting augmenter: {}({})".format(d["cls_name"],
-                                                               d["kwargs"]))
+                logger.info(f"Setting augmenter: {d['cls_name']}({d['kwargs']})")
         self._augmenters = init_aug
 
     def augment(self, X, y, w):

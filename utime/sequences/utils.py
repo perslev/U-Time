@@ -1,7 +1,10 @@
+import logging
 import numpy as np
 from .batch_sequence import BatchSequence
 from .random_batch_sequence import RandomBatchSequence
 from .balanced_random_batch_sequence import BalancedRandomBatchSequence
+
+logger = logging.getLogger(__name__)
 
 
 def batch_wrapper(generator, x_shape, y_shape,

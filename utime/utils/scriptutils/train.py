@@ -2,15 +2,17 @@
 A set of functions for needed for running training in various settings
 """
 
+import logging
 import os
-from mpunet.logging.default_logger import ScreenLogger
 from utime.utils.scriptutils import get_all_dataset_hparams
 from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
 from sleeputils.dataset.sleep_study_dataset import SingleH5Dataset
 from sleeputils.errors import NotLoadedError
 
+logger = logging.getLogger(__name__)
 
-def get_train_and_val_datasets(hparams, no_val, train_on_val, logger):
+
+def get_train_and_val_datasets(hparams, no_val, train_on_val):
     """
     Return all pairs of (train, validation) SleepStudyDatasets as described in
     the YAMLHParams object 'hparams'. A list is returned, as more than 1
@@ -27,7 +29,6 @@ def get_train_and_val_datasets(hparams, no_val, train_on_val, logger):
         train_on_val: (bool)        Load validation data, but merge it into
                                     the training data. Then return only the
                                     'trainin' (train+val) dataset.
-        logger:       (Logger)      A Logger object
 
     Returns:
         A list of training SleepStudyDataset objects
@@ -40,12 +41,12 @@ def get_train_and_val_datasets(hparams, no_val, train_on_val, logger):
     else:
         load = ("train_data", "val_data")
     from utime.utils.scriptutils import get_splits_from_all_datasets
-    datasets = [*get_splits_from_all_datasets(hparams, load, logger)]
+    datasets = [*get_splits_from_all_datasets(hparams, load)]
     if train_on_val:
         if any([len(ds) != 2 for ds in datasets]):
             raise ValueError("Did not find a validation set for one or more "
                              "pairs in {}".format(datasets))
-        logger("[OBS] Merging training and validation sets")
+        logger.info("[OBS] Merging training and validation sets")
         datasets = [merge_train_and_val(*ds) for ds in datasets]
         no_val = True
     if not no_val:
@@ -56,7 +57,7 @@ def get_train_and_val_datasets(hparams, no_val, train_on_val, logger):
     return train_datasets, val_datasets
 
 
-def get_h5_train_and_val_datasets(hparams, no_val, train_on_val, logger):
+def get_h5_train_and_val_datasets(hparams, no_val, train_on_val):
     """
     TODO
 
@@ -67,7 +68,6 @@ def get_h5_train_and_val_datasets(hparams, no_val, train_on_val, logger):
         train_on_val: (bool)        Load validation data, but merge it into
                                     the training data. Then return only the
                                     'trainin' (train+val) dataset.
-        logger:       (Logger)      A Logger object
 
     Returns:
         A list of training SleepStudyDataset objects
@@ -159,13 +159,12 @@ def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
     if len(train_seqs) > 1:
         # Wrap sequencers in MultiSequence object which creates batches by sampling
         # across its stores individual sequencers
-        train_seq = MultiSequence(train_seqs, hparams['fit']['batch_size'],
-                                  logger=train_seqs[0].logger)
+        train_seq = MultiSequence(train_seqs, hparams['fit']['batch_size'])
     else:
         train_seq = train_seqs[0]
     if val_seq:
         assert len(val_seq) == len(train_seqs)
-        val_seq = ValidationMultiSequence(val_seq, logger=train_seq.logger)
+        val_seq = ValidationMultiSequence(val_seq)
     return train_seq, val_seq
 
 
@@ -256,7 +255,7 @@ def get_samples_per_epoch(train_seq, max_train_samples_per_epoch):
     return train_samples_per_epoch
 
 
-def save_final_weights(project_dir, model, file_name, logger=None):
+def save_final_weights(project_dir, model, file_name):
     """
     Saves the current (normally 'final') weights of 'model' to h5 archive at
     path project_dir/model/'file_name'.
@@ -269,7 +268,6 @@ def save_final_weights(project_dir, model, file_name, logger=None):
         model:       (tf.keras Model) The model instance which weights will be
                                       saved.
         file_name:   (string)         Name of the saved parameter file
-        logger:      (Logger)         Optional Logger instance
     """
     import os
     # Save final model weights
@@ -277,8 +275,7 @@ def save_final_weights(project_dir, model, file_name, logger=None):
         os.mkdir("%s/model" % project_dir)
     model_path = "{}/model/{}.h5".format(project_dir,
                                          os.path.splitext(file_name)[0])
-    logger = logger or ScreenLogger()
-    logger("Saving current model to: %s" % model_path)
+    logger.info(f"Saving current model to: {model_path}")
     if os.path.exists(model_path):
         os.remove(model_path)
     model.save_weights(model_path)

@@ -6,17 +6,19 @@ and Christian Igel. U-Time: A Fully Convolutional Network for Time Series
 Segmentation Applied to Sleep Staging. Advances in Neural Information
 Processing Systems (NeurIPS 2019)
 """
+import logging
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras import regularizers
-from tensorflow.keras.layers import Input, BatchNormalization, Cropping2D, \
-                                    Concatenate, MaxPooling2D, Dense, \
-                                    UpSampling2D, ZeroPadding2D, Lambda, Conv2D, \
-                                    AveragePooling2D, DepthwiseConv2D
-from mpunet.logging import ScreenLogger
+from tensorflow.keras.layers import (Input, BatchNormalization, Cropping2D,
+                                     Concatenate, MaxPooling2D,
+                                     UpSampling2D, ZeroPadding2D, Lambda,
+                                     Conv2D, AveragePooling2D)
 from mpunet.utils.conv_arithmetics import compute_receptive_fields
 from mpunet.train.utils import init_activation
+
+logger = logging.getLogger(__name__)
 
 
 class UTime(Model):
@@ -43,7 +45,6 @@ class UTime(Model):
                  l2_reg=None,
                  pools=(10, 8, 6, 4),
                  data_per_prediction=None,
-                 logger=None,
                  build=True,
                  **kwargs):
         """
@@ -78,15 +79,10 @@ class UTime(Model):
             TODO
         data_per_prediction (int):
             TODO
-        logger (mpunet.logging.Logger | ScreenLogger):
-            mpunet.Logger object, logging to files or screen.
         build (bool):
             TODO
         """
         super(UTime, self).__init__()
-
-        # Set logger or standard print wrapper
-        self.logger = logger or ScreenLogger()
 
         # Set various attributes
         assert len(batch_shape) == 4
@@ -383,25 +379,25 @@ class UTime(Model):
         return cropped_node1
 
     def log(self):
-        self.logger("{} Model Summary\n"
-                    "-------------------".format(__class__.__name__))
-        self.logger("N periods:         {}".format(self.n_periods))
-        self.logger("Input dims:        {}".format(self.input_dims))
-        self.logger("N channels:        {}".format(self.n_channels))
-        self.logger("N classes:         {}".format(self.n_classes))
-        self.logger("Kernel size:       {}".format(self.kernel_size))
-        self.logger("Dilation rate:     {}".format(self.dilation))
-        self.logger("CF factor:         {:.3f}".format(self.cf**2))
-        self.logger("Init filters:      {}".format(self.init_filters))
-        self.logger("Depth:             {}".format(self.depth))
-        self.logger("Poolings:          {}".format(self.pools))
-        self.logger("Transition window  {}".format(self.transition_window))
-        self.logger("Dense activation   {}".format(self.dense_classifier_activation))
-        self.logger("l2 reg:            {}".format(self.l2_reg))
-        self.logger("Padding:           {}".format(self.padding))
-        self.logger("Conv activation:   {}".format(self.activation))
-        self.logger("Receptive field:   {}".format(self.receptive_field[0]))
-        self.logger("Seq length.:       {}".format(self.n_periods*self.input_dims))
-        self.logger("N params:          {}".format(self.count_params()))
-        self.logger("Input:             {}".format(self.input))
-        self.logger("Output:            {}".format(self.output))
+        logger.info("UTime Model Summary\n"
+                    "-------------------"
+                    f"N periods:         {self.n_periods}\n"
+                    f"Input dims:        {self.input_dims}\n"
+                    f"N channels:        {self.n_channels}\n"
+                    f"N classes:         {self.n_classes}\n"
+                    f"Kernel size:       {self.kernel_size}\n"
+                    f"Dilation rate:     {self.dilation}\n"
+                    f"CF factor:         {self.cf**2:.3f}\n"
+                    f"Init filters:      {self.init_filters}\n"
+                    f"Depth:             {self.depth}\n"
+                    f"Poolings:          {self.pools}\n"
+                    f"Transition window  {self.transition_window}\n"
+                    f"Dense activation   {self.dense_classifier_activation}\n"
+                    f"l2 reg:            {self.l2_reg}\n"
+                    f"Padding:           {self.padding}\n"
+                    f"Conv activation:   {self.activation}\n"
+                    f"Receptive field:   {self.receptive_field[0]}\n"
+                    f"Seq length.:       {self.n_periods*self.input_dims}\n"
+                    f"N params:          {self.count_params()}\n"
+                    f"Input:             {self.input}\n"
+                    f"Output:            {self.output}")

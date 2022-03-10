@@ -2,9 +2,12 @@
 Script for initializing new U-Time project directories
 """
 
+import logging
 import os
 from argparse import ArgumentParser
 from utime import Defaults
+
+logger = logging.getLogger(__name__)
 
 
 def get_parser():
@@ -26,8 +29,8 @@ def get_parser():
                                'which the project will be initialized '
                                '(default=./)')
     optional.add_argument("--model", type=str, default="utime",
-                          help="Specify a model type parameter file. One of: "
-                               "{} (default 'utime')".format(",".join(os.listdir(defaults))))
+                          help=f"Specify a model type parameter file. One of: "
+                               f"{','.join(os.listdir(defaults))} (default 'utime')")
     optional.add_argument("--data_dir", type=str, default=None,
                           help="Optional specification of path to dir "
                                "storing data")
@@ -98,7 +101,7 @@ def run(args):
     """
     default_folder = os.path.split(os.path.abspath(__file__))[0] + "/defaults"
     if not os.path.exists(default_folder):
-        raise OSError("Default path not found at %s" % default_folder)
+        raise OSError(f"Default path not found at {default_folder}")
     root_path = os.path.abspath(args.root)
     data_dir = args.data_dir
     if data_dir:
@@ -106,16 +109,15 @@ def run(args):
 
     # Validate project path and create folder
     if not os.path.exists(root_path):
-        raise OSError("root path '{}' does not exist.".format(args.root))
+        raise OSError(f"root path '{args.root}' does not exist.")
     else:
         out_folder = os.path.join(root_path, args.name)
         if os.path.exists(out_folder):
-            response = input("Folder at '{}' already exists. Overwrite? "
+            response = input(f"Folder at '{out_folder}' already exists. Overwrite? "
                              "Only parameter files will be replaced. "
-                             "(y/N) ".format(out_folder))
+                             "(y/N) ")
             if response.lower() != "y":
-                raise OSError(
-                    "Folder at '{}' already exists".format(out_folder))
+                raise OSError(f"Folder at '{out_folder}' already exists")
         try:
             os.makedirs(out_folder)
         except FileExistsError:

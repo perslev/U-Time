@@ -2,12 +2,14 @@
 A set of utility functions used across multiple scripts in utime.bin
 """
 
+import logging
 import os
 from sleeputils.utils import ensure_list_or_tuple
-from mpunet.logging.default_logger import ScreenLogger
 from sleeputils.dataset import SleepStudyDataset
 from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
 from utime import Defaults
+
+logger = logging.getLogger(__name__)
 
 
 def assert_project_folder(project_folder, evaluation=False):
@@ -80,8 +82,7 @@ def get_all_dataset_hparams(hparams):
     return dataset_hparams
 
 
-def get_dataset_splits_from_hparams(hparams, splits_to_load,
-                                    logger=None, id=""):
+def get_dataset_splits_from_hparams(hparams, splits_to_load, id=""):
     """
     Return all initialized and prepared (according to the prep. function of
     'select_sample_strip_scale_quality') SleepStudyDataset objects as described
@@ -94,7 +95,6 @@ def get_dataset_splits_from_hparams(hparams, splits_to_load,
                         all (sub-)datasets to load according to their hparams
                         descriptions. That is, 'load' could be ('TRAIN', 'VAL')
                         to load the training and validation data.
-        logger:         A Logger object
         id:             An optional id to prepend to the identifier of the
                         dataset. For instance, with id 'ABC' and sub-dataset
                         identifier 'TRAIN' the resulting dataset will have
@@ -122,8 +122,7 @@ def get_dataset_splits_from_hparams(hparams, splits_to_load,
     return datasets
 
 
-def get_dataset_splits_from_hparams_file(hparams_path, splits_to_load,
-                                         logger=None, id=""):
+def get_dataset_splits_from_hparams_file(hparams_path, splits_to_load, id=""):
     """
     Loads one or more datasets according to hyperparameters described in yaml
     file at path 'hparams_path'. Specifically, this functions creates a temp.
@@ -135,11 +134,10 @@ def get_dataset_splits_from_hparams_file(hparams_path, splits_to_load,
     """
     from utime.hyperparameters import YAMLHParams
     hparams = YAMLHParams(hparams_path, no_log=True, no_version_control=True)
-    return get_dataset_splits_from_hparams(hparams, splits_to_load, logger, id)
+    return get_dataset_splits_from_hparams(hparams, splits_to_load, id)
 
 
-def get_splits_from_all_datasets(hparams, splits_to_load, logger=None,
-                                 return_data_hparams=False):
+def get_splits_from_all_datasets(hparams, splits_to_load, return_data_hparams=False):
     """
     Wrapper around the 'get_dataset_splits_from_hparams_file' and
     'get_dataset_splits_from_hparams' files loading all sub-datasets according
@@ -160,7 +158,6 @@ def get_splits_from_all_datasets(hparams, splits_to_load, logger=None,
         splits_to_load: A string, list or tuple of strings giving the name
                         of all sub-datasets to load according to their hparams
                         descriptions.
-        logger:         A Logger object
         return_data_hparams: TODO
 
     Returns:
@@ -172,7 +169,6 @@ def get_splits_from_all_datasets(hparams, splits_to_load, logger=None,
         ds = get_dataset_splits_from_hparams(
                 hparams=hparams,
                 splits_to_load=splits_to_load,
-                logger=logger,
                 id=dataset_id)
         if return_data_hparams:
             yield ds, hparams
@@ -180,7 +176,7 @@ def get_splits_from_all_datasets(hparams, splits_to_load, logger=None,
             yield ds
 
 
-def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
+def get_dataset_from_regex_pattern(regex_pattern, hparams):
     """
     Initializes a SleepStudy dataset and applies prep. function
     'select_sample_strip_scale_quality' from all subject folders that match
@@ -191,7 +187,6 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
                        to include in the dataset
         hparams:       A YAMLHparams object to read settings from that should
                        apply to the initialized dataset.
-        logger:        A Logger object
 
     Returns:
         A SleepStudy object with settings set as per 'hparams'
@@ -215,7 +210,7 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams, logger=None):
     return ssd
 
 
-def make_multi_gpu_model(model, num_GPUs, logger=None):
+def make_multi_gpu_model(model, num_GPUs):
     """
     Takes a compiled tf.keras Model object 'model' and applies
     from tensorflow.keras.utils import multi_gpu_model
@@ -225,7 +220,6 @@ def make_multi_gpu_model(model, num_GPUs, logger=None):
     Args:
         model:    (tf.keras Model) A compiled tf.keras Model object.
         num_GPUs: (int)            Number of GPUs to distribute the model over
-        logger:   (Logger)         Optional Logger object
 
     Returns:
         The split, multi-GPU model.
@@ -238,6 +232,5 @@ def make_multi_gpu_model(model, num_GPUs, logger=None):
         from tensorflow.keras.utils import multi_gpu_model
         model = multi_gpu_model(org_model, gpus=num_GPUs,
                                 cpu_merge=False, cpu_relocation=False)
-        logger = logger or ScreenLogger()
-        logger("Creating multi-GPU model: N=%i" % num_GPUs)
+        logger.info(f"Creating multi-GPU model: N={num_GPUs}")
     return model, org_model

@@ -1,11 +1,13 @@
+import logging
 import os
 import numpy as np
 from argparse import ArgumentParser
 from glob import glob
 from pathlib import Path
-from mpunet.logging import Logger
 from sleeputils.io.hypnogram import extract_ids_from_hyp_file
 from sleeputils.hypnogram.utils import fill_hyp_gaps
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -57,14 +59,15 @@ def run(args):
     out_dir = Path(args.out_dir).absolute()
     out_dir.mkdir(parents=True, exist_ok=True)
     n_files = len(files)
-    logger = Logger(out_dir,
-                    active_file='hyp_extraction_log',
-                    overwrite_existing=args.overwrite)
-    logger("Args dump: {}".format(vars(args)))
-    logger("Found {} files matching glob statement".format(n_files))
+    raise NotImplementedError("Implement logging")
+    # logger = Logger(out_dir,
+    #                 active_file='hyp_extraction_log',
+    #                 overwrite_existing=args.overwrite)
+    logger.info(f"Args dump: {vars(args)}")
+    logger.info(f"Found {n_files} files matching glob statement")
     if n_files == 0:
         return
-    logger("Saving .ids files to '{}'".format(out_dir))
+    logger.info(f"Saving .ids files to '{out_dir}'")
     if n_files == 0:
         return
 
@@ -75,16 +78,19 @@ def run(args):
         folder_name = os.path.split(os.path.split(file_)[0])[-1]
         out_dir_subject = os.path.join(out_dir, folder_name)
         out = os.path.join(out_dir_subject, file_name + ".ids")
-        logger("{}/{} Processing {}".format(i+1, n_files, file_name))
-        logger("-- In path    {}".format(file_))
-        logger("-- Out path   {}".format(out))
+        logger.info(f"{i+1}/{n_files} Processing {file_name}\n"
+                    f"-- In path    {file_}\n"
+                    f"-- Out path   {out}")
         if not os.path.exists(out_dir_subject):
             os.mkdir(out_dir_subject)
         if os.path.exists(out):
             if not args.overwrite:
                 continue
             os.remove(out)
-        inits, durs, stages = extract_ids_from_hyp_file(file_, period_length_sec=30, extract_func=args.extract_func, replace_zero_durations=args.correct_zero_durations)
+        inits, durs, stages = extract_ids_from_hyp_file(file_,
+                                                        period_length_sec=30,
+                                                        extract_func=args.extract_func,
+                                                        replace_zero_durations=args.correct_zero_durations)
         if args.remove_offset:
             try:
                 inits = remove_offset(inits)

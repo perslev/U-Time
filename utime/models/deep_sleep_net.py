@@ -6,13 +6,14 @@ on Neural Systems and Rehabilitation Engineering, vol. 25, no. 11,
 pp. 1998-2008, Nov. 2017. doi: 10.1109/TNSRE.2017.2721116
 """
 
+import logging
 import tensorflow as tf
 from tensorflow.keras.layers import Conv1D, BatchNormalization, MaxPooling1D, \
                                     Input, Flatten, Dense, Dropout, Concatenate, \
                                     Lambda, LSTM, Bidirectional, Add
-
-from mpunet.logging import ScreenLogger
 from utime.models.utils import standardize_batch_shape
+
+logger = logging.getLogger(__name__)
 
 
 class DeepFeatureNet(tf.keras.Model):
@@ -29,9 +30,10 @@ class DeepFeatureNet(tf.keras.Model):
                  classify=True,
                  flatten=True,
                  l2_reg=0.0,
-                 logger=None, log=True, build=True, **unused):
+                 log=True,
+                 build=True,
+                 **unused):
         super(DeepFeatureNet, self).__init__()
-        self.logger = logger or ScreenLogger()
         self.batch_shape = standardize_batch_shape(batch_shape)
         self.n_classes = n_classes
         self.use_dropout = use_dropout
@@ -52,16 +54,16 @@ class DeepFeatureNet(tf.keras.Model):
                 self.log()
 
     def log(self):
-        self.logger("DeepFeatureNet Model Summary\n"
-                    "----------------------------")
-        self.logger("Batch shape:       {}".format(self.batch_shape))
-        self.logger("N classes:         {}".format(self.n_classes))
-        self.logger("l2 reg:            {}".format(self.l2_reg))
-        self.logger("Padding:           {}".format(self.padding))
-        self.logger("Conv activation:   {}".format(self.activation))
-        self.logger("N params:          {}".format(self.count_params()))
-        self.logger("Input:            {}".format(self.input))
-        self.logger("Output:            {}".format(self.output))
+        logger.info("DeepFeatureNet Model Summary\n"
+                    "----------------------------\n"
+                    f"Batch shape:       {self.batch_shape}\n"
+                    f"N classes:         {self.n_classes}\n"
+                    f"l2 reg:            {self.l2_reg}\n"
+                    f"Padding:           {self.padding}\n"
+                    f"Conv activation:   {self.activation}\n"
+                    f"N params:          {self.count_params()}\n"
+                    f"Input:             {self.input}\n"
+                    f"Output:            {self.output}")
 
     def _build_encoder(self, inputs, n_filters_input, filter_size_input,
                        stride_input, pool_size_input, n_filters_lower,
@@ -152,7 +154,6 @@ class DeepSleepNet(DeepFeatureNet):
                  use_bn=True,
                  l2_reg=0.0,
                  l2_reg_feature_net=None,
-                 logger=None,
                  log=True,
                  name="DeepSleepNet",
                  **unused):
@@ -165,7 +166,6 @@ class DeepSleepNet(DeepFeatureNet):
             use_bn=use_bn,
             classify=False,
             l2_reg=l2_reg_feature_net or l2_reg,
-            logger=logger,
             log=False,
             build=False
         )
@@ -183,18 +183,18 @@ class DeepSleepNet(DeepFeatureNet):
             self.log()
 
     def log(self):
-        self.logger("DeepSleepNet Model Summary\n"
-                    "-------------------------")
-        self.logger("N periods:         {}".format(self.n_periods))
-        self.logger("Input dims:        {}".format(self.input_dims))
-        self.logger("N classes:         {}".format(self.n_classes))
-        self.logger("N RNN layers:      {}".format(self.n_rnn_layers))
-        self.logger("l2 reg:            {}".format(self.l2_reg))
-        self.logger("Padding:           {}".format(self.padding))
-        self.logger("Conv activation:   {}".format(self.activation))
-        self.logger("N params:          {}".format(self.count_params()))
-        self.logger("Input:             {}".format(self.input))
-        self.logger("Output:            {}".format(self.output))
+        logger.info("DeepSleepNet Model Summary\n"
+                    "-------------------------"
+                    f"N periods:         {self.n_periods}\n"
+                    f"Input dims:        {self.input_dims}\n"
+                    f"N classes:         {self.n_classes}\n"
+                    f"N RNN layers:      {self.n_rnn_layers}\n"
+                    f"l2 reg:            {self.l2_reg}\n"
+                    f"Padding:           {self.padding}\n"
+                    f"Conv activation:   {self.activation}\n"
+                    f"N params:          {self.count_params()}\n"
+                    f"Input:             {self.input}\n"
+                    f"Output:            {self.output}")
 
     def _reshape(self, layer, shape):
         return tf.keras.backend.reshape(layer, shape)

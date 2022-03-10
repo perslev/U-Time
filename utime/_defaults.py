@@ -1,5 +1,8 @@
+import logging
 import os
 from sleeputils import Defaults
+
+logger = logging.getLogger(__name__)
 
 
 class _Defaults(Defaults):
@@ -22,7 +25,7 @@ class _Defaults(Defaults):
         import numpy as np
         import random
         cls.GLOBAL_SEED = int(seed)
-        print("Seeding TensorFlow, numpy and random modules with seed: {}".format(cls.GLOBAL_SEED))
+        logger.info(f"Seeding TensorFlow, numpy and random modules with seed: {cls.GLOBAL_SEED}")
         tf.random.set_seed(cls.GLOBAL_SEED)
         np.random.seed(cls.GLOBAL_SEED)
         random.seed(cls.GLOBAL_SEED)

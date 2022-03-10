@@ -1,8 +1,11 @@
-import numpy as np
+import logging
 import os
+import numpy as np
 from argparse import ArgumentParser
 from scipy import stats
 from glob import glob
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -72,7 +75,7 @@ def run(folder, soft):
     dataset_dirs = get_datasets(folder=folder)
 
     for dataset, dataset_dir_path in dataset_dirs.items():
-        print(f"Processing dataset '{dataset}'")
+        logger.info(f"Processing dataset '{dataset}'")
 
         # Create majority vote folder
         out_dir = f'{dataset_dir_path}/majority'
@@ -81,10 +84,10 @@ def run(folder, soft):
 
         # Get all study IDs
         study_ids = set([os.path.split(s)[-1].split("_PRED")[0] for s in glob(dataset_dir_path + "/**/*PRED.npy")])
-        print(f"Found {len(study_ids)} paths to study IDs")
+        logger.info(f"Found {len(study_ids)} paths to study IDs")
 
         for study_id in study_ids:
-            print(dataset, study_id)
+            logger.info(dataset, study_id)
             channels = get_input_channel_combinations(dataset_dir_path, study_id)
             channel_arrs = get_arrays(channels)
 

@@ -3,8 +3,11 @@ A randomly sampling batch sequence object
 Performs class-balanced sampling across uniformly randomly selected SleepStudy objects.
 """
 
+import logging
 import numpy as np
 from utime.sequences import BatchSequence
+
+logger = logging.getLogger(__name__)
 
 
 class BalancedRandomBatchSequence(BatchSequence):
@@ -29,7 +32,6 @@ class BalancedRandomBatchSequence(BatchSequence):
                  margin=0,
                  augmenters=None,
                  batch_scaler=None,
-                 logger=None,
                  no_log=False,
                  identifier="",
                  **kwargs):
@@ -50,7 +52,6 @@ class BalancedRandomBatchSequence(BatchSequence):
                          margin=margin,
                          augmenters=augmenters,
                          batch_scaler=batch_scaler,
-                         logger=logger,
                          no_log=True,
                          identifier=identifier,
                          require_all_loaded=False,
@@ -61,29 +62,17 @@ class BalancedRandomBatchSequence(BatchSequence):
 
     def log(self):
         """ Log basic information on this object """
-        self.logger("[*] BalancedRandomBatchSequence initialized{}:\n"
-                    "    Data queue type: {}\n"
-                    "    Batch shape:     {}\n"
-                    "    Sample prob.:    {}\n"
-                    "    N pairs:         {}\n"
-                    "    Margin:          {}\n"
-                    "    Augmenters:      {}\n"
-                    "    Aug enabled:     {}\n"
-                    "    Batch scaling:   {}\n"
-                    "    All loaded:      {}\n"
-                    "    N classes:       {}{}".format(" ({})".format(self.identifier) if self.identifier else "",
-                                                       type(self.dataset_queue),
-                                                       self.batch_shape,
-                                                       self.sample_prob,
-                                                       len(self.dataset_queue),
-                                                       self.margin,
-                                                       self.augmenters,
-                                                       self.augmentation_enabled,
-                                                       bool(self.batch_scaler),
-                                                       self.all_loaded,
-                                                       self.n_classes,
-                                                       " (AUTO-INFERRED)"
-                                                       if self._inferred else ""))
+        logger.info(f"[*] BalancedRandomBatchSequence initialized{f' ({self.identifier})' if self.identifier else ''}:\n"
+                    f"    Data queue type: {type(self.dataset_queue)}\n"
+                    f"    Batch shape:     {self.batch_shape}\n"
+                    f"    Sample prob.:    {self.sample_prob}\n"
+                    f"    N pairs:         {len(self.dataset_queue)}\n"
+                    f"    Margin:          {self.margin}\n"
+                    f"    Augmenters:      {self.augmenters}\n"
+                    f"    Aug enabled:     {self.augmentation_enabled}\n"
+                    f"    Batch scaling:   {bool(self.batch_scaler)}\n"
+                    f"    All loaded:      {self.all_loaded}\n"
+                    f"    N classes:       {self.n_classes}{' (AUTO-INFERRED)' if self._inferred else ''}")
 
     @property
     def sample_prob(self):
@@ -104,9 +93,9 @@ class BalancedRandomBatchSequence(BatchSequence):
         else:
             if not isinstance(values, (list, tuple, np.ndarray)) or \
                     len(values) != self.n_classes:
-                ValueError("'sample_prob' should be an array of"
-                           " length n_classes. got {} "
-                           "(type {})".format(values, type(values)))
+                raise ValueError(f"'sample_prob' should be an array of"
+                                 f" length n_classes={self.n_classes}. "
+                                 f"Got {values} (type {type(values)})")
             self._sample_prob = np.array(values)
             self._sample_prob /= np.sum(self._sample_prob)  # sum 1
 
@@ -144,10 +133,7 @@ class BalancedRandomBatchSequence(BatchSequence):
                 try:
                     class_inds = sleep_study.get_class_indicies(cls)
                     if len(class_inds) == 0:
-                        self.logger.warn("Found empty class inds array for "
-                                         "study {} and class {}".format(
-                            sleep_study, cls
-                        ))
+                        logger.warning(f"Found empty class inds array for study {sleep_study} and class {cls}")
                         raise KeyError
                 except KeyError:
                     # This SS does not have the given class
@@ -166,8 +152,7 @@ class BalancedRandomBatchSequence(BatchSequence):
                                              allow_shift_at_border=True)
                     return X_, y_
         # Probably something is wrong, raise error.
-        raise RuntimeError("Could not sample period for class {}, stopping "
-                           "after {} tries.".format(cls, max_tries))
+        raise RuntimeError(f"Could not sample period for class {cls}, stopping after {max_tries} tries.")
 
     def get_class_balanced_random_batch(self):
         """

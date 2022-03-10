@@ -3,11 +3,14 @@ Script which predicts on a set of data and evaluates the performance by
 comparing to the ground truth labels.
 """
 
+import logging
 import os
 import numpy as np
 from argparse import ArgumentParser
 from utime import Defaults
 from sleeputils.dataset.queue import LazyQueue
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -92,29 +95,29 @@ def prepare_output_dir(out_dir, overwrite):
                                                                      files))
 
 
-def get_logger(out_dir, overwrite, name="evaluation_log", warnings_name="warnings"):
-    """
-    Returns a Logger object for the given out_dir.
-    The logger will throw an OSError if the dir exists and overwrite=False, in
-    which case the script will terminate with a print message.
-    """
-    from mpunet.logging import Logger
-    try:
-        logger = Logger(out_dir,
-                        active_file=name,
-                        overwrite_existing=overwrite,
-                        warnings_file=warnings_name,
-                        no_sub_folder=True)
-    except OSError:
-        from sys import exit
-        print("[*] A logging file 'logs/{}' already exists. "
-              "If you wish to overwrite this logfile, set the --overwrite "
-              "flag.".format(name))
-        exit(0)
-    return logger
+# def get_logger(out_dir, overwrite, name="evaluation_log", warnings_name="warnings"):
+#     """
+#     Returns a Logger object for the given out_dir.
+#     The logger will throw an OSError if the dir exists and overwrite=False, in
+#     which case the script will terminate with a print message.
+#     """
+#     from mpunet.logging import Logger
+#     try:
+#         logger = Logger(out_dir,
+#                         active_file=name,
+#                         overwrite_existing=overwrite,
+#                         warnings_file=warnings_name,
+#                         no_sub_folder=True)
+#     except OSError:
+#         from sys import exit
+#         print("[*] A logging file 'logs/{}' already exists. "
+#               "If you wish to overwrite this logfile, set the --overwrite "
+#               "flag.".format(name))
+#         exit(0)
+#     return logger
 
 
-def get_and_load_model(project_dir, hparams, logger, weights_file_name=None):
+def get_and_load_model(project_dir, hparams, weights_file_name=None):
     """
     Initializes a model in project_dir according to hparams and loads weights
     in .h5 file at path 'weights_file_name' or automatically determined from
@@ -123,7 +126,6 @@ def get_and_load_model(project_dir, hparams, logger, weights_file_name=None):
     Args:
         project_dir:        Path to project folder
         hparams:            A YAMLHParams object storing hyperparameters
-        logger:             A Logger object
         weights_file_name:  Optional path to .h5 parameter file
 
     Returns:
@@ -134,7 +136,6 @@ def get_and_load_model(project_dir, hparams, logger, weights_file_name=None):
         model, _ = init_and_load_best_model(
             hparams=hparams,
             model_dir=os.path.join(project_dir, "model"),
-            logger=logger,
             by_name=True
         )
     else:
@@ -142,13 +143,11 @@ def get_and_load_model(project_dir, hparams, logger, weights_file_name=None):
         weights_file_name = os.path.join(project_dir, "model", weights_file_name)
         model = init_and_load_model(hparams=hparams,
                                     weights_file=weights_file_name,
-                                    logger=logger,
                                     by_name=True)
     return model
 
 
-def get_and_load_one_shot_model(n_periods, project_dir,
-                                hparams, logger, weights_file_name=None):
+def get_and_load_one_shot_model(n_periods, project_dir, hparams, weights_file_name=None):
     """
     Returns a model according to 'hparams', potentially initialized from
     parameters in a .h5 file 'weights_file_name'.
@@ -162,7 +161,6 @@ def get_and_load_one_shot_model(n_periods, project_dir,
         full_hypnogram:     Array of sleep stage labels, shape [n_periods, 1]
         project_dir:        Path to project directory
         hparams:            YAMLHparams object
-        logger:             Logger object
         weights_file_name:  Optional path to .h5 parameter file
 
     Returns:
@@ -171,10 +169,10 @@ def get_and_load_one_shot_model(n_periods, project_dir,
     # Set seguence length
     hparams["build"]["batch_shape"][1] = n_periods
     hparams["build"]["batch_shape"][0] = 1  # Should not matter
-    return get_and_load_model(project_dir, hparams, logger, weights_file_name)
+    return get_and_load_model(project_dir, hparams, weights_file_name)
 
 
-def set_gpu_vis(num_GPUs, force_GPU, logger=None):
+def set_gpu_vis(num_GPUs, force_GPU):
     """ Helper function that sets the GPU visibility as per parsed args """
     if force_GPU:
         from mpunet.utils.system import set_gpu
@@ -380,8 +378,7 @@ def run_pred_and_eval(dataset,
                       model,
                       model_func,
                       hparams,
-                      args,
-                      logger):
+                      args):
     """
     Run evaluation (predict + evaluate) on a all entries of a SleepStudyDataset
 
@@ -394,12 +391,11 @@ def run_pred_and_eval(dataset,
         model_func:  A callable that returns an initialized model for pred.
         hparams:     An YAMLHparams object storing all hyperparameters
         args:        Passed command-line arguments
-        logger:      A Logger object
     """
     from mpunet.evaluate.metrics import dice_all, class_wise_kappa
     from utime.evaluation.dataframe import (get_eval_df, add_to_eval_df,
                                             log_eval_df, with_grand_mean_col)
-    logger("\nPREDICTING ON {} STUDIES".format(len(dataset.pairs)))
+    logger.info(f"\nPREDICTING ON {len(dataset.pairs)} STUDIES")
     seq = get_sequencer(dataset, hparams)
 
     # Prepare evaluation data frames
@@ -409,12 +405,10 @@ def run_pred_and_eval(dataset,
     # Predict on all samples
     for i, sleep_study_pair in enumerate(dataset):
         id_ = sleep_study_pair.identifier
-        logger("[{}/{}] Predicting on SleepStudy: {}".format(i+1,
-                                                             len(dataset),
-                                                             id_))
+        logger.info(f"[{i+1}/{len(dataset)}] Predicting on SleepStudy: {id_}")
 
         # Predict
-        with logger.disabled_in_context(), sleep_study_pair.loaded_in_context():
+        with sleep_study_pair.loaded_in_context():
             y, pred = predict_on(study_pair=sleep_study_pair,
                                  seq=seq,
                                  model=model,
@@ -435,16 +429,13 @@ def run_pred_and_eval(dataset,
                 save(y, fname=os.path.join(save_dir, "true.npz"))
 
         # Evaluate: dice scores
-        dice_pr_class = dice_all(y, pred,
-                                 n_classes=seq.n_classes,
-                                 ignore_zero=False, smooth=0)
-        logger("-- Dice scores:  {}".format(np.round(dice_pr_class, 4)))
+        dice_pr_class = dice_all(y, pred, n_classes=seq.n_classes, ignore_zero=False, smooth=0)
+        logger.info(f"-- Dice scores:  {np.round(dice_pr_class, 4)}")
         add_to_eval_df(dice_eval_df, id_, values=dice_pr_class)
 
         # Evaluate: kappa
-        kappa_pr_class = class_wise_kappa(y, pred, n_classes=seq.n_classes,
-                                          ignore_zero=False)
-        logger("-- Kappa scores: {}".format(np.round(kappa_pr_class, 4)))
+        kappa_pr_class = class_wise_kappa(y, pred, n_classes=seq.n_classes, ignore_zero=False)
+        logger.info(f"-- Kappa scores: {np.round(kappa_pr_class, 4)}")
         add_to_eval_df(kappa_eval_df, id_, values=kappa_pr_class)
 
         # Flag dependent evaluations:
@@ -457,13 +448,11 @@ def run_pred_and_eval(dataset,
     dice_eval_df = with_grand_mean_col(dice_eval_df)
     log_eval_df(dice_eval_df.T,
                 out_csv_file=os.path.join(out_dir, "evaluation_dice.csv"),
-                out_txt_file=os.path.join(out_dir, "evaluation_dice.txt"),
-                logger=logger, round=4, txt="EVALUATION DICE SCORES")
+                out_txt_file=os.path.join(out_dir, "evaluation_dice.txt"), round=4, txt="EVALUATION DICE SCORES")
     kappa_eval_df = with_grand_mean_col(kappa_eval_df)
     log_eval_df(kappa_eval_df.T,
                 out_csv_file=os.path.join(out_dir, "evaluation_kappa.csv"),
-                out_txt_file=os.path.join(out_dir, "evaluation_kappa.txt"),
-                logger=logger, round=4, txt="EVALUATION KAPPA SCORES")
+                out_txt_file=os.path.join(out_dir, "evaluation_kappa.txt"), round=4, txt="EVALUATION KAPPA SCORES")
 
 
 def cross_dataset_eval(dataset_eval_dirs, out_dir):
@@ -485,8 +474,9 @@ def run(args):
     # Prepare output dir
     out_dir = get_out_dir(args.out_dir, args.data_split)
     prepare_output_dir(out_dir, args.overwrite)
-    logger = get_logger(out_dir, args.overwrite)
-    logger("Args dump: \n{}".format(vars(args)))
+    # logger = get_logger(out_dir, args.overwrite)
+    raise NotImplementedError("Implement logging")
+    logger.info(f"Args dump: \n{vars(args)}")
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
@@ -494,10 +484,10 @@ def run(args):
     if args.channels:
         hparams["select_channels"] = args.channels
         hparams["channel_sampling_groups"] = None
-        logger("Evaluating using channels {}".format(args.channels))
+        logger.info(f"Evaluating using channels {args.channels}")
 
     # Get model
-    set_gpu_vis(args.num_GPUs, args.force_GPU, logger)
+    set_gpu_vis(args.num_GPUs, args.force_GPU)
     model, model_func = None, None
     if args.one_shot:
         # Model is initialized for each sleep study later
@@ -505,16 +495,12 @@ def run(args):
             return get_and_load_one_shot_model(n_periods,
                                                project_dir,
                                                hparams,
-                                               logger,
                                                args.weights_file_name)
     else:
-        model = get_and_load_model(project_dir, hparams, logger,
-                                   args.weights_file_name)
+        model = get_and_load_model(project_dir, hparams, args.weights_file_name)
 
     # Run predictions on all datasets
-    datasets = get_splits_from_all_datasets(hparams=hparams,
-                                            splits_to_load=(args.data_split,),
-                                            logger=logger)
+    datasets = get_splits_from_all_datasets(hparams=hparams, splits_to_load=(args.data_split,))
     eval_dirs = []
     for dataset in datasets:
         dataset = dataset[0]
@@ -527,14 +513,13 @@ def run(args):
             eval_dirs.append(ds_out_dir)
         else:
             ds_out_dir = out_dir
-        logger("[*] Running eval on dataset {}\n"
-               "    Out dir: {}".format(dataset, ds_out_dir))
+        logger.info(f"\n[*] Running eval on dataset {dataset}\n"
+                    f"    Out dir: {ds_out_dir}")
         run_pred_and_eval(dataset=dataset,
                           out_dir=ds_out_dir,
                           model=model, model_func=model_func,
                           hparams=hparams,
-                          args=args,
-                          logger=logger)
+                          args=args)
     if len(eval_dirs) > 1:
         cross_dataset_eval(eval_dirs, out_dir)
 

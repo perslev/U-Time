@@ -3,6 +3,7 @@ Script to compute confusion matrices from one or more pairs of true/pred .npz
 files of labels
 """
 
+import logging
 import os
 import numpy as np
 import pandas as pd
@@ -12,6 +13,8 @@ from sklearn.metrics import confusion_matrix
 from utime.evaluation import concatenate_true_pred_pairs
 from utime.evaluation import (f1_scores_from_cm, precision_scores_from_cm,
                               recall_scores_from_cm)
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -96,7 +99,7 @@ def run(args):
     """
     Run the script according to 'args' - Please refer to the argparser.
     """
-    print("Looking for files...")
+    logger.info("Looking for files...")
     true = sorted(glob(args.true_pattern))
     pred = sorted(glob(args.pred_pattern))
     if not true:
@@ -120,26 +123,25 @@ def run(args):
 
     pairs = list(zip(true, pred))
     if args.show_pairs:
-        print("PAIRS:\n{}".format(pairs))
+        logger.info("PAIRS:\n{}".format(pairs))
     # Load the pairs
-    print("Loading {} pairs...".format(len(pairs)))
+    logger.info("Loading {} pairs...".format(len(pairs)))
     l = lambda x: [np.load(f)["arr_0"] if os.path.splitext(f)[-1] == ".npz" else np.load(f) for f in x]
     np_pairs = list(map(l, pairs))
     for i, (p1, p2) in enumerate(np_pairs):
         if len(p1) != len(p2):
-            print("Not equal lengths: ", pairs[i], "{}/{}".format(len(p1),
-                                                                  len(p2)))
+            logger.warning(f"Not equal lengths: {pairs[i]} {f'{len(p1)}/{len(p2)}'}. Trimming...")
             np_pairs[i] = trim(p1, p2)
     if args.wake_trim_min:
-        print("OBS: Wake trimming of {} minutes (period length {} sec)"
-              "".format(args.wake_trim_min, args.period_length_sec))
+        logger.info("OBS: Wake trimming of {} minutes (period length {} sec)"
+                    "".format(args.wake_trim_min, args.period_length_sec))
         np_pairs = wake_trim(np_pairs,
                              args.wake_trim_min,
                              args.period_length_sec)
     true, pred = map(lambda x: x.astype(np.uint8).reshape(-1, 1), concatenate_true_pred_pairs(pairs=np_pairs))
     labels = None
     if args.ignore_classes:
-        print("OBS: Ignoring class(es): {}".format(args.ignore_classes))
+        logger.info("OBS: Ignoring class(es): {}".format(args.ignore_classes))
         labels = list((set(np.unique(true)) | set(np.unique(pred))) - set(args.ignore_classes))
 
     if args.group_non_rem:
@@ -160,8 +162,7 @@ def run(args):
                       index=["True {}".format(i) for i in range(classes)],
                       columns=["Pred {}".format(i) for i in range(classes)])
     p = "Raw" if not args.normalized else "Normed"
-    print(f"\n{p} Confusion Matrix:\n")
-    print(cm.round(args.round))
+    logger.info(f"\n{p} Confusion Matrix:\n" + str(cm.round(args.round)))
 
     # Print metrics
     f1 = f1_scores_from_cm(cm)
@@ -174,8 +175,8 @@ def run(args):
     }, index=["Class {}".format(i) for i in range(classes)])
     metrics = metrics.T
     metrics["mean"] = metrics.mean(axis=1)
-    print(f"\n{p} Metrics:\n")
-    print(np.round(metrics.T, args.round), "\n")
+    logger.info(f"\n{p} Metrics:\n")
+    logger.info(str(np.round(metrics.T, args.round)) + "\n")
 
 
 def entry_func(args=None):

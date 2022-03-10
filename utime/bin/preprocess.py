@@ -15,13 +15,16 @@ The produced, pre-processed H5 archive of data may be consumed by the 'ut train'
 This script should be called form within a U-Time project directory
 """
 
-import numpy as np
+import logging
 import os
+import numpy as np
 import h5py
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from utime import Defaults
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -60,13 +63,10 @@ def copy_dataset_hparams(hparams, hparams_out_path):
 
 def add_dataset_entry(hparams_out_path, h5_path,
                       split_identifier, period_length_sec):
-    field = "{}_data:\n  " \
-            "data_dir: {}\n  " \
-            "period_length_sec: {}\n  " \
-            "identifier: {}\n\n".format(split_identifier,
-                                        h5_path,
-                                        period_length_sec,
-                                        split_identifier.upper())
+    field = f"{split_identifier}_data:\n" + \
+            f"  data_dir: {h5_path}\n" + \
+            f"  period_length_sec: {period_length_sec}\n" + \
+            f"  identifier: {split_identifier.upper()}\n\n"
     with open(hparams_out_path, "a") as out_f:
         out_f.write(field)
 
@@ -115,7 +115,6 @@ def run(args):
     args:
         args:    (Namespace)  command-line arguments
     """
-    from mpunet.logging import Logger
     from utime.hyperparameters import YAMLHParams
     from utime.utils.scriptutils import assert_project_folder
     from utime.utils.scriptutils import get_splits_from_all_datasets
@@ -124,21 +123,19 @@ def run(args):
     assert_project_folder(project_dir)
 
     # Get logger object
-    logger = Logger(project_dir + "/preprocessing_logs",
-                    active_file='preprocessing',
-                    overwrite_existing=args.overwrite,
-                    no_sub_folder=True)
-    logger("Args dump: {}".format(vars(args)))
+    raise NotImplementedError("Implement logging")
+    # logger = Logger(project_dir + "/preprocessing_logs",
+    #                 active_file='preprocessing',
+    #                 overwrite_existing=args.overwrite,
+    #                 no_sub_folder=True)
+    logger.info(f"Args dump: {vars(args)}")
 
     # Load hparams
-    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir),
-                          logger=logger,
-                          no_version_control=True)
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir), no_version_control=True)
 
     # Initialize and load (potentially multiple) datasets
     datasets = get_splits_from_all_datasets(hparams,
                                             splits_to_load=args.dataset_splits,
-                                            logger=logger,
                                             return_data_hparams=True)
 
     # Check if file exists, and overwrite if specified
@@ -147,8 +144,7 @@ def run(args):
             os.remove(args.out_path)
         else:
             from sys import exit
-            logger("Out file at {} exists, and --overwrite was not set."
-                   "".format(args.out_path))
+            logger.info(f"Out file at {args.out_path} exists, and --overwrite was not set")
             exit(0)
 
     # Create dataset hparams output directory
@@ -189,9 +185,7 @@ def run(args):
                     # Run the preprocessing
                     process_func = partial(preprocess_study, split_group)
 
-                    logger.print_to_screen = True
-                    logger("Preprocessing dataset:", split)
-                    logger.print_to_screen = False
+                    logger.info(f"Preprocessing dataset: {split}")
                     n_pairs = len(split.pairs)
                     for i, _ in enumerate(pool.map(process_func,
                                                    split.pairs)):

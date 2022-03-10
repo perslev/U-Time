@@ -5,9 +5,12 @@ sampled data from a list of SleepStudy objects.
 See docstring below.
 """
 
+import logging
 import numpy as np
 from utime.sequences.base_sequence import BaseSequence, requires_all_loaded
 from sleeputils.errors import MarginError
+
+logger = logging.getLogger(__name__)
 
 
 def _infer_n_classes(n_classes, queue):
@@ -77,7 +80,6 @@ class BatchSequence(BaseSequence):
                  margin=0,
                  augmenters=None,
                  batch_scaler=None,
-                 logger=None,
                  no_log=False,
                  scale_assertion=True,
                  require_all_loaded=True,
@@ -101,7 +103,6 @@ class BatchSequence(BaseSequence):
             batch_scaler:      (string) The name of a sklearn.preprocessing
                                         Scaler object to apply to each sampled
                                         batch (optional)
-            logger:            (Logger) A Logger object
             no_log:            (bool)   Do not log information on this Sequence
             identifier:        (string) A string identifier name
         """
@@ -114,7 +115,6 @@ class BatchSequence(BaseSequence):
                          batch_size=batch_size,
                          augmenters=augmenters,
                          batch_scaler=batch_scaler,
-                         logger=logger,
                          require_all_loaded=require_all_loaded)
 
         self._cum_periods_per_pair_minus_margins = None  # Set in margin setter
@@ -131,27 +131,16 @@ class BatchSequence(BaseSequence):
 
     def log(self):
         """ Log basic information on this object """
-        self.logger("[*] BatchSequence initialized{}:\n"
-                    "    Data queue type: {}\n"
-                    "    Batch shape:     {}\n"
-                    "    N pairs:         {}\n"
-                    "    Margin:          {}\n"
-                    "    Augmenters:      {}\n"
-                    "    Aug enabled:     {}\n"
-                    "    Batch scaling:   {}\n"
-                    "    All loaded:      {}\n"
-                    "    N classes:       {}{}".format(" ({})".format(self.identifier) if self.identifier else "",
-                                                       type(self.dataset_queue),
-                                                       self.batch_shape,
-                                                       len(self.dataset_queue),
-                                                       self.margin,
-                                                       self.augmenters,
-                                                       self.augmentation_enabled,
-                                                       bool(self.batch_scaler),
-                                                       self.all_loaded,
-                                                       self.n_classes,
-                                                       " (AUTO-INFERRED)"
-                                                       if self._inferred else ""))
+        logger.info(f"[*] BatchSequence initialized{' ({})'.format(self.identifier) if self.identifier else ''}:\n"
+                    f"    Data queue type: {type(self.dataset_queue)}\n"
+                    f"    Batch shape:     {self.batch_shape}\n"
+                    f"    N pairs:         {len(self.dataset_queue)}\n"
+                    f"    Margin:          {self.margin}\n"
+                    f"    Augmenters:      {self.augmenters}\n"
+                    f"    Aug enabled:     {self.augmentation_enabled}\n"
+                    f"    Batch scaling:   {bool(self.batch_scaler)}\n"
+                    f"    All loaded:      {self.all_loaded}\n"
+                    f"    N classes:       {self.n_classes}{' (AUTO-INFERRED)' if self._inferred else ''}")
 
     @property
     @requires_all_loaded

@@ -3,11 +3,14 @@ Small utility script that groups files stored in a directory into sub-dirs
 according to shared prefixes in their respective file names.
 """
 
+import logging
 import os
 import shutil
 from argparse import ArgumentParser
 from utime.bin.cv_split import pair_by_names
 from sleeputils.dataset.utils import filter_by_regex
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -58,15 +61,15 @@ def run(args):
     """ Run script with the specified args. See argparser for details. """
     out_dir = os.path.abspath(args.out_dir)
     if not os.path.exists(out_dir):
-        raise OSError("'out_dir' {} does not exist".format(out_dir))
+        raise OSError(f"'out_dir' {out_dir} does not exist")
 
     # Get all files
     data_dir = os.path.abspath(args.data_dir)
     files = filter_by_regex(os.listdir(data_dir), args.file_regex)
     pairs = pair_by_names(files, args.common_prefix_length)
-    print("Found {} files".format(len(files)))
-    print("Found {} pairs".format(len(pairs)))
-    print("Moving to: {}".format(out_dir))
+    logger.info(f"Found {len(files)} files\n"
+                f"Found {len(pairs)} pairs\n"
+                f"Moving to: {out_dir}")
     if input("Move? (y/N) ").lower() == "y":
         print("Moving...")
         for p in pairs:

@@ -4,6 +4,7 @@ randomly splitting the dataset into partitions and storing links to the
 relevant files in sub-folders for each split.
 """
 
+import logging
 import os
 import numpy as np
 import random
@@ -13,6 +14,7 @@ import pandas as pd
 from glob import glob
 from mpunet.utils import create_folders
 
+logger = logging.getLogger(__name__)
 
 # These values are normally overwritten from the command-line, see argparser
 _DEFAULT_TEST_FRACTION = 0.20
@@ -92,12 +94,12 @@ def create_view_folders(out_dir, n_splits):
     within a directory 'out_dir'. If n_splits == 1, only creates the out_dir.
     """
     if not os.path.exists(out_dir):
-        print("Creating directory at %s" % out_dir)
+        logger.info("Creating directory at %s" % out_dir)
         os.makedirs(out_dir)
     if n_splits > 1:
         for i in range(n_splits):
             split_dir = os.path.join(out_dir, "split_%i" % i)
-            print("Creating directory at %s" % split_dir)
+            logger.info("Creating directory at %s" % split_dir)
             os.mkdir(split_dir)
 
 
@@ -318,13 +320,12 @@ def run(args):
     org_n_dirs = len(subject_dirs)
 
     if args.subject_matching_regex:
-        print("OBS: Pairing files based on regex "
-              "{}".format(args.subject_matching_regex))
+        logger.info(f"OBS: Pairing files based on regex {args.subject_matching_regex}")
         subject_dirs = pair_by_names(subject_dirs, args.subject_matching_regex)
 
     if n_splits > len(subject_dirs):
-        raise ValueError("CV ({}) cannot be larger than number of "
-                         "subjects ({})".format(n_splits, len(subject_dirs)))
+        raise ValueError(f"CV ({n_splits}) cannot be larger than number of "
+                         f"subjects ({len(subject_dirs)})")
 
     # Get train/val/test sizes
     n_train, n_val, n_test = get_split_sizes(subject_dirs, n_splits, args)
@@ -384,7 +385,7 @@ def run(args):
                       np.sum([train_subjects, val_subjects, test_subjects])]
         counts_df[col_name] = counts_col
     counts_df["sum"] = np.sum(counts_df, axis=1)
-    print("\n", counts_df.T)
+    logger.info(f"\n{counts_df.T}")
 
 
 def entry_func(args=None):

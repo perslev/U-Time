@@ -2,7 +2,10 @@
 A set of functions for running prediction in various settings
 """
 
+import logging
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def predict_on_generator(model, generator, argmax=False):

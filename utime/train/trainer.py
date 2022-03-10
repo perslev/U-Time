@@ -5,23 +5,22 @@ specified optimizer, loss and metrics and implements the .fit method for
 training the model given a set of parameters and (non-initialized) callbacks.
 """
 
+import logging
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import (ResourceExhaustedError,
                                                      InternalError)
-from mpunet.callbacks import (init_callback_objects,
-                              remove_validation_callbacks)
-from mpunet.logging import ScreenLogger
+from mpunet.callbacks import init_callback_objects, remove_validation_callbacks
 from mpunet.callbacks import (DividerLine, LearningCurve, MeanReduceLogArrays)
 from mpunet.utils import ensure_list_or_tuple
-from mpunet.train.utils import (ensure_sparse,
-                                init_losses,
-                                init_metrics,
-                                init_optimizer)
+from mpunet.train.utils import (ensure_sparse, init_losses,
+                                init_metrics, init_optimizer)
 from utime.callbacks import Validation, MemoryConsumption
 from utime.train.utils import get_steps
 
+logger = logging.getLogger(__name__)
 
-def ignore_class_wrapper(loss_func, n_pred_classes, logger):
+
+def ignore_class_wrapper(loss_func, n_pred_classes):
     """
     For a model that outputs K classes, this wrapper removes entries in the
     true/pred pairs for which the true label is of integer value K.
@@ -38,10 +37,9 @@ def ignore_class_wrapper(loss_func, n_pred_classes, logger):
         true = tf.boolean_mask(true, mask, axis=0)
         pred = tf.boolean_mask(pred, mask, axis=0)
         return loss_func(true, pred)
-    logger("Regarding loss func: {}. "
-           "Model outputs {} classes; Ignoring class with "
-           "integer values {}".format(loss_func, n_pred_classes,
-                                      n_pred_classes))
+    logger.info(f"Regarding loss func: {loss_func}. "
+                f"Model outputs {n_pred_classes} classes; "
+                f"Ignoring class with integer values {n_pred_classes}")
     return wrapper
 
 
@@ -49,7 +47,7 @@ class Trainer(object):
     """
     Handles initialization and logging of model fitting sessions.
     """
-    def __init__(self, model, org_model=None, logger=None):
+    def __init__(self, model, org_model=None):
         """
         Init. simply accepts a model and stores it.
         Optionally, an 'org_model' (original model) may be passed and stored
@@ -63,10 +61,8 @@ class Trainer(object):
             model:      (tf.keras Model) Initialized model to train
             org_model:  (tf.keras Model) Optional single-GPU version for the
                                          passed 'model' parameter.
-            logger:     (Logger)         Optional Logger instance
         """
         self.model = model
-        self.logger = logger if logger is not None else ScreenLogger()
 
         # Extra reference to original (non multiple-GPU) model
         # May also be set from a script at a later time (before self.fit call)
@@ -98,8 +94,8 @@ class Trainer(object):
             ensure_sparse(metrics+losses)
 
         # Initialize optimizer, loss(es) and metric(s) from tf.keras or MultiPlanarUNet
-        optimizer = init_optimizer(optimizer, self.logger, **optimizer_kwargs)
-        losses = init_losses(losses, self.logger, **kwargs)
+        optimizer = init_optimizer(optimizer, **optimizer_kwargs)
+        losses = init_losses(losses, **kwargs)
         for i, loss in enumerate(losses):
             try:
                 losses[i] = loss(reduction=reduction, **loss_kwargs)
@@ -116,14 +112,14 @@ class Trainer(object):
                                 "please raise an issue on GitHub.")
             if ignore_class_int is not None:
                 # Mask out class
-                losses[i] = ignore_class_wrapper(losses[i], ignore_class_int, self.logger)
-        metrics = init_metrics(metrics, self.logger, **kwargs)
+                losses[i] = ignore_class_wrapper(losses[i], ignore_class_int)
+        metrics = init_metrics(metrics, **kwargs)
 
         # Compile the model
         self.model.compile(optimizer=optimizer, loss=losses, metrics=metrics)
-        self.logger("Optimizer:   %s" % optimizer)
-        self.logger("Loss funcs:  %s" % losses)
-        self.logger("Metrics:     %s" % init_metrics)
+        logger.info(f"Optimizer:   {optimizer}\n"
+                    f"Loss funcs:  {losses}\n"
+                    f"Metrics:    {init_metrics}")
         return self
 
     def fit(self, batch_size, **fit_kwargs):
@@ -150,18 +146,16 @@ class Trainer(object):
             except (ResourceExhaustedError, InternalError):
                 # Reduce batch size
                 batch_size -= 2
-                self.logger("\n\n[MEMORY ERROR] Reducing batch size "
-                            "by 2 (now %i)" % batch_size)
+                logger.error(f"[MEMORY ERROR] Reducing batch size by 2 (now {batch_size})")
                 if batch_size < 1:
-                    self.logger("[ERROR] Batch size negative or zero!")
+                    logger.error("[ERROR] Batch size negative or zero! Stopping training.")
                     fitting = False
             except KeyboardInterrupt:
                 fitting = False
             except Exception as e:
-                self.logger(e)
+                logger.exception(str(e), exc_info=e)
                 raise e
-        self.logger.print_calling_method = True
-        self.logger("Training stopped.")
+        logger.info("Training stopped.")
         return self.model
 
     def _fit(self,
@@ -191,28 +185,27 @@ class Trainer(object):
         """
         train.batch_size = batch_size
         train_steps = get_steps(train_samples_per_epoch, train)
-        self.logger("Using {} steps per train epoch".format(train_steps))
+        logger.info(f"Using {train_steps} steps per train epoch")
 
         if val is None:
             # No validation to be performed, remove callbacks that might need
             # validation data to function properly
-            remove_validation_callbacks(callbacks, self.logger)
+            remove_validation_callbacks(callbacks)
         else:
             val.batch_size = batch_size
             # Add validation callback
             # Important: Should be first in callbacks list as other CBs may
             # depend on the validation metrics/loss
-            validation = Validation(val, logger=self.logger, verbose=verbose)
-            callbacks = [validation, MeanReduceLogArrays()] + callbacks
+            callbacks = [Validation(val), MeanReduceLogArrays()] + callbacks
 
         # Add various callbacks for plotting learning curves etc.
-        callbacks.append(MemoryConsumption(max_gib=45, logger=self.logger))
-        callbacks.append(LearningCurve(logger=self.logger))
+        callbacks.append(MemoryConsumption(max_gib=45))
+        callbacks.append(LearningCurve())
         # callbacks.append(CarbonUsageTracking(epochs=n_epochs, add_to_logs=False))
-        callbacks.append(DividerLine(self.logger))
+        callbacks.append(DividerLine())
 
         # Get initialized callback objects
-        callbacks, cb_dict = init_callback_objects(callbacks, self.logger)
+        callbacks, cb_dict = init_callback_objects(callbacks)
 
         # If ModelCheckPointClean is used, set the original model to store
         # the correct weights when using multi-GPU models
@@ -226,8 +219,8 @@ class Trainer(object):
         train = tf.data.Dataset.from_generator(train, dtypes, shapes)
 
         # Fit the model
+        raise NotImplemented("Implement logging")
         self.logger.active_log_file = "training"
-        self.logger.print_calling_method = False
         self.model.fit(
             train,
             steps_per_epoch=train_steps,

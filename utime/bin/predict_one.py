@@ -1,16 +1,17 @@
+import logging
 import os
 import numpy as np
 from pprint import pformat
 from collections import namedtuple
 from argparse import ArgumentParser, Namespace
-from utime.bin.evaluate import (set_gpu_vis,
-                                get_and_load_one_shot_model,
-                                get_logger)
+from utime.bin.evaluate import set_gpu_vis, get_and_load_one_shot_model
 from utime import Defaults
 from sleeputils.dataset.sleep_study import SleepStudy
 from sleeputils.hypnogram.utils import dense_to_sparse
 from sleeputils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
 from sleeputils.io.channels import auto_infer_referencing as infer_channel_refs
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -152,16 +153,15 @@ def get_processed_args(args):
     return args
 
 
-def predict_study(study, model, channel_groups, no_argmax, logger=print):
+def predict_study(study, model, channel_groups, no_argmax):
     psg = np.expand_dims(study.get_all_periods(), 0)
     pred = None
     for channel_group in channel_groups:
-        logger("--- Channel names: {}\n"
-               "    Channel inds:  {}".format(channel_group.channel_names,
-                                              channel_group.channel_indices))
+        logger.info(f"--- Channel names: {channel_group.channel_names}\n"
+                    f"    Channel inds:  {channel_group.channel_indices}")
         # Get PSG for particular group
         psg_subset = psg[..., tuple(channel_group.channel_indices)]
-        logger("    Extracted PSG shape: {}".format(psg_subset.shape))
+        logger.info(f"    Extracted PSG shape: {psg_subset.shape}")
         if pred is None:
             pred = model.predict_on_batch(psg_subset)
         else:
@@ -203,7 +203,7 @@ def save_npy(path, pred, **kwargs):
     np.save(path, pred.reshape(len(pred), -1))
 
 
-def save_prediction(pred, out_path, period_length_sec, no_argmax, logger):
+def save_prediction(pred, out_path, period_length_sec, no_argmax):
     dir_, fname = os.path.split(out_path)
     if dir_:
         os.makedirs(dir_, exist_ok=True)
@@ -223,10 +223,8 @@ def save_prediction(pred, out_path, period_length_sec, no_argmax, logger):
         out_path = os.path.join(dir_, basename + ".npy")
         save_func = save_npy
     # Save pred to disk
-    logger("* Saving prediction array of shape {} to {}".format(
-        pred.shape, out_path
-    ))
-    logger(f"* Using save function: {save_func.__name__}")
+    logger.info(f"* Saving prediction array of shape {pred.shape} to {out_path}")
+    logger.info(f"* Using save function: {save_func.__name__}")
     save_func(out_path, pred, period_length_sec=period_length_sec)
 
 
@@ -321,7 +319,7 @@ def get_channel_groups(channels, channel_types, channel_group_spec):
     return list(product(*channels_by_group))
 
 
-def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_types, logger):
+def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_types):
     """
     TODO
 
@@ -329,16 +327,18 @@ def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_
         channels:
         auto_channel_grouping:
         auto_reference_types:
-        logger:
 
     Returns:
 
     """
-    logger(f"Processing input channels: {channels}")
+    logger.info(f"Processing input channels: {channels}")
     channels_to_load, channel_groups = unpack_channel_groups(channels)
     channels_to_load, channel_groups, channel_types = strip_and_infer_channel_types(channels_to_load,
                                                                                     channel_groups)
-    logger(f"Found:\n-- Load channels: {channels_to_load}\n-- Groups: {channel_groups}\n-- Types: {channel_types}")
+    logger.info(f"Found:\n"
+                f"-- Load channels: {channels_to_load}\n"
+                f"-- Groups: {channel_groups}\n"
+                f"-- Types: {channel_types}")
     if isinstance(auto_reference_types, list):
         assert len(channel_groups) == 1, "Cannot use channel groups with --auto_reference_types."
         channels_to_load, channel_types = infer_channel_refs(channel_names=channels_to_load,
@@ -346,10 +346,10 @@ def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_
                                                              types=auto_reference_types,
                                                              on_already_ref="warn")
         channel_groups = [channels_to_load]
-        logger.warn(f"OBS: Auto referencing returned channels: {channels_to_load}")
+        logger.warning(f"OBS: Auto referencing returned channels: {channels_to_load}")
     if isinstance(auto_channel_grouping, list):
         channel_groups = get_channel_groups(channels_to_load, channel_types, auto_channel_grouping)
-        logger.warn(f"OBS: Auto channel grouping returned groups: {channel_groups}")
+        logger.warning(f"OBS: Auto channel grouping returned groups: {channel_groups}")
 
     # Add channel inds to groups
     channel_set = namedtuple("ChannelSet", ["channel_names", "channel_indices"])
@@ -363,7 +363,6 @@ def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_
 
 
 def get_sleep_study(psg_path,
-                    logger,
                     channels,
                     header_file_name=None,
                     auto_channel_grouping=False,
@@ -379,30 +378,27 @@ def get_sleep_study(psg_path,
     if params.get('batch_wise_scaling'):
         raise NotImplementedError("Batch-wise scaling is currently not "
                                   "supported. Use ut predict/evaluate instead")
-    logger("Evaluating using parameters:\n{}".format(pformat(params)))
+    logger.info(f"Evaluating using parameters:\n{pformat(params)}")
     dir_, regex = os.path.split(os.path.abspath(psg_path))
     study = SleepStudy(subject_dir=dir_, psg_regex=regex,
                        header_regex=header_file_name,
                        no_hypnogram=True,
-                       period_length_sec=params.get('period_length_sec', 30),
-                       logger=logger)
+                       period_length_sec=params.get('period_length_sec', 30))
 
     channels_to_load, channel_groups = get_load_and_group_channels(channels,
                                                                    auto_channel_grouping,
-                                                                   auto_reference_types,
-                                                                   logger)
+                                                                   auto_reference_types)
 
-    logger("Loading channels: {}".format(channels_to_load))
-    logger("Channel groups: {}".format(channel_groups))
+    logger.info(f"Loading channels: {channels_to_load}\n"
+                f"Channel groups: {channel_groups}")
     study.set_strip_func(**params['strip_func'])
     study.select_channels = channels_to_load
     study.sample_rate = params['set_sample_rate']
     study.scaler = params['scaler']
     study.set_quality_control_func(**params['quality_control_func'])
     study.load()
-    logger("Study loaded with shape: {}".format(study.get_psg_shape()))
-    logger("Channels: {} (org names: {})".format(study.select_channels,
-                                                 study.select_channels.original_names))
+    logger.info(f"Study loaded with shape: {study.get_psg_shape()}\n"
+                f"Channels: {study.select_channels} (org names: {study.select_channels.original_names})")
     return study, channel_groups
 
 
@@ -415,48 +411,45 @@ def run(args, return_prediction=False, dump_args=None):
     # Get a logger
     log_dir, log_file_name = os.path.split(args.logging_out_path)
     warnings_file_name = os.path.splitext(log_file_name)[0] + ".warnings"
-    logger = get_logger(log_dir, True, name=log_file_name, warnings_name=warnings_file_name)
+    raise NotImplementedError("Implement logging")
+    # logger = get_logger(log_dir, True, name=log_file_name, warnings_name=warnings_file_name)
     if dump_args:
-        logger("Args dump: \n{}".format(vars(args)))
+        logger.info(f"Args dump: {vars(args)}")
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(Defaults.get_hparams_path(args.project_dir), logger,
-                          no_version_control=True)
+    hparams = YAMLHParams(Defaults.get_hparams_path(args.project_dir), no_version_control=True)
 
     # Get the sleep study
-    logger("Loading and pre-processing PSG file...")
+    logger.info("Loading and pre-processing PSG file...")
     hparams['prediction_params']['channels'] = args.channels
     hparams['prediction_params']['strip_func']['strip_func_str'] = args.strip_func
     study, channel_groups = get_sleep_study(psg_path=args.f,
                                             header_file_name=args.header_file_name,
-                                            logger=logger,
                                             auto_channel_grouping=args.auto_channel_grouping,
                                             auto_reference_types=args.auto_reference_types,
                                             **hparams['prediction_params'])
 
     # Set GPU and get model
-    set_gpu_vis(args.num_GPUs, args.force_GPU, logger)
+    set_gpu_vis(args.num_GPUs, args.force_GPU)
     hparams["build"]["data_per_prediction"] = args.data_per_prediction
-    logger("Predicting with {} data per prediction".format(args.data_per_prediction))
+    logger.info(f"Predicting with {args.data_per_prediction} data per prediction")
     model = get_and_load_one_shot_model(
         n_periods=study.n_periods,
         project_dir=args.project_dir,
         hparams=hparams,
-        logger=logger,
         weights_file_name=hparams.get_from_anywhere('weight_file_name')
     )
-    logger("Predicting...")
-    pred = predict_study(study, model, channel_groups, args.no_argmax, logger)
-    logger("--> Predicted shape: {}".format(pred.shape))
+    logger.info("Predicting...")
+    pred = predict_study(study, model, channel_groups, args.no_argmax)
+    logger.info(f"--> Predicted shape: {pred.shape}")
     if return_prediction:
         return pred
     else:
         save_prediction(pred=pred,
                         out_path=args.o,
                         period_length_sec=hparams.get('period_length_sec', 30),
-                        no_argmax=args.no_argmax,
-                        logger=logger)
+                        no_argmax=args.no_argmax)
 
 
 def entry_func(args=None):

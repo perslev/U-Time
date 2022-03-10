@@ -1,6 +1,8 @@
+import logging
 import tensorflow as tf
-import os
 from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2
+
+logger = logging.getLogger(__name__)
 
 
 def standardize_batch_shape(batch_shape):
@@ -14,9 +16,9 @@ def standardize_batch_shape(batch_shape):
     elif len(batch_shape) == 4:
         return batch_shape[2:]
     else:
-        raise ValueError("Passed 'batch_shape' could not be standardized to"
-                         " a length 2 list of format "
-                         "[input_dim, input_channels]. Got: {}".format(batch_shape))
+        raise ValueError(f"Passed 'batch_shape' could not be standardized to"
+                         f" a length 2 list of format "
+                         f"[input_dim, input_channels]. Got: {batch_shape}")
 
 
 def save_frozen_model(keras_model, out_folder, pb_file_name):

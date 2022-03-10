@@ -1,12 +1,14 @@
+import logging
 import os
 import shutil
-from multiprocessing import Process, Lock, Queue, Event
-from mpunet.utils import create_folders
-from mpunet.logging import Logger
-from utime.bin.init import init_project_folder
-from utime.hyperparameters import YAMLHParams
 import argparse
 import subprocess
+from multiprocessing import Process, Lock, Queue, Event
+from mpunet.utils import create_folders
+from utime.bin.init import init_project_folder
+from utime.hyperparameters import YAMLHParams
+
+logger = logging.getLogger(__name__)
 
 
 def get_parser():
@@ -135,8 +137,7 @@ def parse_script(script, GPUs):
     return commands
 
 
-def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams,
-                       GPUs, GPU_queue, lock, logger):
+def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams, GPUs, GPU_queue, lock):
 
     # Create sub-directory
     split = os.path.split(split_dir)[-1]
@@ -160,14 +161,14 @@ def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams,
     # Log
     lock.acquire()
     s = "[*] Running experiment: %s" % split
-    logger("\n%s\n%s" % ("-" * len(s), s))
-    logger("Data dir:", split_dir)
-    logger("Out dir:", out_dir)
-    logger("Using GPUs:", GPUs)
-    logger("\nRunning commands:")
-    for i, command in enumerate(commands):
-        logger(" %i) %s" % (i+1, " ".join(command)))
-    logger("-"*len(s))
+    delim = '-' * len(s)
+    logger.info(f"\n{delim}\n"
+                f"{s}\n"
+                f"Data dir: {split_dir}\n"
+                f"Out dir: {out_dir}\n"
+                f"Using GPUs: {GPUs}\n")
+    logger.info("\nRunning commands:\n"
+                "\n".join([f" {i}) {' '.join(command)}" for i, command in enumerate(commands)]) + f"\n{delim}")
     lock.release()
 
     # Run the commands
@@ -175,21 +176,21 @@ def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams,
     for command in commands:
         if not run_next_command:
             break
+        str_command = ' '.join(command)
         lock.acquire()
-        logger("[%s - STARTING] %s" % (split, " ".join(command)))
+        logger.info(f"[{split} - STARTING] {str_command}")
         lock.release()
-        p = subprocess.Popen(command, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE)
+        p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         _, err = p.communicate()
         rc = p.returncode
         lock.acquire()
         if rc != 0:
-            logger("[%s - ERROR - Exit code %i] %s" % (split, rc, " ".join(command)))
-            logger("\n----- START error message -----\n%s\n"
-                   "----- END error message -----\n" % err.decode("utf-8"))
+            logger.info(f"[{split} - ERROR - Exit code {rc}] {str_command}")
+            logger.info(f"\n----- START error message -----\n{err.decode('utf-8')}\n"
+                        "----- END error message -----\n")
             run_next_command = False
         else:
-            logger("[%s - FINISHED] %s" % (split, " ".join(command)))
+            logger.info(f"[{split} - FINISHED] {str_command}")
         lock.release()
 
     # Add the GPUs back into the queue
@@ -203,11 +204,10 @@ def _gpu_string_to_list(gpu_list, as_int=False):
     return str_gpus
 
 
-def start_gpu_monitor_process(args, gpu_queue, gpu_sets, logger):
+def start_gpu_monitor_process(args, gpu_queue, gpu_sets):
     procs = []
     if args.monitor_GPUs_every is not None and args.monitor_GPUs_every:
-        logger(
-            "\nOBS: Monitoring GPU pool every %i seconds\n" % args.monitor_GPUs_every)
+        logger.info(f"\nOBS: Monitoring GPU pool every {args.monitor_GPUs_every} seconds\n")
         # Start a process monitoring new GPU availability over time
         stop_event = Event()
         t = Process(target=monitor_GPUs, args=(args.monitor_GPUs_every,
@@ -296,8 +296,9 @@ def run(args):
         log_appendix = ""
 
     # Get a logger object
-    logger = Logger(base_path="./", active_file="output" + log_appendix,
-                    print_calling_method=False, overwrite_existing=True)
+    raise NotImplementedError("Implement logging")
+    # logger = Logger(base_path="./", active_file="output" + log_appendix,
+    #                 print_calling_method=False, overwrite_existing=True)
 
     if args.force_GPU:
         # Only these GPUs fill be chosen from
@@ -324,16 +325,14 @@ def run(args):
     script = os.path.abspath(args.script_prototype)
 
     # Get GPU monitor process
-    running_processes, stop_event = start_gpu_monitor_process(args, gpu_queue,
-                                                              gpu_sets, logger)
+    running_processes, stop_event = start_gpu_monitor_process(args, gpu_queue, gpu_sets)
 
     try:
         for cv_folder in cv_folders[args.start_from:]:
             gpus = gpu_queue.get()
             t = Process(target=run_sub_experiment,
                         args=(cv_folder, out_dir, script, hparams_dir,
-                              args.no_hparams, gpus, gpu_queue,
-                              lock, logger))
+                              args.no_hparams, gpus, gpu_queue, lock))
             t.start()
             running_processes.append(t)
             for t in running_processes:

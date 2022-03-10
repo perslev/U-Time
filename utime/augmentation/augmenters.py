@@ -1,6 +1,9 @@
+import logging
+import numpy as np
 from .elastic_deformation import elastic_transform
 from sleeputils.utils import exactly_one_specified
-import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class Augmenter(object):

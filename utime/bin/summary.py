@@ -9,11 +9,14 @@ For confusion matrix computations and computation of global (cross subject)
 scores, see utime.bin.cm
 """
 
+import logging
 import os
 import sys
 import pandas as pd
 from glob import glob
 from argparse import ArgumentParser
+
+logger = logging.getLogger(__name__)
 
 
 def get_argparser():
@@ -69,16 +72,14 @@ def print_reduced_mean(df, print_all=False, round_=4):
                              "min": min_,
                              "max": max_}, index=mean.index)
 
-    print("\nSUMMARY RESULT\n"
-          "--------------")
-    if print_all:
-        print("\nMerged evaluation files:")
-        print(df.round(round_))
-    print("\nMean over axis 0 (rows):")
     df = make_df(df, axis=0)
-    print(df.round(round_))
-    print("Mean of means:", round(df["mean"].mean(), round_))
-    print("")
+    logger.info("SUMMARY RESULT\n" +
+                "--------------\n" +
+                ("\nMerged evaluation files:\n" +
+                 f"{df.round(round_)}\n" if print_all else "") +
+                "\nMean over axis 0 (rows):\n" +
+                f"{df.round(round_)}\n" +
+                f"Mean of means: {round(df['mean'].mean(), round_)}")
 
 
 def parse_and_add(file_, results, drop_rows, drop_cols):
@@ -105,13 +106,11 @@ def parse_and_add(file_, results, drop_rows, drop_cols):
         df = df.drop(index=drop_rows, columns=drop_cols)
     except KeyError:
         from sys import exit
-        print("\n[PARSE ERROR] Invalid row or column in {} or {} respectively."
-              "\nOne or more of these were not found in file:\n{}\n\n"
-              "This file has the following:\n"
-              "Rows:    {}\n"
-              "Columns: {}".format(
-            drop_rows, drop_cols, file_, list(df.index), list(df.columns)
-        ))
+        logger.error("[PARSE ERROR] Invalid row or column in {drop_rows} or {drop_cols} respectively.\n"
+                     "One or more of these were not found in file:\n{file_}\n\n"
+                     "This file has the following:\n"
+                     "Rows:    {list(df.index)}\n"
+                     "Columns: {list(df.columns)}")
         exit(1)
     if len(results) == 0:
         return df
@@ -148,16 +147,14 @@ def parse_results(csv_files, drop_rows, drop_cols, print_all, round_):
 def run(args):
     """ Run this script with passed args - see argparser for details """
     # Get folder/folders - 3 levels possible
-    print("... Looking for files matching pattern")
+    logger.info("... Looking for files matching pattern")
     pattern = args.csv_pattern
     csv_files = glob(pattern, recursive=False)
-    print("\nFound {} files matching pattern '{}'".format(len(csv_files),
-                                                          pattern))
+    logger.info(f"Found {len(csv_files)} files matching pattern '{pattern}'")
     if not csv_files:
         sys.exit(0)
     csv_files.sort()
-    for d in csv_files:
-        print("-- " + os.path.abspath(d))
+    logger.info("\n".join(map(os.path.abspath, csv_files)))
     in_ = input("\nCorrect? (Y/n) ")
     if in_.lower() not in ("n", "no"):
         parse_results(csv_files=csv_files,

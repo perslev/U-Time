@@ -4,8 +4,11 @@ Samples randomly across uniformly randomly selected SleepStudy objects
 Does not sample uniformly across classes (see BalancedRandomBatchSequence).
 """
 
+import logging
 import numpy as np
 from utime.sequences import BatchSequence
+
+logger = logging.getLogger(__name__)
 
 
 class RandomBatchSequence(BatchSequence):
@@ -24,7 +27,6 @@ class RandomBatchSequence(BatchSequence):
                  margin=0,
                  augmenters=None,
                  batch_scaler=None,
-                 logger=None,
                  no_log=False,
                  identifier="",
                  **kwargs):
@@ -39,7 +41,6 @@ class RandomBatchSequence(BatchSequence):
                          margin=margin,
                          augmenters=augmenters,
                          batch_scaler=batch_scaler,
-                         logger=logger,
                          no_log=True,
                          scale_assertion=True,
                          identifier=identifier,
@@ -50,27 +51,16 @@ class RandomBatchSequence(BatchSequence):
 
     def log(self):
         """ Log basic information on this object """
-        self.logger("[*] RandomBatchSequence initialized{}:\n"
-                    "    Data queue type: {}\n"
-                    "    Batch shape:     {}\n"
-                    "    N pairs:         {}\n"
-                    "    Margin:          {}\n"
-                    "    Augmenters:      {}\n"
-                    "    Aug enabled:     {}\n"
-                    "    Batch scaling:   {}\n"
-                    "    All loaded:      {}\n"
-                    "    N classes:       {}{}".format(" ({})".format(self.identifier) if self.identifier else "",
-                                                       type(self.dataset_queue),
-                                                       self.batch_shape,
-                                                       len(self.dataset_queue),
-                                                       self.margin,
-                                                       self.augmenters,
-                                                       self.augmentation_enabled,
-                                                       bool(self.batch_scaler),
-                                                       self.all_loaded,
-                                                       self.n_classes,
-                                                       " (AUTO-INFERRED)"
-                                                       if self._inferred else ""))
+        logger.info(f"[*] RandomBatchSequence initialized{' ({})'.format(self.identifier) if self.identifier else ''}:\n"
+                    f"    Data queue type: {type(self.dataset_queue)}\n"
+                    f"    Batch shape:     {self.batch_shape}\n"
+                    f"    N pairs:         {len(self.dataset_queue)}\n"
+                    f"    Margin:          {self.margin}\n"
+                    f"    Augmenters:      {self.augmenters}\n"
+                    f"    Aug enabled:     {self.augmentation_enabled}\n"
+                    f"    Batch scaling:   {bool(self.batch_scaler)}\n"
+                    f"    All loaded:      {self.all_loaded}\n"
+                    f"    N classes:       {self.n_classes}{' (AUTO-INFERRED)' if self._inferred else ''}")
 
     def __getitem__(self, idx):
         """

@@ -1,5 +1,8 @@
+import logging
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def get_eval_df(sequencer):
@@ -22,12 +25,11 @@ def with_grand_mean_col(eval_dict, col_name="Grand mean"):
     return eval_dict.loc[:, cols]
 
 
-def log_eval_df_to_screen(eval_dict, logger, round=4, txt=None):
-    log = "[*] {}".format(txt or "EVALUATION RESULTS")
-    logger("\n" + log)
-    logger("-"*len(log))
-    logger(eval_dict.round(round))
-    logger("-"*len(log))
+def log_eval_df_to_screen(eval_dict, round=4, txt=None):
+    log = f"[*] {txt or 'EVALUATION RESULTS'}"
+    logger.info(
+        log + "\n" + "-"*len(log) + "\n" + str(eval_dict.round(round)) + "\n" + "-"*len(log)
+    )
 
 
 def log_eval_df_to_file(eval_dict, out_csv_file=None, out_txt_file=None, round=4):
@@ -39,7 +41,6 @@ def log_eval_df_to_file(eval_dict, out_csv_file=None, out_txt_file=None, round=4
             out_txt.write(eval_dict.round(round).to_string())
 
 
-def log_eval_df(eval_dict, logger, out_csv_file=None, out_txt_file=None,
-                round=4, txt=None):
-    log_eval_df_to_screen(eval_dict, logger, round, txt)
+def log_eval_df(eval_dict, out_csv_file=None, out_txt_file=None, round=4, txt=None):
+    log_eval_df_to_screen(eval_dict, round, txt)
     log_eval_df_to_file(eval_dict, out_csv_file, out_txt_file, round)
