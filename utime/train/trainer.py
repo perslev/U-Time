@@ -9,12 +9,11 @@ import logging
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import (ResourceExhaustedError,
                                                      InternalError)
-from mpunet.callbacks import init_callback_objects, remove_validation_callbacks
-from mpunet.callbacks import (DividerLine, LearningCurve, MeanReduceLogArrays)
-from mpunet.utils import ensure_list_or_tuple
+from utime.callbacks import init_callback_objects, remove_validation_callbacks
+from utime.callbacks import Validation, LearningCurve, MeanReduceLogArrays, PrintDividerLine, MemoryConsumption
+from sleeputils.utils import ensure_list_or_tuple
 from mpunet.train.utils import (ensure_sparse, init_losses,
                                 init_metrics, init_optimizer)
-from utime.callbacks import Validation, MemoryConsumption
 from utime.train.utils import get_steps
 
 logger = logging.getLogger(__name__)
@@ -185,12 +184,12 @@ class Trainer(object):
             callbacks = [Validation(val), MeanReduceLogArrays()] + callbacks
 
         # Add various callbacks for plotting learning curves etc.
-        callbacks.append(MemoryConsumption(max_gib=45))
         callbacks.append(LearningCurve())
+        # callbacks.append(MemoryConsumption(max_gib=45))
         # callbacks.append(CarbonUsageTracking(epochs=n_epochs, add_to_logs=False))
-        callbacks.append(DividerLine())
 
         # Get initialized callback objects
+        callbacks = [PrintDividerLine()] + callbacks + [PrintDividerLine()]
         callbacks, cb_dict = init_callback_objects(callbacks)
 
         # Wrap generator in TF Dataset and disable auto shard
