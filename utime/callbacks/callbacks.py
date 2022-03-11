@@ -1,4 +1,5 @@
 import logging
+import os
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -7,7 +8,8 @@ from tensorflow.keras.callbacks import Callback
 from sleeputils.utils import get_memory_usage
 from mpunet.utils import highlighted
 from collections import defaultdict
-from datetime import timedelta
+from datetime import timedelta, datetime
+from mpunet.utils.plotting import plot_all_training_curves
 
 logger = logging.getLogger(__name__)
 
@@ -125,8 +127,6 @@ class Validation(Callback):
             for metric, name in zip(metrics, metrics_names):
                 metrics_results[id_][name] = np.mean(per_study_metrics[name])
             self.model.reset_metrics()
-            self.logger("")
-        self.logger("")
         return true_pos, relevant, selected, metrics_results
 
     @staticmethod
@@ -336,3 +336,135 @@ class CarbonUsageTracking(Callback):
             co2eq_g = self.tracker._co2eq(energy_kwh)
             logs["total_energy_kwh"] = round(energy_kwh, 6)
             logs["total_co2_g"] = round(co2eq_g, 6)
+
+
+class LearningCurve(Callback):
+    """
+    On epoch end this callback looks for all csv files matching the 'csv_regex'
+    regex within the dir 'out_dir' and attempts to create a learning curve for
+    each file that will be saved to 'out_dir'.
+
+    Note: Failure to plot a learning curve based on a given csv file will
+          is handled in the plot_all_training_curves function and will not
+          cause the LearningCurve callback to raise an exception.
+    """
+    def __init__(self, log_dir="logs", out_dir="logs", fname="curve.png",
+                 csv_regex="*training.csv", **plot_kwargs):
+        """
+        Args:
+            log_dir: Relative path from the
+            out_dir:
+            fname:
+            csv_regex:
+        """
+        super().__init__()
+        out_dir = os.path.abspath(out_dir)
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        self.csv_regex = os.path.join(os.path.abspath(log_dir), csv_regex)
+        self.save_path = os.path.join(out_dir, fname)
+        self.plot_kwargs = plot_kwargs
+
+    def on_epoch_end(self, epoch, logs=None):
+        plot_all_training_curves(self.csv_regex,
+                                 self.save_path,
+                                 logy=True,
+                                 raise_error=False,
+                                 **self.plot_kwargs)
+
+
+class DelayedCallback(object):
+    """
+    Callback wrapper that delays the functionality of another callback by N
+    number of epochs.
+    """
+    def __init__(self, callback, start_from=0):
+        """
+        Args:
+            callback:   A tf.keras callback
+            start_from: Delay the activity of 'callback' until this epoch
+                        'start_from'
+        """
+        self.callback = callback
+        self.start_from = start_from
+
+    def __getattr__(self, item):
+        return getattr(self.callback, item)
+
+    def on_epoch_end(self, epoch, logs=None):
+        if epoch >= self.start_from-1:
+            self.callback.on_epoch_end(epoch, logs=logs)
+        else:
+            logger.info(f"[{self.callback.__class__.__name__}] "
+                        f"Not active at epoch {epoch+1} - will be at {self.start_from}")
+
+
+class TrainTimer(Callback):
+    """
+    Appends train timing information to the log.
+    If called prior to tf.keras.callbacks.CSVLogger this information will
+    be written to disk.
+    """
+    def __init__(self, max_minutes=None, verbose=1):
+        super().__init__()
+        self.max_minutes = int(max_minutes) if max_minutes else None
+        self.verbose = bool(verbose)
+
+        # Timing attributes
+        self.train_begin_time = None
+        self.prev_epoch_time = None
+
+    def on_train_begin(self, logs=None):
+        self.train_begin_time = datetime.now()
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self.prev_epoch_time = datetime.now()
+
+    def on_epoch_end(self, epoch, logs=None):
+        # Compute epoch execution time
+        end_time = datetime.now()
+        epoch_time = end_time - self.prev_epoch_time
+        train_time = end_time - self.train_begin_time
+
+        # Update attributes
+        self.prev_epoch_time = end_time
+
+        # Add to logs
+        train_hours = round(train_time.total_seconds() / 3600, 4)
+        epoch_minutes = round(epoch_time.total_seconds() / 60, 4)
+        logs["epoch_minutes"] = epoch_minutes
+        logs["train_hours"] = train_hours
+
+        if self.verbose:
+            logger.info(f"[TrainTimer] Epoch time: {epoch_minutes:.2f} minutes "
+                        f"- Total train time: {train_hours:.2f} hours")
+        if self.max_minutes and train_hours*60 > self.max_minutes:
+            logger.info(f"Stopping training. Training ran for {train_hours*60} minutes, "
+                        f"max_minutes of {self.max_minutes} was specified on the "
+                        f"TrainTimer callback.")
+            self.model.stop_training = True
+
+
+class MeanReduceLogArrays(Callback):
+    """
+    On epoch end, goes through the log and replaces any array entries with
+    their mean value.
+    """
+    def __init__(self):
+        super().__init__()
+
+    def on_epoch_end(self, epoch, logs=None):
+        for key, value in logs.items():
+            if isinstance(value, (np.ndarray, list)):
+                logs[key] = np.mean(value)
+
+
+class PrintDividerLine(Callback):
+    """
+    Simply prints a line to screen after each epoch
+    """
+    def __init__(self):
+        super().__init__()
+
+    def on_epoch_end(self, epoch, logs=None):
+        print("\n" + "-"*45 + "\n")
