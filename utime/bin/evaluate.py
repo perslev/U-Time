@@ -329,7 +329,7 @@ def predict_on(study_pair, seq, model=None, model_func=None, n_aug=None,
             seq.augmentation_enabled = True
             for i in range(n_aug):
                 print("-- With aug: {}/{}".format(i+1, n_aug), end="\r", flush=True)
-                pred += pred_func(study_pair, seq, model, y) / n_aug
+                pred += pred_func(study_pair, seq, model) / n_aug
             seq.augmentation_enabled = False
             print()
     if callable(getattr(pred, "numpy", None)):
