@@ -1,4 +1,4 @@
-name: u-sleep-test
+name: u-sleep
 channels:
   - defaults
   - conda-forge
