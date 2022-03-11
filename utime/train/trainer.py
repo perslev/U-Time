@@ -200,8 +200,6 @@ class Trainer(object):
         train = train.with_options(options)
 
         # Fit the model
-        raise NotImplemented("Implement logging")
-        self.logger.active_log_file = "training"
         self.model.fit(
             train,
             steps_per_epoch=train_steps,
