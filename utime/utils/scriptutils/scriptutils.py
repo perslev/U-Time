@@ -52,6 +52,9 @@ def assert_project_folder(project_folder, evaluation=False):
     Args:
         project_folder: A path to a folder to check for U-Time compat.
         evaluation:     Should the folder adhere to train- or eval time checks.
+
+    Returns:
+        empty_models_dir: Bool, whether the project_folder/models dir is empty or not.
     """
     import os
     import glob
@@ -61,9 +64,9 @@ def assert_project_folder(project_folder, evaluation=False):
         raise RuntimeError("Folder {} is not a valid project folder."
                            " Must contain a 'hparams.yaml' "
                            "file.".format(project_folder))
+    model_path = os.path.join(project_folder, "model")
     if evaluation:
         # Folder must contain a 'model' subfolder storing saved model files
-        model_path = os.path.join(project_folder, "model")
         if not os.path.exists(model_path):
             raise RuntimeError("Folder {} is not a valid project "
                                "folder. Must contain a 'model' "
@@ -75,6 +78,8 @@ def assert_project_folder(project_folder, evaluation=False):
                                "model subfolder {}. Model files should have"
                                " extension '.h5' to "
                                "be recognized.".format(project_folder))
+    files_in_model_dir = os.path.exists(model_path) and bool(os.listdir(model_path))
+    return not files_in_model_dir
 
 
 def get_all_dataset_hparams(hparams):
@@ -239,29 +244,3 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams):
     from utime.utils.scriptutils import select_sample_strip_scale_quality
     select_sample_strip_scale_quality(ssd, hparams=pre_proc_params)
     return ssd
-
-
-def make_multi_gpu_model(model, num_GPUs):
-    """
-    Takes a compiled tf.keras Model object 'model' and applies
-    from tensorflow.keras.utils import multi_gpu_model
-    ... to mirror it across multiple visible GPUs. Input batches to 'model'
-    are split evenly across the GPUs.
-
-    Args:
-        model:    (tf.keras Model) A compiled tf.keras Model object.
-        num_GPUs: (int)            Number of GPUs to distribute the model over
-
-    Returns:
-        The split, multi-GPU model.
-        The original model
-        Note: The two will be the same for num_GPUs=1
-    """
-    org_model = model
-    if num_GPUs > 1:
-        raise NotImplementedError("Not yet implemented for TF 2.5+")
-        from tensorflow.keras.utils import multi_gpu_model
-        model = multi_gpu_model(org_model, gpus=num_GPUs,
-                                cpu_merge=False, cpu_relocation=False)
-        logger.info(f"Creating multi-GPU model: N={num_GPUs}")
-    return model, org_model
