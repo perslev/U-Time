@@ -16,6 +16,7 @@ from utime.bin.evaluate import (set_gpu_vis, predict_on,
                                 get_and_load_one_shot_model, get_sequencer,
                                 get_out_dir)
 from sleeputils.io.channels import filter_non_available_channels
+from utime.utils.scriptutils import add_logging_file_handler, with_logging_level_wrapper
 
 logger = logging.getLogger(__name__)
 
@@ -351,8 +352,11 @@ def run(args):
     if args.one_shot:
         # Model is initialized for each sleep study later
         def model_func(n_periods):
-            return get_and_load_one_shot_model(n_periods, project_dir,
-                                               hparams, args.weights_file_name)
+            return with_logging_level_wrapper(get_and_load_one_shot_model(n_periods,
+                                                                          project_dir,
+                                                                          hparams,
+                                                                          args.weights_file_name),
+                                              logging.ERROR)
     else:
         model = get_and_load_model(project_dir, hparams, args.weights_file_name)
 

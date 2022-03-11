@@ -7,8 +7,12 @@ import logging
 import os
 import numpy as np
 from argparse import ArgumentParser
-from utime import Defaults
 from sleeputils.dataset.queue import LazyQueue
+from utime import Defaults
+from utime.utils.scriptutils import (assert_project_folder,
+                                     get_splits_from_all_datasets,
+                                     add_logging_file_handler,
+                                     with_logging_level_wrapper)
 
 logger = logging.getLogger(__name__)
 
@@ -465,9 +469,7 @@ def run(args):
     Run the script according to args - Please refer to the argparser.
     """
     assert_args(args)
-    # Check project folder is valid
-    from utime.utils.scriptutils import (assert_project_folder,
-                                         get_splits_from_all_datasets)
+    logger.info(f"Args dump: \n{vars(args)}")
     project_dir = os.path.abspath(args.project_dir)
     assert_project_folder(project_dir, evaluation=True)
 
@@ -480,7 +482,7 @@ def run(args):
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir), logger)
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir))
     if args.channels:
         hparams["select_channels"] = args.channels
         hparams["channel_sampling_groups"] = None
@@ -492,10 +494,11 @@ def run(args):
     if args.one_shot:
         # Model is initialized for each sleep study later
         def model_func(n_periods):
-            return get_and_load_one_shot_model(n_periods,
-                                               project_dir,
-                                               hparams,
-                                               args.weights_file_name)
+            return with_logging_level_wrapper(get_and_load_one_shot_model(n_periods,
+                                                                          project_dir,
+                                                                          hparams,
+                                                                          args.weights_file_name),
+                                              logging.ERROR)
     else:
         model = get_and_load_model(project_dir, hparams, args.weights_file_name)
 
@@ -517,7 +520,8 @@ def run(args):
                     f"    Out dir: {ds_out_dir}")
         run_pred_and_eval(dataset=dataset,
                           out_dir=ds_out_dir,
-                          model=model, model_func=model_func,
+                          model=model,
+                          model_func=model_func,
                           hparams=hparams,
                           args=args)
     if len(eval_dirs) > 1:
