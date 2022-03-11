@@ -82,7 +82,7 @@ class MultiSequence(_BaseSequence):
             self.log()
 
     def log(self):
-        logger.info(f"[*] MultiSequence initialized:\n"
+        logger.info(f"\n[*] MultiSequence initialized:\n"
                     f"    --- Contains {len(self.sequences)} sequences\n"
                     f"    --- Sequence IDs: {', '.join(s.identifier for s in self.sequences)}\n"
                     f"    --- Sequence sample probs (alpha={self.alpha}): {self.sample_prob}\n"
@@ -174,7 +174,7 @@ class ValidationMultiSequence:
             self.log()
 
     def log(self):
-        logger.info(f"[*] ValidationMultiSequence initialized:\n"
+        logger.info(f"\n[*] ValidationMultiSequence initialized:\n"
                     f"    --- Contains {len(self.sequences)} sequences\n"
                     f"    --- Sequence IDs: {', '.join(self.IDs)}")
 

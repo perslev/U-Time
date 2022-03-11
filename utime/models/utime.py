@@ -379,7 +379,7 @@ class UTime(Model):
         return cropped_node1
 
     def log(self):
-        logger.info("UTime Model Summary\n"
+        logger.info("\nUTime Model Summary\n"
                     "-------------------"
                     f"N periods:         {self.n_periods}\n"
                     f"Input dims:        {self.input_dims}\n"

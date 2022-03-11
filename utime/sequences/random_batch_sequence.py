@@ -51,7 +51,7 @@ class RandomBatchSequence(BatchSequence):
 
     def log(self):
         """ Log basic information on this object """
-        logger.info(f"[*] RandomBatchSequence initialized{' ({})'.format(self.identifier) if self.identifier else ''}:\n"
+        logger.info(f"\n[*] RandomBatchSequence initialized{' ({})'.format(self.identifier) if self.identifier else ''}:\n"
                     f"    Data queue type: {type(self.dataset_queue)}\n"
                     f"    Batch shape:     {self.batch_shape}\n"
                     f"    N pairs:         {len(self.dataset_queue)}\n"

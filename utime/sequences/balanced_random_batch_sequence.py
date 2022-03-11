@@ -62,7 +62,7 @@ class BalancedRandomBatchSequence(BatchSequence):
 
     def log(self):
         """ Log basic information on this object """
-        logger.info(f"[*] BalancedRandomBatchSequence initialized{f' ({self.identifier})' if self.identifier else ''}:\n"
+        logger.info(f"\n[*] BalancedRandomBatchSequence initialized{f' ({self.identifier})' if self.identifier else ''}:\n"
                     f"    Data queue type: {type(self.dataset_queue)}\n"
                     f"    Batch shape:     {self.batch_shape}\n"
                     f"    Sample prob.:    {self.sample_prob}\n"

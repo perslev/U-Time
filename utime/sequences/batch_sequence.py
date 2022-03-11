@@ -145,7 +145,9 @@ class BatchSequence(BaseSequence):
     @property
     @requires_all_loaded
     def total_periods(self):
-        """ Return the som of n_periods across all SleepStudy objects """
+        """
+        Return the sum of n_periods across all SleepStudy objects.
+        """
         return self.cum_periods_per_pair[-1]
 
     @property

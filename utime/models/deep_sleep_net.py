@@ -54,7 +54,7 @@ class DeepFeatureNet(tf.keras.Model):
                 self.log()
 
     def log(self):
-        logger.info("DeepFeatureNet Model Summary\n"
+        logger.info("\nDeepFeatureNet Model Summary\n"
                     "----------------------------\n"
                     f"Batch shape:       {self.batch_shape}\n"
                     f"N classes:         {self.n_classes}\n"

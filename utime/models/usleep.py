@@ -403,7 +403,7 @@ class USleep(Model):
         return [inputs], [out]
 
     def log(self):
-        logger.info(f"USleep Model Summary\n"
+        logger.info(f"\nUSleep Model Summary\n"
                     "--------------------\n"
                     f"N periods:         {self.n_periods or 'ANY'}\n"
                     f"Input dims:        {self.input_dims}\n"
