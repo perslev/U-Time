@@ -4,12 +4,43 @@ A set of utility functions used across multiple scripts in utime.bin
 
 import logging
 import os
+from functools import wraps
 from sleeputils.utils import ensure_list_or_tuple
 from sleeputils.dataset import SleepStudyDataset
 from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
 from utime import Defaults
 
 logger = logging.getLogger(__name__)
+
+
+def add_logging_file_handler(log_file_name, overwrite, logger_objects=None, log_dir=None, mode="w"):
+    # Log to file if specified
+    if log_file_name:
+        Defaults.set_logging_file_handler(file_name=log_file_name,
+                                          loggers=logger_objects,
+                                          overwrite_existing=overwrite,
+                                          log_dir=log_dir,
+                                          mode=mode)
+    else:
+        relevant_loggers = logger_objects or \
+                           Defaults.PACKAGE_LEVEL_LOGGERS or \
+                           [logging.getLogger(Defaults.PACKAGE_LOGGER_NAME)]
+        logger.info(f"Logs will not be saved to file for these loggers: {relevant_loggers} (--log_file_name is empty)")
+
+
+def with_logging_level_wrapper(func, level, logger_names=None):
+    loggers = [logging.getLogger(name) for name in logger_names] if logger_names \
+        else Defaults.PACKAGE_LEVEL_LOGGERS or [logging.getLogger(Defaults.PACKAGE_LOGGER_NAME)]
+    old_levels = {logger: logger.level for logger in loggers}
+    @wraps(func)
+    def with_logging_level(*args, **kwargs):
+        for logger in loggers:
+            logger.setLevel(level)
+        outs = func(*args, **kwargs)
+        for logger in loggers:
+            logger.setLevel(old_levels[logger])
+        return outs
+    return with_logging_level
 
 
 def assert_project_folder(project_folder, evaluation=False):
