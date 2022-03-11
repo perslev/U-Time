@@ -256,20 +256,22 @@ def run(args, gpu_mon):
 
     # Set the GPU visibility
     num_gpus = find_and_set_gpus(gpu_mon, args.force_GPU, args.num_GPUs)
+    gpus = tf.config.list_physical_devices('GPU')
+    assert len(gpus) == num_gpus, "Unexpected difference in number of visible and requested GPUs."
     # Initialize and potential load parameters into the model
     from utime.models.model_init import init_model, load_from_file
-    org_model = init_model(hparams["build"])
-    if parameter_file:
-        load_from_file(org_model, parameter_file, by_name=True)
-    model, org_model = make_multi_gpu_model(org_model, num_gpus)
+    strategy = tf.distribute.MirroredStrategy(gpus) if gpus else tf.distribute.OneDeviceStrategy('/device:CPU:0')
+    logger.info(f"Using TF distribution strategy: {strategy} on GPUs: {gpus}. (CPU:0 if empty).")
+    with strategy.scope():
+        model = init_model(hparams["build"])
+        if parameter_file:
+            load_from_file(model, parameter_file, by_name=True)
 
-    # Prepare a trainer object. Takes care of compiling and training.
-    trainer = Trainer(model, org_model=org_model)
-
-    import tensorflow as tf
-    trainer.compile_model(n_classes=hparams["build"].get("n_classes"),
-                          reduction=tf.keras.losses.Reduction.NONE,
-                          **hparams["fit"])
+        # Prepare a trainer object and compile the model
+        trainer = Trainer(model)
+        trainer.compile_model(n_classes=hparams["build"].get("n_classes"),
+                              reduction=tf.keras.losses.Reduction.NONE,
+                              **hparams["fit"])
 
     # Fit the model on a number of samples as specified in args
     samples_pr_epoch = get_samples_per_epoch(train_seq, args.max_train_samples_per_epoch)
