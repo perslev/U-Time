@@ -8,18 +8,21 @@ ut init).
 import logging
 import numpy as np
 import os
-import utime
 import tables
+import tensorflow as tf
 from argparse import ArgumentParser
+from utime import Defaults
 from utime.train import Trainer
 from utime.hyperparameters import YAMLHParams
-from utime.utils.scriptutils import assert_project_folder, make_multi_gpu_model
+from utime.utils.scriptutils import assert_project_folder
 from utime.utils.scriptutils.train import (get_train_and_val_datasets,
                                            get_h5_train_and_val_datasets,
                                            get_generators,
                                            find_and_set_gpus,
                                            get_samples_per_epoch,
-                                           save_final_weights)
+                                           save_final_weights,
+                                           remove_previous_session,
+                                           init_default_project_structure)
 from sleeputils.dataset.queue.utils import get_data_queues
 
 logger = logging.getLogger(__name__)
@@ -176,10 +179,13 @@ def run(args, gpu_mon):
     """
     assert_args(args)
     project_dir = os.path.abspath("./")
-    assert_project_folder(project_dir)
+    model_dir_is_empty = assert_project_folder(project_dir)
     if args.overwrite and not args.continue_training:
-        from mpunet.bin.train import remove_previous_session
         remove_previous_session(project_dir)
+        init_default_project_structure(project_dir)
+    elif not model_dir_is_empty and not args.continue_training:
+        raise OSError("There seems to be files in the 'model' folder of this project directory, "
+                      "but neither --overwrite nor --continue_training flags were set.")
 
     # Get logger object
     raise NotImplementedError("Implement logging")
@@ -191,12 +197,12 @@ def run(args, gpu_mon):
 
     # Settings depending on --preprocessed flag.
     if args.preprocessed:
-        yaml_path = utime.Defaults.get_pre_processed_hparams_path(project_dir)
+        yaml_path = Defaults.get_pre_processed_hparams_path(project_dir)
         dataset_func = get_h5_train_and_val_datasets
         train_queue_type = 'eager'
         val_queue_type = 'eager'
     else:
-        yaml_path = utime.Defaults.get_hparams_path(project_dir)
+        yaml_path = Defaults.get_hparams_path(project_dir)
         dataset_func = get_train_and_val_datasets
         train_queue_type = args.train_queue_type
         val_queue_type = args.val_queue_type
