@@ -112,12 +112,10 @@ def run(args):
         raise OSError(f"root path '{args.root}' does not exist.")
     else:
         out_folder = os.path.join(root_path, args.name)
-        if os.path.exists(out_folder):
-            response = input(f"Folder at '{out_folder}' already exists. Overwrite? "
-                             "Only parameter files will be replaced. "
-                             "(y/N) ")
-            if response.lower() != "y":
-                raise OSError(f"Folder at '{out_folder}' already exists")
+        if os.path.exists(out_folder) and not args.overwrite:
+            raise OSError(f"Folder at '{out_folder}' already exists and --overwrite flag was not set. "
+                          f"Note that running this script with --overwrite will only replace "
+                          f"hyperparameter file data.")
         try:
             os.makedirs(out_folder)
         except FileExistsError:
