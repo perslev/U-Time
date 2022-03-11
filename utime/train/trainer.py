@@ -47,26 +47,12 @@ class Trainer(object):
     """
     Handles initialization and logging of model fitting sessions.
     """
-    def __init__(self, model, org_model=None):
+    def __init__(self, model):
         """
-        Init. simply accepts a model and stores it.
-        Optionally, an 'org_model' (original model) may be passed and stored
-        as well. This is for training multi-GPU models prepared by the
-        tf.keras.utils.multi_gpu_model utility, which returns a new, split
-        model for training (passed as 'model' parameter here). For properly
-        saving the model parameter, however, it is recommended to use the
-        original, non-split model (here passed as 'org_model').
-
         Args:
             model:      (tf.keras Model) Initialized model to train
-            org_model:  (tf.keras Model) Optional single-GPU version for the
-                                         passed 'model' parameter.
         """
         self.model = model
-
-        # Extra reference to original (non multiple-GPU) model
-        # May also be set from a script at a later time (before self.fit call)
-        self.org_model = org_model
 
     def compile_model(self, optimizer, loss, metrics, reduction,
                       ignore_class_int=None, check_sparse=False,
@@ -119,7 +105,7 @@ class Trainer(object):
         self.model.compile(optimizer=optimizer, loss=losses, metrics=metrics)
         logger.info(f"Optimizer:   {optimizer}\n"
                     f"Loss funcs:  {losses}\n"
-                    f"Metrics:    {init_metrics}")
+                    f"Metrics:     {init_metrics}")
         return self
 
     def fit(self, batch_size, **fit_kwargs):
@@ -207,14 +193,7 @@ class Trainer(object):
         # Get initialized callback objects
         callbacks, cb_dict = init_callback_objects(callbacks)
 
-        # If ModelCheckPointClean is used, set the original model to store
-        # the correct weights when using multi-GPU models
-        cb = cb_dict.get("ModelCheckPointClean")
-        if cb:
-            cb.org_model = self.org_model
-
-        # Temporary memory leak fix
-        import tensorflow as tf
+        # Wrap generator in TF Dataset and disable auto shard
         dtypes, shapes = list(zip(*map(lambda x: (x.dtype, x.shape), train[0])))
         train = tf.data.Dataset.from_generator(train, dtypes, shapes)
 
