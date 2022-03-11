@@ -38,8 +38,6 @@ def get_argparser():
                         help="Segment each SleepStudy in one forward-pass "
                              "instead of using (GPU memory-efficient) sliding "
                              "window predictions.")
-    parser.add_argument("--overwrite", action='store_true',
-                        help='Overwrite previous results at the output folder')
     parser.add_argument("--no_save", action="store_true",
                         help="Do not save prediction files")
     parser.add_argument("--no_save_true", action="store_true",
@@ -67,6 +65,13 @@ def get_argparser():
                         help="Only evaluate on within wake_trim_min of wake "
                              "before and after sleep, as determined by true "
                              "labels")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite previous results at the output folder and previous log files')
+    parser.add_argument("--log_file", type=str, default="evaluation_log",
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is 'evaluation_log'")
     return parser
 
 
@@ -97,28 +102,6 @@ def prepare_output_dir(out_dir, overwrite):
             raise OSError("out_dir {} is not empty and --overwrite=False. Folder"
                           " contains the following files: {}".format(out_dir,
                                                                      files))
-
-
-# def get_logger(out_dir, overwrite, name="evaluation_log", warnings_name="warnings"):
-#     """
-#     Returns a Logger object for the given out_dir.
-#     The logger will throw an OSError if the dir exists and overwrite=False, in
-#     which case the script will terminate with a print message.
-#     """
-#     from mpunet.logging import Logger
-#     try:
-#         logger = Logger(out_dir,
-#                         active_file=name,
-#                         overwrite_existing=overwrite,
-#                         warnings_file=warnings_name,
-#                         no_sub_folder=True)
-#     except OSError:
-#         from sys import exit
-#         print("[*] A logging file 'logs/{}' already exists. "
-#               "If you wish to overwrite this logfile, set the --overwrite "
-#               "flag.".format(name))
-#         exit(0)
-#     return logger
 
 
 def get_and_load_model(project_dir, hparams, weights_file_name=None):
@@ -476,9 +459,6 @@ def run(args):
     # Prepare output dir
     out_dir = get_out_dir(args.out_dir, args.data_split)
     prepare_output_dir(out_dir, args.overwrite)
-    # logger = get_logger(out_dir, args.overwrite)
-    raise NotImplementedError("Implement logging")
-    logger.info(f"Args dump: \n{vars(args)}")
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
@@ -531,7 +511,9 @@ def run(args):
 def entry_func(args=None):
     # Parse command line arguments
     parser = get_argparser()
-    run(parser.parse_args(args))
+    args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
+    run(args)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from argparse import ArgumentParser
 from sleeputils.downloads import (download_dataset,
                                   preprocess_dataset,
                                   DOWNLOAD_FUNCS)
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,16 @@ def get_argparser():
     parser.add_argument("--no_preprocessing", action="store_true",
                         help="Do not apply preprocessing on the downloaded "
                              "data.")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Overwrite existing log files (see --log_file). "
+                             "Note that fetch data is only overwritten if the file has invalid SHA256 values. "
+                             "Otherwise, with valid SHA256, existing files on disk are always skipped. "
+                             "I.e., the --overwrite flag does not stored influence data for this script.")
+    parser.add_argument("--log_file", type=str, default=None,
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is None (no log file)")
     return parser
 
 
@@ -57,6 +68,7 @@ def validate_and_create_out_dir(out_dir):
 
 
 def run(args):
+    add_logging_file_handler(logger, args.log_file, args.overwrite, mode="w")
     out_dir = os.path.abspath(args.out_dir)
     validate_dataset(args.dataset)
     validate_and_create_out_dir(out_dir)

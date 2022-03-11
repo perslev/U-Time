@@ -13,6 +13,7 @@ from sklearn.metrics import confusion_matrix
 from utime.evaluation import concatenate_true_pred_pairs
 from utime.evaluation import (f1_scores_from_cm, precision_scores_from_cm,
                               recall_scores_from_cm)
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,13 @@ def get_argparser():
                              " periods to trim")
     parser.add_argument("--ignore_classes", type=int, nargs="+", default=None,
                         help="Optional space separated list of class integers to ignore.")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite existing log files.')
+    parser.add_argument("--log_file", type=str, default=None,
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is None (no log file)")
     return parser
 
 
@@ -162,7 +170,7 @@ def run(args):
                       index=["True {}".format(i) for i in range(classes)],
                       columns=["Pred {}".format(i) for i in range(classes)])
     p = "Raw" if not args.normalized else "Normed"
-    logger.info(f"\n{p} Confusion Matrix:\n" + str(cm.round(args.round)))
+    logger.info(f"\n\n{p} Confusion Matrix:\n" + str(cm.round(args.round)) + "\n")
 
     # Print metrics
     f1 = f1_scores_from_cm(cm)
@@ -175,14 +183,15 @@ def run(args):
     }, index=["Class {}".format(i) for i in range(classes)])
     metrics = metrics.T
     metrics["mean"] = metrics.mean(axis=1)
-    logger.info(f"\n{p} Metrics:\n")
-    logger.info(str(np.round(metrics.T, args.round)) + "\n")
+    logger.info(f"\n\n{p} Metrics:\n" + str(np.round(metrics.T, args.round)) + "\n")
 
 
 def entry_func(args=None):
     # Get the script to execute, parse only first input
     parser = get_argparser()
-    run(parser.parse_args(args))
+    args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
+    run(args)
 
 
 if __name__ == "__main__":

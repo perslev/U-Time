@@ -15,6 +15,7 @@ import sys
 import pandas as pd
 from glob import glob
 from argparse import ArgumentParser
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,13 @@ def get_argparser():
                              "from which mean scores are computed.")
     parser.add_argument("--round", type=int, default=4,
                         help="Round float numbers. (defaults to 4)")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite existing log files.')
+    parser.add_argument("--log_file", type=str, default=None,
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is None (no log file)")
     return parser
 
 
@@ -73,7 +81,7 @@ def print_reduced_mean(df, print_all=False, round_=4):
                              "max": max_}, index=mean.index)
 
     df = make_df(df, axis=0)
-    logger.info("SUMMARY RESULT\n" +
+    logger.info("\nSUMMARY RESULT\n" +
                 "--------------\n" +
                 ("\nMerged evaluation files:\n" +
                  f"{df.round(round_)}\n" if print_all else "") +
@@ -166,7 +174,9 @@ def run(args):
 
 def entry_func(args=None):
     parser = get_argparser()
-    run(parser.parse_args(args))
+    args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
+    run(args)
 
 
 if __name__ == "__main__":

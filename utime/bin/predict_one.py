@@ -10,6 +10,7 @@ from sleeputils.dataset.sleep_study import SleepStudy
 from sleeputils.hypnogram.utils import dense_to_sparse
 from sleeputils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
 from sleeputils.io.channels import auto_infer_referencing as infer_channel_refs
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,8 @@ def get_argparser():
     parser.add_argument("--weights_file_name", type=str, required=False,
                         help="Specify the exact name of the weights file "
                              "(located in <project_dir>/model/) to use.")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite existing output files and log files.')
     return parser
 
 
@@ -410,9 +413,7 @@ def run(args, return_prediction=False, dump_args=None):
 
     # Get a logger
     log_dir, log_file_name = os.path.split(args.logging_out_path)
-    warnings_file_name = os.path.splitext(log_file_name)[0] + ".warnings"
-    raise NotImplementedError("Implement logging")
-    # logger = get_logger(log_dir, True, name=log_file_name, warnings_name=warnings_file_name)
+    add_logging_file_handler(log_file_name, args.overwrite, log_dir=log_dir, mode="w")
     if dump_args:
         logger.info(f"Args dump: {vars(args)}")
 

@@ -7,6 +7,7 @@ from multiprocessing import Process, Lock, Queue, Event
 from mpunet.utils import create_folders
 from utime.bin.init import init_project_folder
 from utime.hyperparameters import YAMLHParams
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,13 @@ def get_parser():
                              "whether new GPUs have become available than may"
                              " be included in the CV experiment GPU resource "
                              "pool.")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite existing log files.')
+    parser.add_argument("--log_file", type=str, default="cv_experiment_log",
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is 'cv_experiment_log'")
     return parser
 
 
@@ -138,7 +146,6 @@ def parse_script(script, GPUs):
 
 
 def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams, GPUs, GPU_queue, lock):
-
     # Create sub-directory
     split = os.path.split(split_dir)[-1]
     out_dir = os.path.join(out_dir, split)
@@ -160,15 +167,15 @@ def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams, GPUs
 
     # Log
     lock.acquire()
-    s = "[*] Running experiment: %s" % split
+    s = f"[*] Running experiment: {split}"
     delim = '-' * len(s)
-    logger.info(f"\n{delim}\n"
-                f"{s}\n"
-                f"Data dir: {split_dir}\n"
-                f"Out dir: {out_dir}\n"
-                f"Using GPUs: {GPUs}\n")
-    logger.info("\nRunning commands:\n"
-                "\n".join([f" {i}) {' '.join(command)}" for i, command in enumerate(commands)]) + f"\n{delim}")
+    logger.info(f"\n{delim}\n" +
+                f"{s}\n" +
+                f"Data dir:   {split_dir}\n" +
+                f"Out dir:    {out_dir}\n" +
+                f"Using GPUs: {GPUs}\n" +
+                f"Running commands:\n" +
+                "\n".join([f" ({i+1}) {' '.join(command)}" for i, command in enumerate(commands)]) + f"\n{delim}")
     lock.release()
 
     # Run the commands
@@ -185,9 +192,9 @@ def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams, GPUs
         rc = p.returncode
         lock.acquire()
         if rc != 0:
-            logger.info(f"[{split} - ERROR - Exit code {rc}] {str_command}")
-            logger.info(f"\n----- START error message -----\n{err.decode('utf-8')}\n"
-                        "----- END error message -----\n")
+            logger.error(f"[{split} - ERROR - Exit code {rc}] {str_command}\n\n"
+                         f"----- START error message -----\n{err.decode('utf-8')}\n"
+                         "----- END error message -----\n")
             run_next_command = False
         else:
             logger.info(f"[{split} - FINISHED] {str_command}")
@@ -257,7 +264,6 @@ def prepare_hparams_dir(hparams_dir):
                                "have a hparams.yaml file at the current working directory (i.e. project folder)")
 
 
-
 def assert_args(args, n_splits):
     # User input assertions
     _assert_force_and_ignore_gpus(args.force_GPU, args.ignore_GPU)
@@ -284,22 +290,13 @@ def run(args):
     prepare_hparams_dir(hparams_dir)
     create_folders(out_dir)
 
-    # Wait for PID?
     if args.wait_for:
+        # Wait for PID before proceeding
         from mpunet.utils import await_PIDs
         await_PIDs(args.wait_for)
-
     if args.run_on_split is not None:
+        # Run on a single split
         cv_folders = [cv_folders[args.run_on_split]]
-        log_appendix = "_split{}".format(args.run_on_split)
-    else:
-        log_appendix = ""
-
-    # Get a logger object
-    raise NotImplementedError("Implement logging")
-    # logger = Logger(base_path="./", active_file="output" + log_appendix,
-    #                 print_calling_method=False, overwrite_existing=True)
-
     if args.force_GPU:
         # Only these GPUs fill be chosen from
         from mpunet.utils import set_gpu
@@ -350,7 +347,9 @@ def run(args):
 def entry_func(args=None):
     # Get parser
     parser = get_parser()
-    run(parser.parse_args(args))
+    args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="a")  # Append mode for if --run_on_split support
+    run(args)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,7 @@ import shutil
 from argparse import ArgumentParser
 from utime.bin.cv_split import pair_by_names
 from sleeputils.dataset.utils import filter_by_regex
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,13 @@ def get_argparser():
     parser.add_argument("--common_prefix_length", type=int, required=False,
                         help="Consider only the first N characters of the "
                              "filenames when grouping.")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite existing log files.')
+    parser.add_argument("--log_file", type=str, default=None,
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is None (no log file)")
     return parser
 
 
@@ -83,7 +91,9 @@ def run(args):
 def entry_func(args=None):
     # Get the script to execute, parse only first input
     parser = get_argparser()
-    run(parser.parse_args(args))
+    parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
+    run(args)
 
 
 if __name__ == "__main__":

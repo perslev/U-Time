@@ -6,6 +6,7 @@ import logging
 import os
 from argparse import ArgumentParser
 from utime import Defaults
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -17,23 +18,27 @@ def get_parser():
     parser = ArgumentParser(description='Create a new project folder')
 
     # Define groups
-    parser._action_groups.pop()
-    required = parser.add_argument_group('required named arguments')
-    optional = parser.add_argument_group('optional named arguments')
     defaults = os.path.split(__file__)[0] + "/defaults"
 
-    required.add_argument('--name', type=str, required=True,
+    parser.add_argument('--name', type=str, required=True,
                         help='the name of the project folder')
-    optional.add_argument('--root', type=str, default=os.path.abspath("./"),
-                          help='a path to the root folder in '
-                               'which the project will be initialized '
-                               '(default=./)')
-    optional.add_argument("--model", type=str, default="utime",
-                          help=f"Specify a model type parameter file. One of: "
-                               f"{','.join(os.listdir(defaults))} (default 'utime')")
-    optional.add_argument("--data_dir", type=str, default=None,
-                          help="Optional specification of path to dir "
-                               "storing data")
+    parser.add_argument('--root', type=str, default=os.path.abspath("./"),
+                        help='a path to the root folder in '
+                             'which the project will be initialized '
+                             '(default=./)')
+    parser.add_argument("--model", type=str, default="utime",
+                        help=f"Specify a model type parameter file. One of: "
+                             f"{','.join(os.listdir(defaults))} (default 'utime')")
+    parser.add_argument("--data_dir", type=str, default=None,
+                        help="Optional specification of path to dir "
+                             "storing data")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Overwrite existing projects and/or log files")
+    parser.add_argument("--log_file", type=str, default=None,
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is None (no log file)")
     return parser
 
 
@@ -99,6 +104,7 @@ def run(args):
     """
     Run this script with the specified args. See argparser for details.
     """
+    add_logging_file_handler(logger, args.log_file, args.overwrite, mode="w")
     default_folder = os.path.split(os.path.abspath(__file__))[0] + "/defaults"
     if not os.path.exists(default_folder):
         raise OSError(f"Default path not found at {default_folder}")

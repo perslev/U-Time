@@ -13,6 +13,7 @@ import re
 import pandas as pd
 from glob import glob
 from mpunet.utils import create_folders
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,15 @@ def get_argparser():
                              "single entry when splitting. This is useful for "
                              "splitting multiple studies on the same subject "
                              "as together.")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Overwrite existing log files (see --log_file). "
+                             "This flag does NOT tell the script to overwrite an existing folder "
+                             "at --out_dir, such folder must be manually deleted if intended.")
+    parser.add_argument("--log_file", type=str, default=None,
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is None (no log file)")
     return parser
 
 
@@ -390,7 +400,9 @@ def run(args):
 
 def entry_func(args=None):
     parser = get_argparser()
-    run(parser.parse_args(args))
+    args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
+    run(args)
 
 
 if __name__ == "__main__":

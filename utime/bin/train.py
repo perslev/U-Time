@@ -24,6 +24,7 @@ from utime.utils.scriptutils.train import (get_train_and_val_datasets,
                                            remove_previous_session,
                                            init_default_project_structure)
 from sleeputils.dataset.queue.utils import get_data_queues
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +43,13 @@ def get_argparser():
                         help="Continue the last training session")
     parser.add_argument("--initialize_from", type=str, default=None,
                         help="Path to a model weights file to initialize from.")
-    parser.add_argument("--log_file_prefix", type=str,
-                        help="Optional prefix for logfiles.", default="")
     parser.add_argument("--overwrite", action='store_true',
-                        help='overwrite previous training session in the '
-                             'project path')
+                        help='Overwrite previous training session in the project path including all models and logs.')
+    parser.add_argument("--log_file", type=str, default="training_log",
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is 'training_log'")
     parser.add_argument("--just", type=int, default=None,
                         help="For testing purposes, run only on the first "
                              "[just] training and validation samples.")
@@ -187,12 +190,7 @@ def run(args, gpu_mon):
         raise OSError("There seems to be files in the 'model' folder of this project directory, "
                       "but neither --overwrite nor --continue_training flags were set.")
 
-    # Get logger object
-    raise NotImplementedError("Implement logging")
-    # logger = Logger(project_dir,
-    #                 overwrite_existing=args.overwrite,
-    #                 append_existing=args.continue_training,
-    #                 log_prefix=args.log_file_prefix)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w" if not args.continue_training else "a")
     logger.info(f"Args dump: {vars(args)}")
 
     # Settings depending on --preprocessed flag.

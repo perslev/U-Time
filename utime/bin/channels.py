@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 from glob import glob
 from sleeputils.io.header import extract_header
 from sleeputils.dataset import SleepStudy
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +19,24 @@ def get_argparser():
                                         'matching a glob pattern.')
     parser.add_argument("--subject_dir_pattern", type=str, required=True)
     parser.add_argument("--psg_regex", type=str, required=False)
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite existing log files.')
+    parser.add_argument("--log_file", type=str, default=None,
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is None (no log file)")
     return parser
 
 
-def run(subject_dir_pattern, psg_regex):
-    files = glob(subject_dir_pattern)
+def run(args):
+    files = glob(args.subject_dir_pattern)
     if len(files) == 0:
-        logger.info(f"No subject dirs match pattern {subject_dir_pattern}")
+        logger.info(f"No subject dirs match pattern {args.subject_dir_pattern}")
     else:
         logger.info("Channels:")
         for subject_dir in files:
-            psg_regex = psg_regex or None
+            psg_regex = args.psg_regex or None
             if not psg_regex and os.path.isfile(subject_dir):
                 subject_dir, psg_regex = os.path.split(subject_dir)
             ss = SleepStudy(subject_dir=subject_dir,
@@ -42,8 +50,9 @@ def run(subject_dir_pattern, psg_regex):
 def entry_func(args=None):
     # Get the script to execute, parse only first input
     parser = get_argparser()
-    args = vars(parser.parse_args(args))
-    run(**args)
+    args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
+    run(args)
 
 
 if __name__ == "__main__":

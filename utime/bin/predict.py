@@ -67,8 +67,6 @@ def get_argparser():
                         help="Save the true labels matching the predictions "
                              "(will be repeated if --data_per_prediction is "
                              "set to a non-default value)")
-    parser.add_argument("--overwrite", action='store_true',
-                        help='Overwrite previous results at the output folder')
     parser.add_argument("--force_GPU", type=str, default="")
     parser.add_argument("--no_argmax", action="store_true",
                         help="Do not argmax prediction volume prior to save.")
@@ -77,6 +75,13 @@ def get_argparser():
                              "(located in <project_dir>/model/) to use.")
     parser.add_argument("--continue_", action="store_true", 
                         help="Skip already predicted files.")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite previous results at the output folder and previous log files')
+    parser.add_argument("--log_file", type=str, default="prediction_log",
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is 'prediction_log'")
     return parser
 
 
@@ -322,6 +327,7 @@ def run(args):
     Run the script according to args - Please refer to the argparser.
     """
     assert_args(args)
+    logger.info(f"Args dump: \n{vars(args)}")
     # Check project folder is valid
     from utime.utils.scriptutils import assert_project_folder
     project_dir = os.path.abspath(args.project_dir)
@@ -333,9 +339,6 @@ def run(args):
     else:
         out_dir = args.out_dir
     prepare_output_dir(out_dir, True)
-    raise NotImplementedError("Implement logging")
-    # logger = get_logger(out_dir, args.overwrite or args.continue_, name="prediction_log")
-    logger.info(f"Args dump: \n{vars(args)}")
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
@@ -384,7 +387,9 @@ def run(args):
 def entry_func(args=None):
     # Parse command line arguments
     parser = get_argparser()
-    run(parser.parse_args(args))
+    args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w" if not args.continue_ else "a")
+    run(args)
 
 
 if __name__ == "__main__":

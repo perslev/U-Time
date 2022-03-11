@@ -19,6 +19,7 @@ from sleeputils.io.header import extract_header
 from sleeputils.io.high_level_file_loaders import load_psg
 from sleeputils.io import to_h5_file
 from sleeputils.preprocessing.psg_sampling import set_psg_sample_rate
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -52,10 +53,6 @@ def get_argparser():
                              "Must match in length --channels.")
     parser.add_argument('--resample', type=int, default=None,
                         help='Re-sample the selected channels before storage.')
-    parser.add_argument("--overwrite", action="store_true",
-                        help="Overwrite existing files of identical name")
-    parser.add_argument("--continue_", action="store_true",
-                        help="Skip already existing files.")
     parser.add_argument("--use_dir_names", action="store_true",
                         help='Each PSG file will be saved as '
                              '<parent directory>.h5 instead of <file_name>.h5')
@@ -64,6 +61,17 @@ def get_argparser():
                              "where 'seconds' is the number of seconds to trim from the start of file 'filename' before "
                              "saving to newly extracted file. Note that 'filename' is the dictionary name if the "
                              "--use_dir_names flag is also set.")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite existing log files.')
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Overwrite existing files of identical name and log files")
+    parser.add_argument("--continue_", action="store_true",
+                        help="Skip already existing files.")
+    parser.add_argument("--log_file", type=str, default="extraction_log",
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is 'extraction_log'")
     return parser
 
 
@@ -197,19 +205,13 @@ def get_trim_dict(path):
 
 
 def run(args):
+    logger.info(f"Args dump: {vars(args)}")
     files = glob(args.file_regex)
     out_dir = os.path.abspath(args.out_dir)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
     if args.overwrite and args.continue_:
         raise RuntimeError("Only one of the flags '--continue' and '--overwrite' may be used.")
-    raise NotImplementedError("Implement logging")
-    # logger = Logger(out_dir,
-    #                 active_file='extraction_log',
-    #                 overwrite_existing=args.overwrite,
-    #                 append_existing=args.continue_,
-    #                 print_calling_method=False)
-    logger.info(f"Args dump: {vars(args)}")
     logger.info(f"Found {len(files)} files matching glob statement")
     if len(files) == 0:
         return
@@ -246,6 +248,7 @@ def entry_func(args=None):
     # Get the script to execute, parse only first input
     parser = get_argparser()
     args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w" if not args.continue_ else "a")
     run(args)
 
 

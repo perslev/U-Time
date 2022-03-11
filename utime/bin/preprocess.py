@@ -23,6 +23,8 @@ from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from utime import Defaults
+from utime.hyperparameters import YAMLHParams
+from utime.utils.scriptutils import assert_project_folder, get_splits_from_all_datasets, add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,11 @@ def get_argparser():
                         help="Number of threads to use for loading and "
                              "writing. Note: HDF5 must be compiled in "
                              "thread-safe mode!")
+    parser.add_argument("--log_file", type=str, default="preprocessing_logs/preprocessing",
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is 'preprocessing_logs/preprocessing'")
     return parser
 
 
@@ -115,19 +122,8 @@ def run(args):
     args:
         args:    (Namespace)  command-line arguments
     """
-    from utime.hyperparameters import YAMLHParams
-    from utime.utils.scriptutils import assert_project_folder
-    from utime.utils.scriptutils import get_splits_from_all_datasets
-
     project_dir = os.path.abspath("./")
     assert_project_folder(project_dir)
-
-    # Get logger object
-    raise NotImplementedError("Implement logging")
-    # logger = Logger(project_dir + "/preprocessing_logs",
-    #                 active_file='preprocessing',
-    #                 overwrite_existing=args.overwrite,
-    #                 no_sub_folder=True)
     logger.info(f"Args dump: {vars(args)}")
 
     # Load hparams
@@ -198,7 +194,8 @@ def entry_func(args=None):
     # Get the script to execute, parse only first input
     parser = get_argparser()
     args = parser.parse_args(args)
-    run(args=args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
+    run(args)
 
 
 if __name__ == "__main__":

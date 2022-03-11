@@ -4,6 +4,7 @@ import numpy as np
 from argparse import ArgumentParser
 from scipy import stats
 from glob import glob
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,13 @@ def get_argparser():
     parser.add_argument("--soft", action="store_true",
                         help="If using NxC shaped probability-like arrays, use this option to sum arrays "
                              "instead of computing mode.")
+    parser.add_argument("--overwrite", action='store_true',
+                        help='Overwrite existing output files and log files.')
+    parser.add_argument("--log_file", type=str, default=None,
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is None (no log file)")
     return parser
 
 
@@ -71,8 +79,8 @@ def get_arrays(paths):
     return np.stack(loaded)
 
 
-def run(folder, soft):
-    dataset_dirs = get_datasets(folder=folder)
+def run(args):
+    dataset_dirs = get_datasets(folder=args.folder)
 
     for dataset, dataset_dir_path in dataset_dirs.items():
         logger.info(f"Processing dataset '{dataset}'")
@@ -92,18 +100,23 @@ def run(folder, soft):
             channel_arrs = get_arrays(channels)
 
             # Compute MJ vote
-            if soft:
+            if args.soft:
                 mj = np.mean(channel_arrs, axis=0).squeeze()
             else:
                 mj = stats.mode(channel_arrs, axis=0)[0].squeeze()
-            np.save(f'{out_dir}/{study_id}_PRED', mj)
+
+            out_path = f'{out_dir}/{study_id}_PRED'
+            if os.path.exists(out_path) and not args.overwrite:
+                raise OSError(f"Output file at {out_path} exists and the --overwrite flag was not set.")
+            np.save(out_path, mj)
 
 
 def entry_func(args=None):
     # Parse command line arguments
     parser = get_argparser()
     args = parser.parse_args(args)
-    run(folder=args.dataset_dir, soft=args.soft)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
+    run(args)
 
 
 if __name__ == "__main__":

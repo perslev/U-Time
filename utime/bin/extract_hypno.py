@@ -6,6 +6,7 @@ from glob import glob
 from pathlib import Path
 from sleeputils.io.hypnogram import extract_ids_from_hyp_file
 from sleeputils.hypnogram.utils import fill_hyp_gaps
+from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,13 @@ def get_argparser():
                                                                                  "0 seconds to some other duration. E.g., --correct_zero_durations 30 will set those events to 30 seconds.")
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="Overwrite existing files of identical name and log files")
+    parser.add_argument("--log_file", type=str, default="hyp_extraction_log",
+                        help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
+                             "output log file for this script. "
+                             "Set to an empty string to not save any logs to file for this run. "
+                             "Default is 'hyp_extraction_log'")
     return parser
 
 
@@ -55,15 +63,11 @@ def remove_offset(inits):
 
 
 def run(args):
+    logger.info(f"Args dump: {vars(args)}")
     files = glob(args.file_regex)
     out_dir = Path(args.out_dir).absolute()
     out_dir.mkdir(parents=True, exist_ok=True)
     n_files = len(files)
-    raise NotImplementedError("Implement logging")
-    # logger = Logger(out_dir,
-    #                 active_file='hyp_extraction_log',
-    #                 overwrite_existing=args.overwrite)
-    logger.info(f"Args dump: {vars(args)}")
     logger.info(f"Found {n_files} files matching glob statement")
     if n_files == 0:
         return
@@ -106,6 +110,7 @@ def entry_func(args=None):
     # Get the script to execute, parse only first input
     parser = get_argparser()
     args = parser.parse_args(args)
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
     run(args)
 
 
