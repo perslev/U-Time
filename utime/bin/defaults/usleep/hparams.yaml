@@ -13,10 +13,10 @@ __CB_es: &ES
   kwargs: {monitor: 'val_dice', min_delta: 0,
            patience: 200, verbose: 1 , mode: 'max'}
 
-__CB_mcp_clean: &MCP_CLEAN
+__CB_mcp: &MCP
   # Model checkpoint
-  nickname: "mcp_clean"
-  class_name: "ModelCheckPointClean"
+  nickname: "mcp"
+  class_name: "ModelCheckpoint"
   kwargs: {filepath: "./model/@epoch_{epoch:02d}_val_dice_{val_dice:.5f}.h5",
            monitor: "val_dice", save_best_only: false, save_weights_only: true,
            verbose: 1, mode: "max"}
@@ -110,10 +110,10 @@ fit:
   n_epochs: 12000
   verbose: true
   optimizer: "Adam"
-  optimizer_kwargs: {lr: 1.0e-07, amsgrad: True, decay: 0.0, beta_1: 0.9, beta_2: 0.999, epsilon: 1.0e-8}
+  optimizer_kwargs: {learning_rate: 1.0e-07, amsgrad: True, decay: 0.0, beta_1: 0.9, beta_2: 0.999, epsilon: 1.0e-8}
 
   # Callbacks
-  callbacks: [*TB, *MCP_CLEAN, *TIMER, *CSV, *ES]
+  callbacks: [*TB, *MCP, *TIMER, *CSV, *ES]
 
 __VERSION__: Null
 __BRANCH__: Null
