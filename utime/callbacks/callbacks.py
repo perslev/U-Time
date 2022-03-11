@@ -86,16 +86,14 @@ class Validation(Callback):
             # Predict and evaluate on all studies
             per_study_metrics = defaultdict(list)
             for i, sleep_study_context in enumerate(study_iterator):
-                if self.verbose:
-                    s = "   {}Validation subject: {}/{}".format(f"[{id_}] "
-                                                                if id_ else "",
-                                                                i+1,
-                                                                n_val)
-                    print(s, end="\r", flush=True)
+                s = "   {}Validation subject: {}/{}".format(f"[{id_}] "
+                                                            if id_ else "",
+                                                            i+1,
+                                                            n_val)
+                print(s, end="\r", flush=True)
 
                 with sleep_study_context as ss:
-                    x, y = sequence.get_single_study_full_seq(ss.identifier,
-                                                              reshape=True)
+                    x, y = sequence.get_single_study_full_seq(ss.identifier, reshape=True)
                     pred = self.model.predict_on_batch(x)
 
                 # Compute counts
@@ -155,8 +153,8 @@ class Validation(Callback):
 
         return precisions, recalls, dices
 
-    def _print_val_results(self, precisions, recalls, dices, metrics, epoch,
-                           name, classes):
+    def _log_val_results(self, precisions, recalls, dices, metrics, epoch,
+                         name, classes):
         # Log the results
         # We add them to a pd dataframe just for the pretty print output
         index = ["cls %i" % i for i in classes]
@@ -180,9 +178,11 @@ class Validation(Callback):
         val_results = val_results.loc[:, cols]
 
         # Print the df to screen
-        logger.info("\n" + highlighted(f"[{name}] Validation Results for Epoch {epoch}").lstrip(" "))
         print_string = val_results.round(self.print_round).to_string()
-        logger.info(print_string.replace("NaN", "---") + "\n")
+        logger.info("\n\n" +
+                    highlighted(f"[{name}] Validation Results for Epoch {epoch}").lstrip(" ") +
+                    "\n" +
+                    print_string.replace("NaN", "---"))
 
     def on_epoch_end(self, epoch, logs=None):
         # Predict and get CM
@@ -200,13 +200,13 @@ class Validation(Callback):
             for m_name, value in metrics[id_].items():
                 logs[f"{n}val_{m_name}"] = value.round(self.log_round)
 
-            self._print_val_results(precisions=precisions,
-                                    recalls=recalls,
-                                    dices=dices,
-                                    metrics=metrics[id_],
-                                    epoch=epoch,
-                                    name=id_,
-                                    classes=classes)
+            self._log_val_results(precisions=precisions,
+                                  recalls=recalls,
+                                  dices=dices,
+                                  metrics=metrics[id_],
+                                  epoch=epoch,
+                                  name=id_,
+                                  classes=classes)
 
         if len(self.IDs) > 1:
             # Print cross-dataset mean values
@@ -317,11 +317,11 @@ class CarbonUsageTracking(Callback):
                            "devices_by_pid": devices_by_pid}
         self.parameters.update(additional_tracker_kwargs)
 
-    def on_train_end(self, logs={}):
+    def on_train_end(self, logs=None):
         """ Ensure actual consumption is reported """
         self.tracker.stop()
 
-    def on_epoch_begin(self, epoch, logs={}):
+    def on_epoch_begin(self, epoch, logs=None):
         """ Start tracking this epoch """
         if self.tracker is None:
             # At this point all CPUs should be discoverable
