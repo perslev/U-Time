@@ -4,12 +4,38 @@ A set of functions for needed for running training in various settings
 
 import logging
 import os
+import shutil
 from utime.utils.scriptutils import get_all_dataset_hparams
 from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
 from sleeputils.dataset.sleep_study_dataset import SingleH5Dataset
 from sleeputils.errors import NotLoadedError
 
 logger = logging.getLogger(__name__)
+
+
+def remove_previous_session(project_folder):
+    """
+    Deletes various mpunet project folders and files from
+    [project_folder].
+
+    Args:
+        project_folder: A path to a utime project folder
+    """
+    # Remove old files and directories of logs, images etc if existing
+    paths = [os.path.join(project_folder, p) for p in ("logs",
+                                                       "model",
+                                                       "tensorboard")]
+    for p in filter(os.path.exists, paths):
+        if os.path.isdir(p):
+            shutil.rmtree(p)
+        else:
+            os.remove(p)
+
+
+def init_default_project_structure(project_folder, required_folders=('logs', 'model')):
+    for folder in required_folders:
+        folder = os.path.join(project_folder, folder)
+        os.mkdir(folder)
 
 
 def get_train_and_val_datasets(hparams, no_val, train_on_val):
@@ -142,7 +168,8 @@ def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
         A training Sequence or MultiSequence objects
         A ValidatonMultiSequence object if no_val=False, otherwise None
     """
-    from utime.sequences import (MultiSequence, ValidationMultiSequence,
+    from utime.sequences import (MultiSequence,
+                                 ValidationMultiSequence,
                                  get_batch_sequence)
 
     n_classes = hparams.get_from_anywhere('n_classes')
