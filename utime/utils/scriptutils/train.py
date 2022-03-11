@@ -270,10 +270,14 @@ def get_samples_per_epoch(train_seq, max_train_samples_per_epoch):
         Number of samples to take in training and validation
     """
     try:
-        train_samples_per_epoch = min(train_seq.total_periods,
-                                      max_train_samples_per_epoch)
-    except NotLoadedError:
-        train_samples_per_epoch = max_train_samples_per_epoch
+        total_periods = train_seq.total_periods
+    except (NotLoadedError, TypeError):
+        # train_seq.total_period is not available (not all samples loaded or limitation queue). Use estimate.
+        n_studies = len(train_seq.dataset_queue.dataset)
+        total_periods = 2000 * n_studies
+        logger.warning(f"Property 'total_periods' not available on sequence {train_seq}. "
+                       f"Using (over)estimate total periods of {total_periods} based on dataset length of {n_studies}.")
+    train_samples_per_epoch = min(total_periods, max_train_samples_per_epoch)
     if train_seq.margin:
         # For sequence models, we only sample a number of batches to cover
         # all data in once (in expectation).
