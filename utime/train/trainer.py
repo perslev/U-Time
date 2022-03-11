@@ -196,6 +196,9 @@ class Trainer(object):
         # Wrap generator in TF Dataset and disable auto shard
         dtypes, shapes = list(zip(*map(lambda x: (x.dtype, x.shape), train[0])))
         train = tf.data.Dataset.from_generator(train, dtypes, shapes)
+        options = tf.data.Options()
+        options.experimental_distribute.auto_shard_policy = tf.data.experimental.AutoShardPolicy.OFF
+        train = train.with_options(options)
 
         # Fit the model
         raise NotImplemented("Implement logging")
