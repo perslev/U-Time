@@ -474,11 +474,8 @@ def run(args):
     if args.one_shot:
         # Model is initialized for each sleep study later
         def model_func(n_periods):
-            return with_logging_level_wrapper(get_and_load_one_shot_model(n_periods,
-                                                                          project_dir,
-                                                                          hparams,
-                                                                          args.weights_file_name),
-                                              logging.ERROR)
+            return get_and_load_one_shot_model(n_periods, project_dir, hparams, args.weights_file_name)
+        model_func = with_logging_level_wrapper(model_func, logging.ERROR)
     else:
         model = get_and_load_model(project_dir, hparams, args.weights_file_name)
 

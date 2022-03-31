@@ -13,7 +13,8 @@ import sys
 import importlib
 import pkgutil
 import sleeputils
-from utime import bin, __version__, Defaults
+from utime import bin, Defaults
+from utime.version import __version__
 
 logger = logging.getLogger(__name__)
 

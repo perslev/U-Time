@@ -61,8 +61,6 @@ def get_argparser():
                              "where 'seconds' is the number of seconds to trim from the start of file 'filename' before "
                              "saving to newly extracted file. Note that 'filename' is the dictionary name if the "
                              "--use_dir_names flag is also set.")
-    parser.add_argument("--overwrite", action='store_true',
-                        help='Overwrite existing log files.')
     parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name and log files")
     parser.add_argument("--continue_", action="store_true",

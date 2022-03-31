@@ -12,7 +12,7 @@ import argparse
 import re
 import pandas as pd
 from glob import glob
-from mpunet.utils import create_folders
+from utime.utils import create_folders
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)

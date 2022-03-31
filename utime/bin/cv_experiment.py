@@ -4,7 +4,7 @@ import shutil
 import argparse
 import subprocess
 from multiprocessing import Process, Lock, Queue, Event
-from mpunet.utils import create_folders
+from utime.utils import create_folders
 from utime.bin.init import init_project_folder
 from utime.hyperparameters import YAMLHParams
 from utime.utils.scriptutils import add_logging_file_handler
@@ -55,7 +55,7 @@ def get_parser():
     parser.add_argument("--start_from", type=int, default=0,
                         help="Start from CV split<start_from>. Default 0.")
     parser.add_argument("--wait_for", type=str, default="",
-                        help="Waiting for PID to terminate before starting "
+                        help="Waiting for pid to terminate before starting "
                              "training process.")
     parser.add_argument("--monitor_GPUs_every", type=int, default=None,
                         help="If specified, start a background process which"
@@ -291,15 +291,15 @@ def run(args):
     create_folders(out_dir)
 
     if args.wait_for:
-        # Wait for PID before proceeding
-        from mpunet.utils import await_PIDs
-        await_PIDs(args.wait_for)
+        # Wait for pid before proceeding
+        from utime.utils import await_pids
+        await_pids(args.wait_for)
     if args.run_on_split is not None:
         # Run on a single split
         cv_folders = [cv_folders[args.run_on_split]]
     if args.force_GPU:
         # Only these GPUs fill be chosen from
-        from mpunet.utils import set_gpu
+        from utime.utils import set_gpu
         set_gpu(args.force_GPU)
     if args.num_GPUs:
         # Get GPU sets (up to the number of splits)
