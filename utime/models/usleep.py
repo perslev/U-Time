@@ -43,7 +43,7 @@ class InputReshape(Layer):
         return config
 
     def call(self, inputs, **kwargs):
-        shape = tf.shape(inputs)
+        shape = shape_safe(inputs)
         inputs_reshaped = tf.reshape(inputs, shape=[shape[0], self.seq_length or shape[1]*shape[2], 1, self.n_channels])
         return inputs_reshaped
 
@@ -61,8 +61,12 @@ class OutputReshape(Layer):
         return config
 
     def call(self, inputs, **kwargs):
-        shape = tf.shape(inputs)
-        return tf.reshape(inputs, shape=[shape[0], self.n_periods or shape[1], inputs.shape[-1]])
+        shape = shape_safe(inputs)
+        n_pred = int(shape[1] // self.n_periods)
+        shape = [shape[0], self.n_periods or shape[1], n_pred, inputs.shape[-1]]
+        if n_pred == 1:
+            shape.pop(2)
+        return tf.reshape(inputs, shape=shape)
 
 
 class PadEndToEvenLength(Layer):
