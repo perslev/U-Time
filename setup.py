@@ -1,5 +1,4 @@
 from setuptools import setup, find_packages
-from utime import __version__
 
 with open('README.md') as readme_file:
     readme = readme_file.read()
@@ -9,6 +8,12 @@ with open('HISTORY.rst') as history_file:
 
 with open("requirements.txt") as req_file:
     requirements = list(filter(None, req_file.read().split("\n")))
+
+__version__ = None
+with open("sleeputils/version.py") as version_file:
+    exec(version_file.read())
+if __version__ is None:
+    raise ValueError("Did not find __version__ in version.py file.")
 
 setup(
     name='utime',
