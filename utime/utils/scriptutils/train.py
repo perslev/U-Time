@@ -5,6 +5,8 @@ A set of functions for needed for running training in various settings
 import logging
 import os
 import shutil
+import numpy as np
+import pandas as pd
 from utime.utils.scriptutils import get_all_dataset_hparams
 from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
 from sleeputils.dataset.sleep_study_dataset import SingleH5Dataset
@@ -15,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def remove_previous_session(project_folder):
     """
-    Deletes various mpunet project folders and files from
+    Deletes various utime project folders and files from
     [project_folder].
 
     Args:
@@ -172,7 +174,7 @@ def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
                                  ValidationMultiSequence,
                                  get_batch_sequence)
 
-    n_classes = hparams.get_from_anywhere('n_classes')
+    n_classes = hparams.get_group('/build/n_classes')
     train_seqs = [get_batch_sequence(dataset_queue=d,
                                      random_batches=True,
                                      n_classes=n_classes,
