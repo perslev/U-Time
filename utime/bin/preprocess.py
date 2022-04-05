@@ -57,7 +57,8 @@ def copy_dataset_hparams(hparams, hparams_out_path):
     groups_to_save = ('select_channels', 'alternative_select_channels',
                       'load_time_channel_sampling_groups')
     hparams = hparams.save_current(hparams_out_path, return_copy=True)
-    for group in hparams:
+    groups = list(hparams.keys())
+    for group in groups:
         if group not in groups_to_save:
             hparams.delete_group(group)
     if "load_time_channel_sampling_groups" in hparams:
