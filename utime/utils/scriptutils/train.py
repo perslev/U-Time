@@ -288,6 +288,58 @@ def get_samples_per_epoch(train_seq, max_train_samples_per_epoch):
     return train_samples_per_epoch
 
 
+def get_lr_at_epoch(epoch, log_dir):
+    """
+    TODO
+    """
+    log_path = os.path.join(log_dir, "training.csv")
+    if not os.path.exists(log_path):
+        print("No training.csv file found at %s. Continuing with default "
+              "learning rate found in parameter file." % log_dir)
+        return None, None
+    df = pd.read_csv(log_path)
+    possible_names = ("lr", "LR", "learning_rate", "LearningRate")
+    try:
+        in_df = [l in df.columns for l in possible_names].index(True)
+    except ValueError:
+        return None, None
+    col_name = possible_names[in_df]
+    return float(df[col_name][int(epoch)]), col_name
+
+
+def clear_csv_after_epoch(epoch, csv_file):
+    """
+    TODO
+    """
+    if os.path.exists(csv_file):
+        try:
+            df = pd.read_csv(csv_file)
+        except pd.errors.EmptyDataError:
+            # Remove the file
+            os.remove(csv_file)
+            return
+        # Remove any trailing runs and remove after 'epoch'
+        try:
+            df = df[np.flatnonzero(df["epoch"] == 0)[-1]:]
+        except IndexError:
+            pass
+        df = df[:epoch+1]
+        # Save again
+        with open(csv_file, "w") as out_f:
+            out_f.write(df.to_csv(index=False))
+
+
+def get_last_epoch(csv_file):
+    """
+    TODO
+    """
+    epoch = 0
+    if os.path.exists(csv_file):
+        df = pd.read_csv(csv_file)
+        epoch = int(df["epoch"].to_numpy()[-1])
+    return epoch
+
+
 def save_final_weights(project_dir, model, file_name):
     """
     Saves the current (normally 'final') weights of 'model' to h5 archive at
