@@ -253,7 +253,7 @@ def prepare_hparams_dir(hparams_dir):
         # Check local hparams.yaml file, move into hparams_dir
         if os.path.exists("hparams.yaml"):
             os.mkdir(hparams_dir)
-            hparams = YAMLHParams("hparams.yaml", no_log=True, no_version_control=True)
+            hparams = YAMLHParams("hparams.yaml", no_version_control=True)
             for dataset, path in hparams['datasets'].items():
                 destination = os.path.join(hparams_dir, path)
                 os.makedirs(os.path.dirname(destination), exist_ok=True)

@@ -58,7 +58,7 @@ def copy_yaml_and_set_data_dirs(in_path, out_path, data_dir=None):
                            for this project.
     """
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(in_path, no_log=True, no_version_control=True)
+    hparams = YAMLHParams(in_path, no_version_control=True)
 
     # Set values in parameter file and save to new location
     data_ids = ("train", "val", "test")
@@ -66,7 +66,7 @@ def copy_yaml_and_set_data_dirs(in_path, out_path, data_dir=None):
         path = os.path.join(data_dir, dataset) if data_dir else "Null"
         dataset = dataset + "_data"
         if hparams.get(dataset) and not hparams[dataset].get("data_dir"):
-            hparams.set_value(dataset, "data_dir", path, True, True)
+            hparams.set_group(f"/{dataset}/data_dir", path, missing_parents_ok=True, overwrite=True)
     hparams.save_current(out_path)
 
 

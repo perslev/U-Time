@@ -56,16 +56,15 @@ def get_argparser():
 def copy_dataset_hparams(hparams, hparams_out_path):
     groups_to_save = ('select_channels', 'alternative_select_channels',
                       'load_time_channel_sampling_groups')
-    with open(hparams_out_path, 'w') as out_f:
-        for group in groups_to_save:
-            try:
-                data = hparams.get_group(group)
-            except ValueError:
-                continue  # Not found
-            else:
-                data = data.replace("load_time_channel_sampling_groups",
-                                    "access_time_channel_sampling_groups")
-                out_f.write(data + "\n")
+    hparams = hparams.save_current(hparams_out_path, return_copy=True)
+    for group in hparams:
+        if group not in groups_to_save:
+            hparams.delete_group(group)
+    if "load_time_channel_sampling_groups" in hparams:
+        grp = hparams.get_group("load_time_channel_sampling_groups")
+        hparams.delete_group("load_time_channel_sampling_groups")
+        hparams.set_group("access_time_channel_sampling_groups", grp)
+    hparams.save_current()
 
 
 def add_dataset_entry(hparams_out_path, h5_path,
@@ -158,8 +157,10 @@ def run(args):
                 copy_dataset_hparams(dataset_hparams, hparams_out_path)
 
                 # Update paths to dataset hparams in main hparams file
-                hparams.set_value(subdir='datasets', name=name,
-                                  value=hparams_out_path, overwrite=True)
+                hparams.set_group(f"/datasets/{name}",
+                                  value=hparams_out_path,
+                                  overwrite=True)
+
                 # Save the hyperparameters to the pre-processed main hparams
                 hparams.save_current(Defaults.get_pre_processed_hparams_path(
                     project_dir

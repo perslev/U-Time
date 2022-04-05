@@ -134,8 +134,7 @@ def update_hparams_with_command_line_arguments(hparams, args):
         args:    (Namespace)   Passed command-line arguments
     """
     if isinstance(args.n_epochs, int) and args.n_epochs > 0:
-        hparams.set_value(subdir="fit",
-                          name="n_epochs",
+        hparams.set_group("/fit/n_epochs",
                           value=args.n_epochs,
                           overwrite=True)
         hparams["fit"]["n_epochs"] = args.n_epochs
@@ -144,8 +143,7 @@ def update_hparams_with_command_line_arguments(hparams, args):
         # files. Here, we load them, set the channel value, and save them again
         from utime.utils.scriptutils import get_all_dataset_hparams
         for _, dataset_hparams in get_all_dataset_hparams(hparams).items():
-            dataset_hparams.set_value(subdir=None,
-                                      name="select_channels",
+            dataset_hparams.set_group("select_channels",
                                       value=args.channels,
                                       overwrite=True)
             if dataset_hparams.get("load_time_channel_sampling_groups"):
@@ -239,8 +237,8 @@ def run(args, gpu_mon):
                                         hparams=hparams)
 
     # Add additional (inferred) parameters to parameter file
-    hparams.set_value("build", "n_classes", train_seq.n_classes, overwrite=True)
-    hparams.set_value("build", "batch_shape", train_seq.batch_shape, overwrite=True)
+    hparams.set_group("/build/n_classes", value=train_seq.n_classes, overwrite=True)
+    hparams.set_group("/build/batch_shape", value=train_seq.batch_shape, overwrite=True)
     hparams.save_current()
 
     if args.continue_training:

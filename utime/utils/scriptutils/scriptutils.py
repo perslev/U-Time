@@ -168,7 +168,7 @@ def get_dataset_splits_from_hparams_file(hparams_path, splits_to_load, id=""):
     details.
     """
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(hparams_path, no_log=True, no_version_control=True)
+    hparams = YAMLHParams(hparams_path, no_version_control=True)
     return get_dataset_splits_from_hparams(hparams, splits_to_load, id)
 
 

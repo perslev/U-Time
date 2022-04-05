@@ -351,7 +351,7 @@ def get_sequencer(dataset, hparams):
     seq = get_batch_sequence(dataset_queue=dataset_queue,
                              random_batches=False,
                              augmenters=hparams.get("augmenters"),
-                             n_classes=hparams.get_from_anywhere('n_classes'),
+                             n_classes=hparams.get_group('/build/n_classes'),
                              **hparams["fit"],
                              no_log=True,
                              scale_assertion=False,
