@@ -59,17 +59,18 @@ def assert_project_folder(project_folder, evaluation=False):
     import os
     import glob
     project_folder = os.path.abspath(project_folder)
-    if not os.path.exists(Defaults.get_hparams_path(project_folder)):
+    if not os.path.exists(Defaults.get_hparams_path(project_folder)) \
+            and not os.path.exists(Defaults.get_pre_processed_hparams_path(project_folder)):
         # Folder must contain a 'hparams.yaml' file in all cases.
         raise RuntimeError("Folder {} is not a valid project folder."
-                           " Must contain a 'hparams.yaml' "
+                           " Must contain a hyperparameter "
                            "file.".format(project_folder))
     model_path = os.path.join(project_folder, "model")
     if evaluation:
         # Folder must contain a 'model' subfolder storing saved model files
         if not os.path.exists(model_path):
             raise RuntimeError("Folder {} is not a valid project "
-                               "folder. Must contain a 'model' "
+                               "folder for model evaluation. Must contain a 'model' "
                                "subfolder.".format(project_folder))
         # There must be a least 1 model file (.h5) in the folder
         models = glob.glob(os.path.join(model_path, "*.h5"))
@@ -82,7 +83,7 @@ def assert_project_folder(project_folder, evaluation=False):
     return not files_in_model_dir
 
 
-def get_all_dataset_hparams(hparams):
+def get_all_dataset_hparams(hparams, project_dir=None):
     """
     Takes a YAMLHParams object and returns a dictionary of one or more entries
     of dataset ID to YAMLHParams objects pairs; one for each dataset described
@@ -94,9 +95,13 @@ def get_all_dataset_hparams(hparams):
     will be the only returned value (with no ID).
 
     Args:
-        hparams: (YAMLHParams) A hyperparameter object storing reference to
-                               one or more datasets in the 'datasets' field, or
-                               directly in 'hparams.
+        hparams: (YAMLHParams)   A hyperparameter object storing reference to
+                                 one or more datasets in the 'datasets' field, or
+                                 directly in 'hparams.
+        project_dir: [None, str] Optional path to a project directory storing
+                                 hyperparameters relevant to the 'hparams' object.
+                                 If not specified, will use the Default.PROJECT_DIR
+                                 value which is set at runtime for all utime scripts.
 
     Returns:
         A dictonary if dataset ID to YAMLHParams object pairs
@@ -107,8 +112,13 @@ def get_all_dataset_hparams(hparams):
     if hparams.get("datasets"):
         # Multiple datasets specified in hparams configuration files
         ids_and_paths = hparams["datasets"].items()
+        project_dir = project_dir or Defaults.PROJECT_DIRECTORY
+        if not project_dir:
+            raise ValueError("Must specify either the 'project_dir' argument or the "
+                             "Defaults.PROJECT_DIRECTORY property must have been set before calling "
+                             "this function (e.g., by invoking the utime entry script).")
         for id_, path in ids_and_paths:
-            yaml_path = os.path.join(hparams.project_path, path)
+            yaml_path = os.path.join(Defaults.get_hparams_dir(project_dir), path)
             dataset_hparams[id_] = YAMLHParams(yaml_path,
                                                no_version_control=True)
     else:
