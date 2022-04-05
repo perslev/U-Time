@@ -45,7 +45,6 @@ class UTime(Model):
                  l2_reg=None,
                  pools=(10, 8, 6, 4),
                  data_per_prediction=None,
-                 build=True,
                  **kwargs):
         """
         n_classes (int):
@@ -82,8 +81,6 @@ class UTime(Model):
         build (bool):
             TODO
         """
-        super(UTime, self).__init__()
-
         # Set various attributes
         assert len(batch_shape) == 4
         self.n_periods = batch_shape[1]
@@ -117,18 +114,15 @@ class UTime(Model):
                              "'data_per_prediction' ({})".format(self.input_dims,
                                                                  self.data_per_prediction))
 
-        if build:
-            # Build model and init base keras Model class
-            super().__init__(*self.init_model())
+        # Build model and init base keras Model class
+        super().__init__(*self.init_model())
 
-            # Compute receptive field
-            ind = [x.__class__.__name__ for x in self.layers].index("UpSampling2D")
-            self.receptive_field = compute_receptive_fields(self.layers[:ind])[-1][-1]
+        # Compute receptive field
+        ind = [x.__class__.__name__ for x in self.layers].index("UpSampling2D")
+        self.receptive_field = compute_receptive_fields(self.layers[:ind])[-1][-1]
 
-            # Log the model definition
-            self.log()
-        else:
-            self.receptive_field = [None]
+        # Log the model definition
+        self.log()
 
     @staticmethod
     def create_encoder(in_,

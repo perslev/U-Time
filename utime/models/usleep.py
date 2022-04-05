@@ -123,7 +123,6 @@ class USleep(Model):
                  bias_initializer=tf.keras.initializers.zeros(),
                  l2_reg=None,
                  data_per_prediction=None,
-                 build=True,
                  no_log=False,
                  name="",
                  **kwargs):
@@ -189,19 +188,16 @@ class USleep(Model):
                              "'data_per_prediction' ({})".format(self.input_dims,
                                                                  self.data_per_prediction))
 
-        if build:
-            # Build model and init base keras Model class
-            super().__init__(*self.init_model(name_prefix=name))
+        # Build model and init base keras Model class
+        super().__init__(*self.init_model(name_prefix=name))
 
-            # Compute receptive field
-            ind = [x.__class__.__name__ for x in self.layers].index("UpSampling2D")
-            self.receptive_field = compute_receptive_fields(self.layers[:ind])[-1][-1]
+        # Compute receptive field
+        ind = [x.__class__.__name__ for x in self.layers].index("UpSampling2D")
+        self.receptive_field = compute_receptive_fields(self.layers[:ind])[-1][-1]
 
-            # Log the model definition
-            if not no_log:
-                self.log()
-        else:
-            self.receptive_field = [None]
+        # Log the model definition
+        if not no_log:
+            self.log()
 
     @staticmethod
     def create_encoder(in_,
