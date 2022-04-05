@@ -7,7 +7,8 @@ import os
 import shutil
 import numpy as np
 import pandas as pd
-from utime.utils.scriptutils import get_all_dataset_hparams
+from utime.utils.scriptutils import get_all_dataset_hparams, get_splits_from_all_datasets
+from utime.sequences import MultiSequence, ValidationMultiSequence, get_batch_sequence
 from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
 from sleeputils.dataset.sleep_study_dataset import SingleH5Dataset
 from sleeputils.errors import NotLoadedError
@@ -68,7 +69,6 @@ def get_train_and_val_datasets(hparams, no_val, train_on_val):
             raise ValueError("Should not specify --no_val with --train_on_val")
     else:
         load = ("train_data", "val_data")
-    from utime.utils.scriptutils import get_splits_from_all_datasets
     datasets = [*get_splits_from_all_datasets(hparams, load)]
     if train_on_val:
         if any([len(ds) != 2 for ds in datasets]):
@@ -170,10 +170,6 @@ def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
         A training Sequence or MultiSequence objects
         A ValidatonMultiSequence object if no_val=False, otherwise None
     """
-    from utime.sequences import (MultiSequence,
-                                 ValidationMultiSequence,
-                                 get_batch_sequence)
-
     n_classes = hparams.get_group('/build/n_classes')
     train_seqs = [get_batch_sequence(dataset_queue=d,
                                      random_batches=True,
@@ -354,7 +350,6 @@ def save_final_weights(project_dir, model, file_name):
                                       saved.
         file_name:   (string)         Name of the saved parameter file
     """
-    import os
     # Save final model weights
     if not os.path.exists("%s/model" % project_dir):
         os.mkdir("%s/model" % project_dir)
