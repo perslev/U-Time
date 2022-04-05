@@ -24,13 +24,13 @@ def add_logging_file_handler(log_file_name, overwrite, logger_objects=None, log_
     else:
         relevant_loggers = logger_objects or \
                            Defaults.PACKAGE_LEVEL_LOGGERS or \
-                           [logging.getLogger(Defaults.PACKAGE_LOGGER_NAME)]
+                           [logging.getLogger(Defaults.PACKAGE_NAME)]
         logger.info(f"Logs will not be saved to file for these loggers: {relevant_loggers} (--log_file_name is empty)")
 
 
 def with_logging_level_wrapper(func, level, logger_names=None):
     loggers = [logging.getLogger(name) for name in logger_names] if logger_names \
-        else Defaults.PACKAGE_LEVEL_LOGGERS or [logging.getLogger(Defaults.PACKAGE_LOGGER_NAME)]
+        else Defaults.PACKAGE_LEVEL_LOGGERS or [logging.getLogger(Defaults.PACKAGE_NAME)]
     old_levels = {logger: logger.level for logger in loggers}
     @wraps(func)
     def with_logging_level(*args, **kwargs):
@@ -110,7 +110,6 @@ def get_all_dataset_hparams(hparams):
         for id_, path in ids_and_paths:
             yaml_path = os.path.join(hparams.project_path, path)
             dataset_hparams[id_] = YAMLHParams(yaml_path,
-                                               no_log=True,
                                                no_version_control=True)
     else:
         # Return as-is with no ID

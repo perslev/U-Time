@@ -21,7 +21,7 @@ class _Defaults(Defaults):
     GLOBAL_SEED = None
 
     # Log dir usually set on run time by utime.bin.ut entry script
-    PACKAGE_LOGGER_NAME = __name__.split(".")[0]
+    PACKAGE_NAME = __name__.split(".")[0]
     PACKAGE_LEVEL_LOGGERS = []  # Populated in init_package_level_loggers
     LOG_DIR = None
 
@@ -44,7 +44,7 @@ class _Defaults(Defaults):
         handler.setFormatter(formatter)
         # Set handler and log level on all passed package-level loggers or on the utime packe logger only by default
         cls.PACKAGE_LEVEL_LOGGERS = []
-        for package_logger in map(logging.getLogger, package_names or [cls.PACKAGE_LOGGER_NAME]):
+        for package_logger in map(logging.getLogger, package_names or [cls.PACKAGE_NAME]):
             package_logger.setLevel(level)
             package_logger.addHandler(handler)
             cls.PACKAGE_LEVEL_LOGGERS.append(package_logger)
@@ -52,7 +52,7 @@ class _Defaults(Defaults):
     @classmethod
     def set_logging_file_handler(cls, file_name, loggers=None, mode="w", log_dir=None, overwrite_existing=False):
         if loggers is None:
-            loggers = cls.PACKAGE_LEVEL_LOGGERS or [logging.getLogger(cls.PACKAGE_LOGGER_NAME)]
+            loggers = cls.PACKAGE_LEVEL_LOGGERS or [logging.getLogger(cls.PACKAGE_NAME)]
         path = cls.get_logging_path(file_name, log_dir)
         if os.path.exists(path):
             if overwrite_existing:
@@ -67,7 +67,7 @@ class _Defaults(Defaults):
             global logger
             logger.info(f"Creating logging directory at path: {folder}")
             os.makedirs(folder)
-        top_level_logger = logging.getLogger(cls.PACKAGE_LOGGER_NAME)
+        top_level_logger = logging.getLogger(cls.PACKAGE_NAME)
         file_handler = logging.FileHandler(path, mode=mode)
         file_handler.setLevel(top_level_logger.level)
         file_handler.setFormatter(top_level_logger.handlers[0].formatter)

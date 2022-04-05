@@ -77,7 +77,7 @@ def entry_func():
     Defaults.LOG_DIR = os.path.abspath(parsed.log_dir)
 
     # Init both the utime and sleeputils package-level loggers to share formatter and handlers
-    Defaults.init_package_level_loggers(parsed.log_level, package_names=(Defaults.PACKAGE_LOGGER_NAME,
+    Defaults.init_package_level_loggers(parsed.log_level, package_names=(Defaults.PACKAGE_NAME,
                                                                          sleeputils.__name__))
 
     # Set Tensorflow logging level to ERROR or higher.
