@@ -86,6 +86,7 @@ def init_project_folder(default_folder, preset, out_folder, data_dir=None):
     in_folder = os.path.join(default_folder, preset)
     # Create hyperparameters folder
     out_folder = Defaults.get_hparams_dir(out_folder)
+    logger.info(f"Initializing project in project folder: {out_folder} (model preset: '{preset}')")
     if not os.path.exists(out_folder):
         os.mkdir(out_folder)
     for dir_path, dir_names, file_names in os.walk(in_folder):
@@ -104,7 +105,7 @@ def run(args):
     """
     Run this script with the specified args. See argparser for details.
     """
-    add_logging_file_handler(logger, args.log_file, args.overwrite, mode="w")
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
     default_folder = os.path.split(os.path.abspath(__file__))[0] + "/defaults"
     if not os.path.exists(default_folder):
         raise OSError(f"Default path not found at {default_folder}")

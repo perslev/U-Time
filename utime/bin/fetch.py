@@ -68,7 +68,7 @@ def validate_and_create_out_dir(out_dir):
 
 
 def run(args):
-    add_logging_file_handler(logger, args.log_file, args.overwrite, mode="w")
+    add_logging_file_handler(args.log_file, args.overwrite, mode="w")
     out_dir = os.path.abspath(args.out_dir)
     validate_dataset(args.dataset)
     validate_and_create_out_dir(out_dir)
