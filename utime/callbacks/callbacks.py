@@ -6,7 +6,7 @@ import tensorflow as tf
 from carbontracker.tracker import CarbonTracker
 from tensorflow.keras.callbacks import Callback
 from sleeputils.utils import get_memory_usage
-from mpunet.utils import highlighted
+from utime.utils import highlighted
 from collections import defaultdict
 from datetime import timedelta, datetime
 from mpunet.utils.plotting import plot_all_training_curves
