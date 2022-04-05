@@ -31,8 +31,6 @@ def get_argparser():
                              'If not specified, prediction will be launched '
                              'on the test_data as specified in the '
                              'hyperparameter file.')
-    parser.add_argument("--project_dir", type=str, default="./",
-                        help='Path to U-Time project folder')
     parser.add_argument("--data_per_prediction", type=int, default=None,
                         help='Number of samples that should make up each sleep'
                              ' stage scoring. Defaults to sample_rate*30, '
@@ -330,7 +328,7 @@ def run(args):
     logger.info(f"Args dump: \n{vars(args)}")
     # Check project folder is valid
     from utime.utils.scriptutils import assert_project_folder
-    project_dir = os.path.abspath(args.project_dir)
+    project_dir = os.path.abspath(Defaults.PROJECT_DIRECTORY)
     assert_project_folder(project_dir, evaluation=True)
 
     # Prepare output dir

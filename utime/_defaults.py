@@ -10,6 +10,11 @@ class _Defaults(Defaults):
     """
     Stores and potentially updates default values for sleep stages etc.
     """
+    PROJECT_DIRECTORY = None  # If using ut scripts, set by ut.py entry script
+
+    # Name of the parent package: 'utime' at the time of writing this comment
+    PACKAGE_NAME = __name__.split(".")[0]
+
     # Default hyperparameters path (relative to project dir)
     HPARAMS_DIR = 'hyperparameters'
     HPARAMS_NAME = 'hparams.yaml'
@@ -21,9 +26,23 @@ class _Defaults(Defaults):
     GLOBAL_SEED = None
 
     # Log dir usually set on run time by utime.bin.ut entry script
-    PACKAGE_NAME = __name__.split(".")[0]
     PACKAGE_LEVEL_LOGGERS = []  # Populated in init_package_level_loggers
     LOG_DIR = None
+
+    @classmethod
+    def set_project_directory(cls, project_directory, assert_project_dir=False):
+        if not os.path.exists(project_directory):
+            raise OSError(f"Project directory at path '{project_directory}' does not exist.")
+        project_directory = os.path.abspath(project_directory)
+        cls.PROJECT_DIRECTORY = project_directory
+        # Check if initialized by looking for hyperparameter file(s)
+        is_init = (os.path.exists(cls.get_hparams_path(project_directory)) or
+                   os.path.exists(cls.get_pre_processed_hparams_path(project_directory)))
+        if assert_project_dir and not is_init:
+            raise OSError(f"Project directory at path '{project_directory}' does not appear to be a valid "
+                          f"{cls.PACKAGE_NAME} project dir as it is missing one or more expected "
+                          f"sub-folders or files (e.g., a {cls.HPARAMS_DIR} sub-dir).")
+        logger.info(f"Project directory set: {project_directory} (initialized project: {is_init})")
 
     @classmethod
     def get_logging_path(cls, log_file_name=None, log_dir=None):
@@ -86,24 +105,24 @@ class _Defaults(Defaults):
         random.seed(cls.GLOBAL_SEED)
 
     @classmethod
-    def get_hparams_dir(cls, project_dir):
-        return os.path.join(project_dir, cls.HPARAMS_DIR)
+    def get_hparams_dir(cls, project_dir=None):
+        return os.path.join(project_dir or cls.PROJECT_DIRECTORY, cls.HPARAMS_DIR)
 
     @classmethod
-    def get_hparams_path(cls, project_dir):
-        return os.path.join(project_dir, cls.HPARAMS_DIR, cls.HPARAMS_NAME)
+    def get_hparams_path(cls, project_dir=None):
+        return os.path.join(project_dir or cls.PROJECT_DIRECTORY, cls.HPARAMS_DIR, cls.HPARAMS_NAME)
 
     @classmethod
-    def get_pre_processed_hparams_path(cls, project_dir):
-        return os.path.join(project_dir, cls.HPARAMS_DIR,
+    def get_pre_processed_hparams_path(cls, project_dir=None):
+        return os.path.join(project_dir or cls.PROJECT_DIRECTORY, cls.HPARAMS_DIR,
                             cls.PRE_PROCESSED_HPARAMS_NAME)
 
     @classmethod
-    def get_dataset_configurations_dir(cls, project_dir):
+    def get_dataset_configurations_dir(cls, project_dir=None):
         return os.path.join(cls.get_hparams_dir(project_dir),
                             cls.DATASET_CONF_DIR)
 
     @classmethod
-    def get_pre_processed_data_configurations_dir(cls, project_dir):
+    def get_pre_processed_data_configurations_dir(cls, project_dir=None):
         return os.path.join(cls.get_dataset_configurations_dir(project_dir),
                             cls.PRE_PROCESSED_DATA_CONF_DIR)

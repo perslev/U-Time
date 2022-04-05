@@ -45,6 +45,9 @@ def get_parser():
     parser = argparse.ArgumentParser(usage=usage)
     parser.add_argument("script", help="Name of the ut script to run.",
                         choices=choices)
+    parser.add_argument("--project_dir", type=str, default="./",
+                        help='Path to U-Time project folder. '
+                             'Default is "./" (current working directory)')
     parser.add_argument("--log_dir", default="logs", type=str,
                         help="Path to directory that should store logs.")
     parser.add_argument("--log_level", default="INFO", type=str,
@@ -79,6 +82,10 @@ def entry_func():
     # Init both the utime and sleeputils package-level loggers to share formatter and handlers
     Defaults.init_package_level_loggers(parsed.log_level, package_names=(Defaults.PACKAGE_NAME,
                                                                          sleeputils.__name__))
+    logger.info(f"Entry script args dump: {vars(parsed)}")
+
+    # Set project directory for the script
+    Defaults.set_project_directory(parsed.project_dir)
 
     # Set Tensorflow logging level to ERROR or higher.
     # This omits a range of (usually....) unimportant warning message.

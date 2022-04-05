@@ -22,8 +22,6 @@ def get_argparser():
     Returns an argument parser for this script
     """
     parser = ArgumentParser(description='Evaluate a U-Time model.')
-    parser.add_argument("--project_dir", type=str, default="./",
-                        help='Path to U-Time project folder')
     parser.add_argument("--out_dir", type=str, default="predictions",
                         help="Output folder to store results")
     parser.add_argument("--num_GPUs", type=int, default=1,
@@ -453,7 +451,7 @@ def run(args):
     """
     assert_args(args)
     logger.info(f"Args dump: \n{vars(args)}")
-    project_dir = os.path.abspath(args.project_dir)
+    project_dir = os.path.abspath(Defaults.PROJECT_DIRECTORY)
     assert_project_folder(project_dir, evaluation=True)
 
     # Prepare output dir
