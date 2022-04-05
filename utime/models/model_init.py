@@ -9,7 +9,7 @@ import os
 logger = logging.getLogger(__name__)
 
 
-def init_model(build_hparams, clear_previous=False):
+def init_model(build_hparams, clear_previous=True):
     """
     From a set of hyperparameters 'build_hparams' (dict) initializes the
     model specified under build_hparams['model_class_name'].
