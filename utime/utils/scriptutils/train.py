@@ -193,33 +193,6 @@ def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
     return train_seq, val_seq
 
 
-def find_and_set_gpus(gpu_mon, force_GPU, num_GPUs):
-    """
-    Given a MultiPlanarUnet GPUMonitor object and the parsed command-line
-    arguments, either looks for free GPUs and sets them, or sets a forced
-    GPU visibility.
-
-    Specifically, if args.force_GPU is set, set the visibility accordingly,
-    count the number of GPUs set and return this number.
-    If not, use args.num_GPUs currently available GPUs and return args.num_GPUs
-
-    Args:
-        gpu_mon:   (GPUMonitor) Initialized GPUMonitor
-        force_GPU: (string)     A CUDA_VISIBLE_DEVICES type string to be set
-        num_GPUs:  (int)        Number of free/available GPUs to automatically
-                                select using 'gpu_mon' when 'force_GPU' is not
-                                set.
-
-    Returns:
-        (int) The actual number of GPUs now visible
-    """
-    if not force_GPU:
-        gpu_mon.await_and_set_free_GPU(N=num_GPUs, stop_after=True)
-    else:
-        gpu_mon.set_GPUs = force_GPU
-    return gpu_mon.num_currently_visible
-
-
 def merge_train_and_val(train, val):
     """
     Takes two SleepStudyDataset objects 'train' and 'val' and merges them by
