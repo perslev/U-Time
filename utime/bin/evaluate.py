@@ -9,6 +9,7 @@ import numpy as np
 from argparse import ArgumentParser
 from sleeputils.dataset.queue import LazyQueue
 from utime import Defaults
+from utime.utils.system import find_and_set_gpus
 from utime.utils.scriptutils import (assert_project_folder,
                                      get_splits_from_all_datasets,
                                      add_logging_file_handler,
@@ -24,7 +25,7 @@ def get_argparser():
     parser = ArgumentParser(description='Evaluate a U-Time model.')
     parser.add_argument("--out_dir", type=str, default="predictions",
                         help="Output folder to store results")
-    parser.add_argument("--num_GPUs", type=int, default=1,
+    parser.add_argument("--num_gpus", type=int, default=1,
                         help="Number of GPUs to use for this job")
     parser.add_argument("--num_test_time_augment", type=int, default=0,
                         help="Number of prediction passes over each sleep "
@@ -44,7 +45,7 @@ def get_argparser():
     parser.add_argument("--no_eval", action="store_true",
                         help="Perform no evaluation of the prediction performance. "
                              "No label files loaded when this flag applies.")
-    parser.add_argument("--force_GPU", type=str, default="")
+    parser.add_argument("--force_gpus", type=str, default="")
     parser.add_argument("--data_split", type=str, default="test_data",
                         help="Which split of data of those stored in the "
                              "hparams file should the evaluation be performed "
@@ -102,7 +103,7 @@ def prepare_output_dir(out_dir, overwrite):
                                                                      files))
 
 
-def get_and_load_model(project_dir, hparams, weights_file_name=None):
+def get_and_load_model(project_dir, hparams, weights_file_name=None, clear_previous=True):
     """
     Initializes a model in project_dir according to hparams and loads weights
     in .h5 file at path 'weights_file_name' or automatically determined from
@@ -112,6 +113,7 @@ def get_and_load_model(project_dir, hparams, weights_file_name=None):
         project_dir:        Path to project folder
         hparams:            A YAMLHParams object storing hyperparameters
         weights_file_name:  Optional path to .h5 parameter file
+        clear_previous:     Clear previous keras session before initializing new model graph.
 
     Returns:
         Parameter-initialized model
@@ -121,6 +123,7 @@ def get_and_load_model(project_dir, hparams, weights_file_name=None):
         model, _ = init_and_load_best_model(
             hparams=hparams,
             model_dir=os.path.join(project_dir, "model"),
+            clear_previous=clear_previous,
             by_name=True
         )
     else:
@@ -128,11 +131,12 @@ def get_and_load_model(project_dir, hparams, weights_file_name=None):
         weights_file_name = os.path.join(project_dir, "model", weights_file_name)
         model = init_and_load_model(hparams=hparams,
                                     weights_file=weights_file_name,
+                                    clear_previous=clear_previous,
                                     by_name=True)
     return model
 
 
-def get_and_load_one_shot_model(n_periods, project_dir, hparams, weights_file_name=None):
+def get_and_load_one_shot_model(n_periods, project_dir, hparams, weights_file_name=None, clear_previous=True):
     """
     Returns a model according to 'hparams', potentially initialized from
     parameters in a .h5 file 'weights_file_name'.
@@ -143,10 +147,11 @@ def get_and_load_one_shot_model(n_periods, project_dir, hparams, weights_file_na
     determine the corresponding number of segments.
 
     Args:
-        full_hypnogram:     Array of sleep stage labels, shape [n_periods, 1]
+        n_periods:          Number of epochs that the model should score in 1 forward pass
         project_dir:        Path to project directory
         hparams:            YAMLHparams object
         weights_file_name:  Optional path to .h5 parameter file
+        clear_previous:     Clear previous keras session before initializing new model graph.
 
     Returns:
         Initialized model
@@ -154,18 +159,10 @@ def get_and_load_one_shot_model(n_periods, project_dir, hparams, weights_file_na
     # Set seguence length
     hparams["build"]["batch_shape"][1] = n_periods
     hparams["build"]["batch_shape"][0] = 1  # Should not matter
-    return get_and_load_model(project_dir, hparams, weights_file_name)
-
-
-def set_gpu_vis(num_GPUs, force_GPU):
-    """ Helper function that sets the GPU visibility as per parsed args """
-    if force_GPU:
-        from mpunet.utils.system import set_gpu
-        set_gpu(force_GPU)
-    else:
-        # Automatically determine GPUs to use
-        from mpunet.utils.system import GPUMonitor
-        GPUMonitor().await_and_set_free_GPU(num_GPUs, stop_after=True)
+    return get_and_load_model(project_dir,
+                              hparams=hparams,
+                              weights_file_name=weights_file_name,
+                              clear_previous=clear_previous)
 
 
 def plot_hypnogram(out_dir, pred, id_, true=None):
@@ -467,7 +464,7 @@ def run(args):
         logger.info(f"Evaluating using channels {args.channels}")
 
     # Get model
-    set_gpu_vis(args.num_GPUs, args.force_GPU)
+    find_and_set_gpus(args.num_gpus, args.force_gpus)
     model, model_func = None, None
     if args.one_shot:
         # Model is initialized for each sleep study later

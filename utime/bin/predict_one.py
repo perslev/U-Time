@@ -4,8 +4,9 @@ import numpy as np
 from pprint import pformat
 from collections import namedtuple
 from argparse import ArgumentParser, Namespace
-from utime.bin.evaluate import set_gpu_vis, get_and_load_one_shot_model
 from utime import Defaults
+from utime.utils.system import find_and_set_gpus
+from utime.bin.evaluate import get_and_load_one_shot_model
 from sleeputils.dataset.sleep_study import SleepStudy
 from sleeputils.hypnogram.utils import dense_to_sparse
 from sleeputils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
@@ -72,9 +73,9 @@ def get_argparser():
                              'giving 1 segmentation per 30 seconds of signal. '
                              'Set this to 1 to score every data point in the '
                              'signal.')
-    parser.add_argument("--num_GPUs", type=int, default=1,
+    parser.add_argument("--num_gpus", type=int, default=1,
                         help="Number of GPUs to use for this job")
-    parser.add_argument("--force_GPU", type=str, default="")
+    parser.add_argument("--force_gpus", type=str, default="")
     parser.add_argument("--no_argmax", action="store_true",
                         help="Do not argmax prediction volume prior to save.")
     parser.add_argument("--weights_file_name", type=str, required=False,
@@ -104,7 +105,7 @@ def get_processed_args(args):
             value = split_list
         modified_args[key] = value
     args = Namespace(**modified_args)
-    assert args.num_GPUs >= 0, "--num_GPUs must be positive or 0."
+    assert args.num_gpus >= 0, "--num_gpus must be positive or 0."
 
     if args.model:
         logger.info(f"Using the --model flag. "
@@ -428,7 +429,7 @@ def run(args, return_prediction=False, dump_args=None):
                                             **hparams['prediction_params'])
 
     # Set GPU and get model
-    set_gpu_vis(args.num_GPUs, args.force_GPU)
+    find_and_set_gpus(args.num_gpus, args.force_gpus)
     hparams["build"]["data_per_prediction"] = args.data_per_prediction
     logger.info(f"Predicting with {args.data_per_prediction} data per prediction")
     model = get_and_load_one_shot_model(

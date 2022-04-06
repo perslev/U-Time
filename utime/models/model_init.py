@@ -5,11 +5,16 @@ parameters.
 
 import logging
 import os
+import tensorflow as tf
+from utime import models
+from utime.models.utils import get_best_model, get_last_model
+from utime.utils.scriptutils.train import (get_last_epoch, get_lr_at_epoch,
+                                           clear_csv_after_epoch)
 
 logger = logging.getLogger(__name__)
 
 
-def init_model(build_hparams, clear_previous=True):
+def init_model(build_hparams, clear_previous=False):
     """
     From a set of hyperparameters 'build_hparams' (dict) initializes the
     model specified under build_hparams['model_class_name'].
@@ -24,9 +29,7 @@ def init_model(build_hparams, clear_previous=True):
     Returns:
         A tf.keras Model instance
     """
-    from utime import models
     if clear_previous:
-        import tensorflow as tf
         tf.keras.backend.clear_session()
     # Build new model of the specified type
     cls_name = build_hparams["model_class_name"]
@@ -47,63 +50,64 @@ def load_from_file(model, file_path, by_name=True):
     logger.info(f"Loading parameters from: {file_path}")
 
 
-def init_and_load_model(hparams, weights_file, by_name=True):
+def init_and_load_model(hparams, weights_file, clear_previous=False, by_name=True):
     """
     Initializes a model according to hparams. Then sets its parameters from
     the parameters in h5 file 'weights_file'.
 
     Args:
-        hparams:      A YAMLHparams object of hyperparameters
-        weights_file: A path to a h5 parameter file to load
-        by_name:    Load parameters by layer names instead of order (default).
+        hparams:        A YAMLHparams object of hyperparameters
+        weights_file:   A path to a h5 parameter file to load
+        clear_previous: Clear previous keras session before initializing new model graph.
+        by_name:        Load parameters by layer names instead of order (default).
 
     Returns:
         A tf.keras Model instance
     """
-    model = init_model(build_hparams=hparams["build"])
+    model = init_model(build_hparams=hparams["build"], clear_previous=clear_previous)
     load_from_file(model, weights_file, by_name=by_name)
     return model
 
 
-def init_and_load_best_model(hparams, model_dir, by_name=True):
+def init_and_load_best_model(hparams, model_dir, clear_previous=False, by_name=True):
     """
     Initializes a model according to hparams. Then finds the best model in
     model_dir and loads it (see mpunet.utils.get_best_model).
 
     Args:
-        hparams:    A YAMLHparams object of hyperparameters
-        model_dir:  A path to the directory that stores model param files
-        by_name:    Load parameters by layer names instead of order (default).
+        hparams:        A YAMLHparams object of hyperparameters
+        model_dir:      A path to the directory that stores model param files
+        clear_previous: Clear previous keras session before initializing new model graph.
+        by_name:        Load parameters by layer names instead of order (default).
 
     Returns:
         A tf.keras Model instance
         The file name of the parameter file that was loaded
     """
-    from mpunet.utils import get_best_model
-    model = init_model(hparams["build"])
+    model = init_model(hparams["build"], clear_previous=clear_previous)
     model_path = get_best_model(model_dir)
     load_from_file(model, model_path, by_name=by_name)
     model_file_name = os.path.split(model_path)[-1]
     return model, model_file_name
 
 
-def init_and_load_latest_model(hparams, model_dir, by_name=True):
+def init_and_load_latest_model(hparams, model_dir, clear_previous=False, by_name=True):
     """
     Initializes a model according to hparams. Then finds the latest model in
     model_dir and loads it (see mpunet.utils.get_latest_model).
 
     Args:
-        hparams:    A YAMLHparams object of hyperparameters
-        model_dir:  A path to the directory that stores model param files
-        by_name:    Load parameters by layer names instead of order (default).
+        hparams:        A YAMLHparams object of hyperparameters
+        model_dir:      A path to the directory that stores model param files
+        clear_previous: Clear previous keras session before initializing new model graph.
+        by_name:        Load parameters by layer names instead of order (default).
 
     Returns:
         A tf.keras Model instance
         The file name of the parameter file that was loaded
         The epoch of training that the file corresponds to
     """
-    from mpunet.utils import get_last_model
-    model = init_model(hparams["build"])
+    model = init_model(hparams["build"], clear_previous=clear_previous)
     model_path, epoch = get_last_model(model_dir)
     if model_path is None:
         raise OSError("Did not find any model files in "
@@ -140,8 +144,6 @@ def prepare_for_continued_training(hparams, project_dir):
         A path to the model weight files to use for continued training.
         Will be None if no model files were found
     """
-    from mpunet.utils import (get_last_model, get_lr_at_epoch,
-                                       get_last_epoch, clear_csv_after_epoch)
     model_path, epoch = get_last_model(os.path.join(project_dir, "model"))
     if model_path:
         model_name = os.path.split(model_path)[-1]

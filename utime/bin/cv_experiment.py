@@ -1,11 +1,13 @@
 import logging
 import os
+import time
 import shutil
 import argparse
 import subprocess
 from multiprocessing import Process, Lock, Queue, Event
 from utime.utils import create_folders
 from utime.bin.init import init_project_folder
+from utime.utils.system import get_free_gpus, gpu_string_to_list
 from utime.hyperparameters import YAMLHParams
 from utime.utils.scriptutils import add_logging_file_handler
 
@@ -19,25 +21,25 @@ def get_parser():
         "each split. By default the commands that should be run on each split must be specified in a file named 'script' (otherwise " + \
         "specify a different path via the --script_prototype flag). The current working directory must be a project folder as created by " + \
         "'ut init' or contain a subfolder at path '--hparams_prototype_dir <path>' storing the hyperparameters to use.")
-    parser.add_argument("--CV_dir", type=str, required=True,
+    parser.add_argument("--cv_dir", type=str, required=True,
                         help="Directory storing split subfolders as output by"
                              " cv_split.py")
     parser.add_argument("--out_dir", type=str, default="./splits",
                         help="Folder in which experiments will be run and "
                              "results stored.")
-    parser.add_argument("--num_GPUs", type=int, default=1,
+    parser.add_argument("--num_gpus", type=int, default=1,
                         help="Number of GPUs to use per process. This also "
                              "defines the number of parallel jobs to run.")
-    parser.add_argument("--force_GPU", type=str, default="",
+    parser.add_argument("--force_gpus", type=str, default="",
                         help="A list of one or more GPU IDs "
                              "(comma separated) from which GPU resources "
                              "will supplied to each split, independent of"
                              " the current memory usage of the GPUs.")
-    parser.add_argument("--ignore_GPU", type=str, default="",
+    parser.add_argument("--ignore_gpus", type=str, default="",
                         help="A list of one or more GPU IDs "
                              "(comma separated) that will not be considered.")
     parser.add_argument("--num_jobs", type=int, default=1,
-                        help="OBS: Only in effect when --num_GPUs=0. Sets"
+                        help="OBS: Only in effect when --num_gpus=0. Sets"
                              " the number of jobs to run in parallel when no"
                              " GPUs are attached to each job.")
     parser.add_argument("--run_on_split", type=int, default=None,
@@ -57,9 +59,9 @@ def get_parser():
     parser.add_argument("--wait_for", type=str, default="",
                         help="Waiting for pid to terminate before starting "
                              "training process.")
-    parser.add_argument("--monitor_GPUs_every", type=int, default=None,
+    parser.add_argument("--monitor_gpus_every", type=int, default=None,
                         help="If specified, start a background process which"
-                             " monitors every 'monitor_GPUs_every' seconds "
+                             " monitors every 'monitor_gpus_every' seconds "
                              "whether new GPUs have become available than may"
                              " be included in the CV experiment GPU resource "
                              "pool.")
@@ -73,46 +75,39 @@ def get_parser():
     return parser
 
 
-def get_CV_folders(dir):
+def get_cv_folders(dir_):
     key = lambda x: int(x.split("_")[-1])
-    return [os.path.join(dir, p) for p in sorted(os.listdir(dir), key=key)]
+    return [os.path.join(dir_, p) for p in sorted(os.listdir(dir_), key=key)]
 
 
-def _get_GPU_sets(free_gpus, num_GPUs):
+def _get_gpu_sets(free_gpus, num_gpus):
     free_gpus = list(map(str, free_gpus))
-    return [",".join(free_gpus[x:x + num_GPUs]) for x in range(0, len(free_gpus),
-                                                               num_GPUs)]
+    return [",".join(free_gpus[x:x + num_gpus]) for x in range(0, len(free_gpus), num_gpus)]
 
 
-def get_free_GPU_sets(num_GPUs, ignore_gpus=None):
-    from mpunet.utils.system import GPUMonitor
-    mon = GPUMonitor()
-    ignore_gpus = _gpu_string_to_list(ignore_gpus or "", as_int=True)
-    free_gpus = sorted(mon.free_GPUs, key=lambda x: int(x))
-    mon.stop()
+def get_free_gpu_sets(num_gpus, ignore_gpus=None):
+    ignore_gpus = gpu_string_to_list(ignore_gpus or "", as_int=True)
+    free_gpus = sorted(get_free_gpus())
     free_gpus = list(filter(lambda gpu: gpu not in ignore_gpus, free_gpus))
-    total_GPUs = len(free_gpus)
-
-    if total_GPUs % num_GPUs or not free_gpus:
-        if total_GPUs < num_GPUs:
-            raise ValueError("Invalid number of GPUs per process '%i' for total "
-                             "GPU count of '%i' - must be evenly divisible." %
-                             (num_GPUs, total_GPUs))
+    total_gpus = len(free_gpus)
+    if total_gpus % num_gpus or not free_gpus:
+        if total_gpus < num_gpus:
+            raise ValueError(f"Invalid number of GPUs per process '{num_gpus}' for total "
+                             f"GPU count of '{total_gpus}' - must be evenly divisible.")
         else:
             raise NotImplementedError
     else:
-        return _get_GPU_sets(free_gpus, num_GPUs)
+        return _get_gpu_sets(free_gpus, num_gpus)
 
 
-def monitor_GPUs(every, gpu_queue, num_GPUs, ignore_GPU, current_pool, stop_event):
-    import time
+def monitor_gpus(every, gpu_queue, num_gpus, ignore_gpus, current_pool, stop_event):
     # Make flat version of the list of gpu sets
     current_pool = [gpu for sublist in current_pool for gpu in sublist.split(",")]
     while not stop_event.is_set():
         # Get available GPU sets. Will raise ValueError if no full set is
         # available
         try:
-            gpu_sets = get_free_GPU_sets(num_GPUs, ignore_GPU)
+            gpu_sets = get_free_gpu_sets(num_gpus, ignore_gpus)
             for gpu_set in gpu_sets:
                 if any([g in current_pool for g in gpu_set.split(",")]):
                     # If one or more GPUs are already in use - this may happen
@@ -128,7 +123,7 @@ def monitor_GPUs(every, gpu_queue, num_GPUs, ignore_GPU, current_pool, stop_even
             time.sleep(every)
 
 
-def parse_script(script, GPUs):
+def parse_script(script, gpus):
     commands = []
     with open(script) as in_file:
         for line in in_file:
@@ -140,19 +135,19 @@ def parse_script(script, GPUs):
             # Get all arguments, remove if concerning GPU (controlled here)
             cmd = list(filter(lambda x: "gpu" not in x.lower(), line.split()))
             if "python" in line or line[:2] == "mp" or line[:2] == "ds":
-                cmd.append("--force_GPU=%s" % GPUs)
+                cmd.append(f"--force_gpus={gpus}")
             commands.append(cmd)
     return commands
 
 
-def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams, GPUs, GPU_queue, lock):
+def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams, gpus, gpu_queue, lock):
     # Create sub-directory
     split = os.path.split(split_dir)[-1]
     out_dir = os.path.join(out_dir, split)
     create_folders(out_dir)
 
     # Get list of commands
-    commands = parse_script(script, GPUs)
+    commands = parse_script(script, gpus)
 
     # Move hparams and script files into folder
     if not no_hparams:
@@ -173,7 +168,7 @@ def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams, GPUs
                 f"{s}\n" +
                 f"Data dir:   {split_dir}\n" +
                 f"Out dir:    {out_dir}\n" +
-                f"Using GPUs: {GPUs}\n" +
+                f"Using GPUs: {gpus}\n" +
                 f"Running commands:\n" +
                 "\n".join([f" ({i+1}) {' '.join(command)}" for i, command in enumerate(commands)]) + f"\n{delim}")
     lock.release()
@@ -201,26 +196,21 @@ def run_sub_experiment(split_dir, out_dir, script, hparams_dir, no_hparams, GPUs
         lock.release()
 
     # Add the GPUs back into the queue
-    GPU_queue.put(GPUs)
-
-
-def _gpu_string_to_list(gpu_list, as_int=False):
-    str_gpus = list(filter(None, gpu_list.replace(" ", "").split(",")))
-    if as_int:
-        return list(map(int, str_gpus))
-    return str_gpus
+    gpu_queue.put(gpus)
 
 
 def start_gpu_monitor_process(args, gpu_queue, gpu_sets):
     procs = []
-    if args.monitor_GPUs_every is not None and args.monitor_GPUs_every:
-        logger.info(f"\nOBS: Monitoring GPU pool every {args.monitor_GPUs_every} seconds\n")
+    if args.monitor_gpus_every is not None and args.monitor_gpus_every:
+        logger.info(f"\nOBS: Monitoring GPU pool every {args.monitor_gpus_every} seconds\n")
         # Start a process monitoring new GPU availability over time
         stop_event = Event()
-        t = Process(target=monitor_GPUs, args=(args.monitor_GPUs_every,
+        t = Process(target=monitor_gpus, args=(args.monitor_gpus_every,
                                                gpu_queue,
-                                               args.num_GPUs, args.ignore_GPU,
-                                               gpu_sets, stop_event))
+                                               args.num_gpus,
+                                               args.ignore_gpus,
+                                               gpu_sets,
+                                               stop_event))
         t.start()
         procs.append(t)
     else:
@@ -228,23 +218,23 @@ def start_gpu_monitor_process(args, gpu_queue, gpu_sets):
     return procs, stop_event
 
 
-def _assert_run_split(monitor_GPUs_every, num_jobs):
-    if monitor_GPUs_every is not None:
-        raise ValueError("--monitor_GPUs_every is not a valid argument"
+def _assert_run_split(monitor_gpus_every, num_jobs):
+    if monitor_gpus_every is not None:
+        raise ValueError("--monitor_gpus_every is not a valid argument"
                          " to use with --run_on_split.")
     if num_jobs != 1:
         raise ValueError("--num_jobs is not a valid argument to use with"
                          " --run_on_split.")
 
 
-def _assert_force_and_ignore_gpus(force_gpu, ignore_gpu):
-    force_gpu = _gpu_string_to_list(force_gpu)
-    ignore_gpu = _gpu_string_to_list(ignore_gpu)
-    overlap = set(force_gpu) & set(ignore_gpu)
+def _assert_force_and_ignore_gpus(force_gpus, ignore_gpu):
+    force_gpus = gpu_string_to_list(force_gpus)
+    ignore_gpu = gpu_string_to_list(ignore_gpu)
+    overlap = set(force_gpus) & set(ignore_gpu)
     if overlap:
         raise RuntimeError("Cannot both force and ignore GPU(s) {}. "
                            "Got forced GPUs {} and ignored GPUs {}".format(
-            overlap, force_gpu, ignore_gpu
+            overlap, force_gpus, ignore_gpu
         ))
 
 
@@ -266,9 +256,9 @@ def prepare_hparams_dir(hparams_dir):
 
 def assert_args(args, n_splits):
     # User input assertions
-    _assert_force_and_ignore_gpus(args.force_GPU, args.ignore_GPU)
+    _assert_force_and_ignore_gpus(args.force_gpus, args.ignore_gpus)
     if args.run_on_split:
-        _assert_run_split(args.monitor_GPUs_every,
+        _assert_run_split(args.monitor_gpus_every,
                           args.num_jobs)
         if args.start_from:
             raise RuntimeError("Should not use both --run_on_split and "
@@ -281,9 +271,9 @@ def assert_args(args, n_splits):
 
 
 def run(args):
-    cv_dir = os.path.abspath(args.CV_dir)
+    cv_dir = os.path.abspath(args.cv_dir)
     # Get list of folders of CV data to run on
-    cv_folders = get_CV_folders(cv_dir)
+    cv_folders = get_cv_folders(cv_dir)
     assert_args(args, n_splits=len(cv_folders))
     out_dir = os.path.abspath(args.out_dir)
     hparams_dir = os.path.abspath(args.hparams_prototype_dir)
@@ -297,18 +287,18 @@ def run(args):
     if args.run_on_split is not None:
         # Run on a single split
         cv_folders = [cv_folders[args.run_on_split]]
-    if args.force_GPU:
+    if args.force_gpus:
         # Only these GPUs fill be chosen from
         from utime.utils import set_gpu
-        set_gpu(args.force_GPU)
-    if args.num_GPUs:
+        set_gpu(args.force_gpus)
+    if args.num_gpus:
         # Get GPU sets (up to the number of splits)
-        gpu_sets = get_free_GPU_sets(args.num_GPUs,
-                                     args.ignore_GPU)[:len(cv_folders)]
+        gpu_sets = get_free_gpu_sets(args.num_gpus,
+                                     args.ignore_gpus)[:len(cv_folders)]
     elif not args.num_jobs or args.num_jobs < 0:
         raise ValueError("Should specify a number of jobs to run in parallel "
                          "with the --num_jobs flag when using 0 GPUs pr. "
-                         "process (--num_GPUs=0 was set).")
+                         "process (--num_gpus=0 was set).")
     else:
         gpu_sets = ["''"] * args.num_jobs
 

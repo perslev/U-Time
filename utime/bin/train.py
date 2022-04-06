@@ -13,18 +13,20 @@ import tensorflow as tf
 from argparse import ArgumentParser
 from utime import Defaults
 from utime.train import Trainer
+from utime.models.model_init import (init_model,
+                                     load_from_file,
+                                     prepare_for_continued_training)
 from utime.hyperparameters import YAMLHParams
-from utime.utils.scriptutils import assert_project_folder
+from utime.utils.system import find_and_set_gpus
+from utime.utils.scriptutils import assert_project_folder, add_logging_file_handler
 from utime.utils.scriptutils.train import (get_train_and_val_datasets,
                                            get_h5_train_and_val_datasets,
                                            get_generators,
-                                           find_and_set_gpus,
                                            get_samples_per_epoch,
                                            save_final_weights,
                                            remove_previous_session,
                                            init_default_project_structure)
 from sleeputils.dataset.queue.utils import get_data_queues
-from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +38,9 @@ def get_argparser():
     parser = ArgumentParser(description='Fit a U-Time model defined in'
                                         ' a project folder. Invoke '
                                         '"ut init" to start a new project.')
-    parser.add_argument("--num_GPUs", type=int, default=1,
+    parser.add_argument("--num_gpus", type=int, default=1,
                         help="Number of GPUs to use for this job (default=1)")
-    parser.add_argument("--force_GPU", type=str, default="")
+    parser.add_argument("--force_gpus", type=str, default="")
     parser.add_argument("--continue_training", action="store_true",
                         help="Continue the last training session")
     parser.add_argument("--initialize_from", type=str, default=None,
@@ -170,13 +172,12 @@ def keep_n_random(*datasets, keep):
         dataset.update_id_to_study_dict()
 
 
-def run(args, gpu_mon):
+def run(args):
     """
     Run the script according to args - Please refer to the argparser.
 
     args:
         args:    (Namespace)  command-line arguments
-        gpu_mon: (GPUMonitor) Initialized mpunet GPUMonitor object
     """
     assert_args(args)
     project_dir = os.path.abspath("./")
@@ -244,22 +245,20 @@ def run(args, gpu_mon):
     if args.continue_training:
         # Prepare the project directory for continued training.
         # Please refer to the function docstring for details
-        from utime.models.model_init import prepare_for_continued_training
         parameter_file = prepare_for_continued_training(hparams=hparams,
                                                         project_dir=project_dir)
     else:
         parameter_file = args.initialize_from  # most often is None
 
     # Set the GPU visibility
-    num_gpus = find_and_set_gpus(gpu_mon, args.force_GPU, args.num_GPUs)
+    num_gpus = find_and_set_gpus(args.num_gpus, args.force_gpus)
     gpus = tf.config.list_physical_devices('GPU')
     assert len(gpus) == num_gpus, "Unexpected difference in number of visible and requested GPUs."
     # Initialize and potential load parameters into the model
-    from utime.models.model_init import init_model, load_from_file
     strategy = tf.distribute.MirroredStrategy(gpus) if gpus else tf.distribute.OneDeviceStrategy('/device:CPU:0')
     logger.info(f"Using TF distribution strategy: {strategy} on GPUs: {gpus}. (CPU:0 if empty).")
     with strategy.scope():
-        model = init_model(hparams["build"])
+        model = init_model(hparams["build"], clear_previous=False)
         if parameter_file:
             load_from_file(model, parameter_file, by_name=True)
 
@@ -289,15 +288,9 @@ def entry_func(args=None):
     # Get the script to execute, parse only first input
     parser = get_argparser()
     args = parser.parse_args(args)
-
-    # Here, we wrap the training in a try/except block to ensure that we
-    # stop the GPUMonitor process after training, even if an error occurred
-    from mpunet.utils.system import GPUMonitor
-    gpu_mon = GPUMonitor()
     try:
-        run(args=args, gpu_mon=gpu_mon)
+        run(args=args)
     finally:
-        gpu_mon.stop()
         tables.file._open_files.close_all()
 
 
