@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from mpunet.interpolation import RegularGridInterpolator
+from scipy.interpolate import RegularGridInterpolator
 from scipy.ndimage.filters import gaussian_filter
 
 logger = logging.getLogger(__name__)
@@ -43,8 +43,7 @@ def elastic_transform(signal, labels, alpha, sigma, bg_value=0.0):
         intrps.append(RegularGridInterpolator(coords, signal[:, i],
                                               method="linear",
                                               bounds_error=False,
-                                              fill_value=bg_value,
-                                              dtype=np.float32))
+                                              fill_value=bg_value))
 
     # Get random elastic deformations
     dx = gaussian_filter((np.random.rand(seg_length) * 2 - 1), sigma,
@@ -56,15 +55,14 @@ def elastic_transform(signal, labels, alpha, sigma, bg_value=0.0):
     # Interpolate all signal channels
     signal = np.empty(shape=signal.shape, dtype=dtype)
     for i, intrp in enumerate(intrps):
-        signal[:, i] = intrp(indices)
+        signal[:, i] = intrp(indices).astype(dtype)
 
     # Interpolate labels if passed, only if same shape as input
     if labels is not None and len(labels) == len(signal):
         lab_intrp = RegularGridInterpolator(coords, labels,
                                             method="nearest",
                                             bounds_error=False,
-                                            fill_value=0,
-                                            dtype=np.uint8)
+                                            fill_value=0)
         labels = lab_intrp(indices).astype(labels.dtype)
 
     return signal.reshape(org_sig_shape), labels.reshape(org_lab_shape)
