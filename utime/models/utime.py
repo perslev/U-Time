@@ -374,7 +374,7 @@ class UTime(Model):
 
     def log(self):
         logger.info("\nUTime Model Summary\n"
-                    "-------------------"
+                    "-------------------\n"
                     f"N periods:         {self.n_periods}\n"
                     f"Input dims:        {self.input_dims}\n"
                     f"N channels:        {self.n_channels}\n"
