@@ -9,7 +9,7 @@ from sleeputils.utils import get_memory_usage
 from utime.utils import highlighted
 from collections import defaultdict
 from datetime import timedelta, datetime
-from mpunet.utils.plotting import plot_all_training_curves
+from utime.utils.plotting import plot_all_training_curves
 
 logger = logging.getLogger(__name__)
 
@@ -366,11 +366,13 @@ class LearningCurve(Callback):
         self.plot_kwargs = plot_kwargs
 
     def on_epoch_end(self, epoch, logs=None):
-        plot_all_training_curves(self.csv_regex,
-                                 self.save_path,
-                                 logy=True,
-                                 raise_error=False,
-                                 **self.plot_kwargs)
+        try:
+            plot_all_training_curves(self.csv_regex,
+                                     self.save_path,
+                                     logy=True,
+                                     **self.plot_kwargs)
+        except Exception as e:
+            logger.error(f"Could not plot one or more training curves. Reason: {e}")
 
 
 class DelayedCallback(object):
