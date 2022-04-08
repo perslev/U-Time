@@ -11,34 +11,9 @@ from tensorflow.python.framework.errors_impl import ResourceExhaustedError, Inte
 from utime.callbacks import init_callback_objects, remove_validation_callbacks
 from utime.callbacks import Validation, LearningCurve, MeanReduceLogArrays, PrintDividerLine, MemoryConsumption
 from sleeputils.utils import ensure_list_or_tuple
-from mpunet.train.utils import (ensure_sparse, init_losses,
-                                init_metrics, init_optimizer)
-from utime.train.utils import get_steps
+from utime.train.utils import ensure_sparse, init_losses, init_metrics, init_optimizer, get_steps
 
 logger = logging.getLogger(__name__)
-
-
-def ignore_class_wrapper(loss_func, n_pred_classes):
-    """
-    For a model that outputs K classes, this wrapper removes entries in the
-    true/pred pairs for which the true label is of integer value K.
-
-    TODO
-    """
-    @tf.function
-    def wrapper(true, pred):
-        true.set_shape(pred.get_shape()[:-1] + [1])
-        true = tf.reshape(true, [-1])
-        pred = tf.reshape(pred, [-1, n_pred_classes])
-        mask = tf.where(tf.not_equal(true, n_pred_classes), tf.ones_like(true), tf.zeros_like(true))
-        mask = tf.cast(mask, tf.bool)
-        true = tf.boolean_mask(true, mask, axis=0)
-        pred = tf.boolean_mask(pred, mask, axis=0)
-        return loss_func(true, pred)
-    logger.info(f"Regarding loss func: {loss_func}. "
-                f"Model outputs {n_pred_classes} classes; "
-                f"Ignoring class with integer values {n_pred_classes}")
-    return wrapper
 
 
 class Trainer(object):
@@ -53,21 +28,24 @@ class Trainer(object):
         self.model = model
 
     def compile_model(self, optimizer, loss, metrics, reduction,
-                      ignore_class_int=None, check_sparse=False,
-                      optimizer_kwargs={}, loss_kwargs={}, **kwargs):
+                      ignore_out_of_bounds_classes=False, check_sparse=False,
+                      optimizer_kwargs={}, loss_kwargs={}, metric_kwargs={}, **kwargs):
         """
         Compile the stored tf.keras Model instance stored in self.model
         Sets the loss function, optimizer and metrics
 
         Args:
             optimizer:        (string) The name of a tf.keras.optimizers Optimizer
-            optimizer_kwargs: (dict)   Key-word arguments passed to the Optimizer
             loss:             (string) The name of a tf.keras.losses or
-                                       MultiPlanarUnet loss function
             metrics:          (list)   List of tf.keras.metrics or
                                        MultiPlanarUNet metrics.
-            reduction         TODO
-            check_sparse:     TODO
+            reduction:                          TODO
+            check_sparse:                       TODO
+            ignore_out_of_bounds_classes (bool) TODO
+            optimizer_kwargs: (dict)   Key-word arguments passed to the Optimizer
+            loss_kwargs:      (dict)   Key-word arguments passed to all Loss functions
+            metric_kwargs:    (dict)   Key-word arguments passed to all Metrics functions
+                                       MultiPlanarUnet loss function
             **kwargs:         (dict)   Key-word arguments passed to losses
                                        and/or metrics that accept such.
         """
@@ -77,33 +55,16 @@ class Trainer(object):
         if check_sparse:
             ensure_sparse(metrics+losses)
 
-        # Initialize optimizer, loss(es) and metric(s) from tf.keras or MultiPlanarUNet
+        # Initialize optimizer, loss(es) and metric(s) from tf.keras, tf addons or utime.evaluation
         optimizer = init_optimizer(optimizer, **optimizer_kwargs)
-        losses = init_losses(losses, **kwargs)
-        for i, loss in enumerate(losses):
-            try:
-                losses[i] = loss(reduction=reduction, **loss_kwargs)
-            except (ValueError, TypeError):
-                raise TypeError("All loss functions must currently be "
-                                "callable and accept the 'reduction' "
-                                "parameter specifying a "
-                                "tf.keras.losses.Reduction type. If you "
-                                "specified a keras loss function such as "
-                                "'sparse_categorical_crossentropy', change "
-                                "this to its corresponding loss class "
-                                "'SparseCategoricalCrossentropy'. If "
-                                "you implemented a custom loss function, "
-                                "please raise an issue on GitHub.")
-            if ignore_class_int is not None:
-                # Mask out class
-                losses[i] = ignore_class_wrapper(losses[i], ignore_class_int)
-        metrics = init_metrics(metrics, **kwargs)
+        losses = init_losses(losses, reduction, ignore_out_of_bounds_classes, **loss_kwargs)
+        metrics = init_metrics(metrics, ignore_out_of_bounds_classes, **metric_kwargs)
 
         # Compile the model
         self.model.compile(optimizer=optimizer, loss=losses, metrics=metrics)
         logger.info(f"Optimizer:   {optimizer}\n"
                     f"Loss funcs:  {losses}\n"
-                    f"Metrics:     {init_metrics}")
+                    f"Metrics:     {metrics}")
         return self
 
     def fit(self, batch_size, **fit_kwargs):
