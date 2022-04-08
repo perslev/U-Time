@@ -15,3 +15,4 @@ carbontracker>=1.1.6
 sleeputils>=0.0.1
 tensorflow>=2.8.0
 tensorflow-addons>=0.16.1
+yamlhparams>=0.1.0
