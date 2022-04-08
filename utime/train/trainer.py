@@ -62,7 +62,7 @@ class Trainer(object):
 
         # Compile the model
         self.model.compile(optimizer=optimizer, loss=losses, metrics=metrics)
-        logger.info(f"Optimizer:   {optimizer}\n"
+        logger.info(f"\nOptimizer:   {optimizer}\n"
                     f"Loss funcs:  {losses}\n"
                     f"Metrics:     {metrics}")
         return self
