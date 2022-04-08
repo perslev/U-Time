@@ -89,13 +89,19 @@ fit:
   channel_mixture: False
   margin: 11
 
-  # Loss function
-  loss: ["SparseCategoricalCrossentropy"]
-  metrics: ["sparse_categorical_accuracy"]
+  # Loss function(s)
+  loss: [SparseCategoricalCrossentropy]
+  # loss_kwargs:  # OBS: passed to all losses
+  #   name: my_loss
 
-  # Ignore class in loss computation (e.g. to ignore 'UNKNOWN'/'MOVEMENT' other rare classes)
-  # Comment out or set to Null to not ignore any classes
-  ignore_class_int: 5
+  # Metric function(s)
+  metrics: [SparseCategoricalAccuracy]
+  # metric_kwargs:  # OBS: passed to all metrics
+  #   name: my_metric
+
+  # Ignore 'out-of-bounds' classes in loss computation (e.g. to ignore 'UNKNOWN'/'MOVEMENT' other rare classes)
+  # Comment out or set to Null/False to not ignore any classes
+  ignore_out_of_bounds_classes: true
 
   # Optimization
   batch_size: 12
