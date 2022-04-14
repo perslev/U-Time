@@ -83,7 +83,7 @@ conda activate u-sleep
 pip install U-Time/
 ```
 
-Alternatively, you may install the package from (PyPi)[https://pypi.org] (updated less frequently):
+Alternatively, you may install the package from [PyPi](https://pypi.org) (may be updated less frequently):
 
 ```
 pip install utime
