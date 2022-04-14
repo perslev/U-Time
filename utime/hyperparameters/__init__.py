@@ -35,12 +35,12 @@ def _handle_metrics_renaming(hparams):
         "sparse_top_k_categorical_accuracy": "SparseTopKCategoricalAccuracy"
     }
     try:
-        metrics = ensure_list_or_tuple(hparams.get_group('/fit/metrics'))
+        metrics = hparams.get_group('/fit/metrics')
     except KeyError:
         pass
     else:
         any_replaced = False
-        for i, metric in enumerate(metrics):
+        for i, metric in enumerate(ensure_list_or_tuple(metrics or [])):
             if metric in map_:
                 logger.warning(f"Found deprecated metrics naming of '{metric}' in hyperparameter file "
                                f"at path {hparams.yaml_path}. Renaming to '{map_[metric]}' and "
