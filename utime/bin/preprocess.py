@@ -90,7 +90,7 @@ def preprocess_study(h5_file_group, study):
     # Create groups
     study_group = h5_file_group.create_group(study.identifier)
     psg_group = study_group.create_group("PSG")
-    with study.loaded_in_context():
+    with study.loaded_in_context(allow_missing_channels=True):
         X, y = study.get_all_periods()
         for chan_ind, channel_name in enumerate(study.select_channels):
             # Create PSG channel datasets
