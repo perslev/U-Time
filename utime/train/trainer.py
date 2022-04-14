@@ -10,7 +10,7 @@ import tensorflow as tf
 from tensorflow.python.framework.errors_impl import ResourceExhaustedError, InternalError
 from utime.callbacks import init_callback_objects, remove_validation_callbacks
 from utime.callbacks import Validation, LearningCurve, MeanReduceLogArrays, PrintDividerLine, MemoryConsumption
-from sleeputils.utils import ensure_list_or_tuple
+from psg_utils.utils import ensure_list_or_tuple
 from utime.train.utils import ensure_sparse, init_losses, init_metrics, init_optimizer, get_steps
 
 logger = logging.getLogger(__name__)

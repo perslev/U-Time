@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 from utime.sequences.base_sequence import _BaseSequence
-from sleeputils.errors import NotLoadedError
+from psg_utils.errors import NotLoadedError
 
 logger = logging.getLogger(__name__)
 

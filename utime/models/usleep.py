@@ -15,7 +15,7 @@ from tensorflow.keras.layers import Input, BatchNormalization, \
                                     Concatenate, MaxPooling2D, \
                                     UpSampling2D, Conv2D, \
                                     AveragePooling2D, Layer
-from mpunet.utils.conv_arithmetics import compute_receptive_fields
+from utime.utils.conv_arithmetics import compute_receptive_fields
 from utime.train.utils import get_activation_function
 
 logger = logging.getLogger(__name__)

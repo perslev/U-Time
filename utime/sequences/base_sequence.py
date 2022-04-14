@@ -5,9 +5,9 @@ from tensorflow.keras.utils import Sequence
 from functools import wraps
 from multiprocessing import current_process
 from utime import Defaults
-from sleeputils.errors import NotLoadedError
-from sleeputils.preprocessing.scaling import apply_scaling, assert_scaler
-from sleeputils.dataset.utils import assert_all_loaded
+from psg_utils.errors import NotLoadedError
+from psg_utils.preprocessing.scaling import apply_scaling, assert_scaler
+from psg_utils.dataset.utils import assert_all_loaded
 
 logger = logging.getLogger(__name__)
 

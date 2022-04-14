@@ -5,7 +5,7 @@ import pandas as pd
 import tensorflow as tf
 from carbontracker.tracker import CarbonTracker
 from tensorflow.keras.callbacks import Callback
-from sleeputils.utils import get_memory_usage
+from psg_utils.utils import get_memory_usage
 from utime.utils import highlighted
 from collections import defaultdict
 from datetime import timedelta, datetime

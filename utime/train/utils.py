@@ -6,7 +6,7 @@ from tensorflow_addons import optimizers as addon_optimizers
 from tensorflow_addons import activations as addon_activations
 from tensorflow_addons import losses as addon_losses
 from tensorflow_addons import metrics as addon_metrics
-from sleeputils.utils import ensure_list_or_tuple
+from psg_utils.utils import ensure_list_or_tuple
 from utime.errors import NotSparseError
 from utime.evaluation import loss_functions as custom_loss_functions
 from utime.evaluation.utils import ignore_out_of_bounds_classes_wrapper
@@ -110,8 +110,7 @@ def init_losses(loss_string_list, reduction, ignore_out_of_bounds_classes=False,
     """
     Takes a list of strings each naming a loss function to return. The string
     name should correspond to a function or class that is an attribute of
-    either the tensorflow.keras.losses or mpunet.evaluate.losses
-    modules.
+    either the tensorflow.keras.losses or utime.evaluation.losses modules.
 
     The returned values are either references to the loss functions to use, or
     initialized loss classes for some custom losses (used when the loss

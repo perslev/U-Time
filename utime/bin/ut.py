@@ -12,7 +12,7 @@ import os
 import sys
 import importlib
 import pkgutil
-import sleeputils
+import psg_utils
 from utime import bin, Defaults
 from utime.version import __version__
 
@@ -79,9 +79,9 @@ def entry_func():
     # Handled in add_logging_file_handler of individual script where overwriting is also checked.
     Defaults.LOG_DIR = os.path.abspath(parsed.log_dir)
 
-    # Init both the utime and sleeputils package-level loggers to share formatter and handlers
+    # Init both the utime and psg_utils package-level loggers to share formatter and handlers
     Defaults.init_package_level_loggers(parsed.log_level, package_names=(Defaults.PACKAGE_NAME,
-                                                                         sleeputils.__name__))
+                                                                         psg_utils.__name__))
     logger.info(f"Entry script args dump: {vars(parsed)}")
 
     # Set project directory for the script

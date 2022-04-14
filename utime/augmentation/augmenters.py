@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 from .elastic_deformation import elastic_transform
-from sleeputils.utils import exactly_one_specified
+from psg_utils.utils import exactly_one_specified
 
 logger = logging.getLogger(__name__)
 

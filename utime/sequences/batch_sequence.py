@@ -8,7 +8,7 @@ See docstring below.
 import logging
 import numpy as np
 from utime.sequences.base_sequence import BaseSequence, requires_all_loaded
-from sleeputils.errors import MarginError
+from psg_utils.errors import MarginError
 
 logger = logging.getLogger(__name__)
 

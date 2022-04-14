@@ -7,13 +7,17 @@ import logging
 import os
 import numpy as np
 from argparse import ArgumentParser
-from sleeputils.dataset.queue import LazyQueue
+from psg_utils.dataset.queue import LazyQueue
+from sklearn.metrics import f1_score
 from utime import Defaults
+from utime.evaluation.metrics import class_wise_kappa
 from utime.utils.system import find_and_set_gpus
 from utime.utils.scriptutils import (assert_project_folder,
                                      get_splits_from_all_datasets,
                                      add_logging_file_handler,
                                      with_logging_level_wrapper)
+from utime.evaluation.dataframe import (get_eval_df, add_to_eval_df,
+                                        log_eval_df, with_grand_mean_col)
 
 logger = logging.getLogger(__name__)
 
@@ -374,9 +378,6 @@ def run_pred_and_eval(dataset,
         hparams:     An YAMLHparams object storing all hyperparameters
         args:        Passed command-line arguments
     """
-    from mpunet.evaluate.metrics import dice_all, class_wise_kappa
-    from utime.evaluation.dataframe import (get_eval_df, add_to_eval_df,
-                                            log_eval_df, with_grand_mean_col)
     logger.info(f"\nPREDICTING ON {len(dataset.pairs)} STUDIES")
     seq = get_sequencer(dataset, hparams)
 
@@ -411,12 +412,16 @@ def run_pred_and_eval(dataset,
                 save(y, fname=os.path.join(save_dir, "true.npz"))
 
         # Evaluate: dice scores
-        dice_pr_class = dice_all(y, pred, n_classes=seq.n_classes, ignore_zero=False, smooth=0)
+        dice_pr_class = f1_score(y_true=y.ravel(),
+                                 y_pred=pred.ravel(),
+                                 labels=list(range(seq.n_classes)),
+                                 average=None,
+                                 zero_division=1)
         logger.info(f"-- Dice scores:  {np.round(dice_pr_class, 4)}")
         add_to_eval_df(dice_eval_df, id_, values=dice_pr_class)
 
         # Evaluate: kappa
-        kappa_pr_class = class_wise_kappa(y, pred, n_classes=seq.n_classes, ignore_zero=False)
+        kappa_pr_class = class_wise_kappa(y, pred, n_classes=seq.n_classes)
         logger.info(f"-- Kappa scores: {np.round(kappa_pr_class, 4)}")
         add_to_eval_df(kappa_eval_df, id_, values=kappa_pr_class)
 

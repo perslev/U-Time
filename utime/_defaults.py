@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from sleeputils import Defaults
+from psg_utils import Defaults
 
 logger = logging.getLogger(__name__)
 

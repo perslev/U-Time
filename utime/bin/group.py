@@ -8,7 +8,7 @@ import os
 import shutil
 from argparse import ArgumentParser
 from utime.bin.cv_split import pair_by_names
-from sleeputils.dataset.utils import filter_by_regex
+from psg_utils.dataset.utils import filter_by_regex
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)

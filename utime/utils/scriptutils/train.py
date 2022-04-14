@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 from utime.utils.scriptutils import get_all_dataset_hparams, get_splits_from_all_datasets
 from utime.sequences import MultiSequence, ValidationMultiSequence, get_batch_sequence
-from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
-from sleeputils.dataset.sleep_study_dataset import SingleH5Dataset
-from sleeputils.errors import NotLoadedError
+from psg_utils.preprocessing.utils import select_sample_strip_scale_quality
+from psg_utils.dataset.sleep_study_dataset import SingleH5Dataset
+from psg_utils.errors import NotLoadedError
 
 logger = logging.getLogger(__name__)
 

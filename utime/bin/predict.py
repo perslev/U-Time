@@ -16,7 +16,7 @@ from utime.bin.evaluate import (predict_on,
                                 prepare_output_dir, get_and_load_model,
                                 get_and_load_one_shot_model, get_sequencer,
                                 get_out_dir)
-from sleeputils.io.channels import filter_non_available_channels
+from psg_utils.io.channels import filter_non_available_channels
 from utime.utils.scriptutils import add_logging_file_handler, with_logging_level_wrapper
 
 logger = logging.getLogger(__name__)

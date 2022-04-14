@@ -7,7 +7,7 @@ import logging
 import os
 from sys import exit
 from argparse import ArgumentParser
-from sleeputils.downloads import (download_dataset,
+from psg_utils.downloads import (download_dataset,
                                   preprocess_dataset,
                                   DOWNLOAD_FUNCS)
 from utime.utils.scriptutils import add_logging_file_handler

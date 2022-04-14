@@ -5,9 +5,9 @@ A set of utility functions used across multiple scripts in utime.bin
 import logging
 import os
 from functools import wraps
-from sleeputils.utils import ensure_list_or_tuple
-from sleeputils.dataset import SleepStudyDataset
-from sleeputils.preprocessing.utils import select_sample_strip_scale_quality
+from psg_utils.utils import ensure_list_or_tuple
+from psg_utils.dataset import SleepStudyDataset
+from psg_utils.preprocessing.utils import select_sample_strip_scale_quality
 from utime import Defaults
 
 logger = logging.getLogger(__name__)

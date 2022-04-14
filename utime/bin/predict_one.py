@@ -7,10 +7,10 @@ from argparse import ArgumentParser, Namespace
 from utime import Defaults
 from utime.utils.system import find_and_set_gpus
 from utime.bin.evaluate import get_and_load_one_shot_model
-from sleeputils.dataset.sleep_study import SleepStudy
-from sleeputils.hypnogram.utils import dense_to_sparse
-from sleeputils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
-from sleeputils.io.channels import auto_infer_referencing as infer_channel_refs
+from psg_utils.dataset.sleep_study import SleepStudy
+from psg_utils.hypnogram.utils import dense_to_sparse
+from psg_utils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
+from psg_utils.io.channels import auto_infer_referencing as infer_channel_refs
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)

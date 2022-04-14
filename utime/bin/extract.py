@@ -13,12 +13,12 @@ import numpy as np
 import pickle
 from argparse import ArgumentParser
 from glob import glob
-from sleeputils.errors import ChannelNotFoundError
-from sleeputils.io.channels import ChannelMontageTuple, ChannelMontageCreator
-from sleeputils.io.header import extract_header
-from sleeputils.io.high_level_file_loaders import load_psg
-from sleeputils.io import to_h5_file
-from sleeputils.preprocessing.psg_sampling import set_psg_sample_rate
+from psg_utils.errors import ChannelNotFoundError
+from psg_utils.io.channels import ChannelMontageTuple, ChannelMontageCreator
+from psg_utils.io.header import extract_header
+from psg_utils.io.high_level_file_loaders import load_psg
+from psg_utils.io import to_h5_file
+from psg_utils.preprocessing.psg_sampling import set_psg_sample_rate
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)

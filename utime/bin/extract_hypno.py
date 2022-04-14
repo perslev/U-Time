@@ -4,8 +4,8 @@ import numpy as np
 from argparse import ArgumentParser
 from glob import glob
 from pathlib import Path
-from sleeputils.io.hypnogram import extract_ids_from_hyp_file
-from sleeputils.hypnogram.utils import fill_hyp_gaps
+from psg_utils.io.hypnogram import extract_ids_from_hyp_file
+from psg_utils.hypnogram.utils import fill_hyp_gaps
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)

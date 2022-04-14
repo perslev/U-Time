@@ -72,7 +72,7 @@ def init_and_load_model(hparams, weights_file, clear_previous=False, by_name=Tru
 def init_and_load_best_model(hparams, model_dir, clear_previous=False, by_name=True):
     """
     Initializes a model according to hparams. Then finds the best model in
-    model_dir and loads it (see mpunet.utils.get_best_model).
+    model_dir and loads it (see utime.utils.get_best_model).
 
     Args:
         hparams:        A YAMLHparams object of hyperparameters
@@ -94,7 +94,7 @@ def init_and_load_best_model(hparams, model_dir, clear_previous=False, by_name=T
 def init_and_load_latest_model(hparams, model_dir, clear_previous=False, by_name=True):
     """
     Initializes a model according to hparams. Then finds the latest model in
-    model_dir and loads it (see mpunet.utils.get_latest_model).
+    model_dir and loads it (see utime.utils.get_latest_model).
 
     Args:
         hparams:        A YAMLHparams object of hyperparameters

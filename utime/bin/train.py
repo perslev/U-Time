@@ -26,7 +26,7 @@ from utime.utils.scriptutils.train import (get_train_and_val_datasets,
                                            save_final_weights,
                                            remove_previous_session,
                                            init_default_project_structure)
-from sleeputils.dataset.queue.utils import get_data_queues
+from psg_utils.dataset.queue.utils import get_data_queues
 
 logger = logging.getLogger(__name__)
 

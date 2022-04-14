@@ -7,8 +7,8 @@ import os
 import logging
 from argparse import ArgumentParser
 from glob import glob
-from sleeputils.io.header import extract_header
-from sleeputils.dataset import SleepStudy
+from psg_utils.io.header import extract_header
+from psg_utils.dataset import SleepStudy
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
