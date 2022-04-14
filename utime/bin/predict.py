@@ -142,13 +142,12 @@ def get_datasets(hparams, args):
         if args.strip_func:
             # Replace the set strip function
             set_new_strip_func(dataset_hparams, args.strip_func)
-        # Check if load-time channel selector is set
-        channel_groups = dataset_hparams.get('load_time_channel_sampling_groups') or \
-                         dataset_hparams.get('access_time_channel_sampling_groups')
+        # Check if channel sampling groups are set
+        channel_groups = dataset_hparams.get('channel_sampling_groups')
         if channel_groups:
             # Add the channel groups to a separate field, handled at pred. time
             # Make sure all available channels are available in the misc attr.
-            del dataset_hparams['load_time_channel_sampling_groups']
+            del dataset_hparams['channel_sampling_groups']
             dataset_hparams['misc'] = {'channel_groups': channel_groups}
 
     if args.folder_regex:

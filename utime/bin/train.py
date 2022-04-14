@@ -25,6 +25,7 @@ from utime.utils.scriptutils.train import (get_train_and_val_datasets,
                                            get_samples_per_epoch,
                                            save_final_weights,
                                            remove_previous_session,
+                                           get_all_dataset_hparams,
                                            init_default_project_structure)
 from psg_utils.dataset.queue.utils import get_data_queues
 
@@ -143,15 +144,11 @@ def update_hparams_with_command_line_arguments(hparams, args):
     if args.channels is not None and args.channels:
         # Channel selection hyperparameter might be stored in separate conf.
         # files. Here, we load them, set the channel value, and save them again
-        from utime.utils.scriptutils import get_all_dataset_hparams
         for _, dataset_hparams in get_all_dataset_hparams(hparams).items():
             dataset_hparams.set_group("select_channels",
                                       value=args.channels,
                                       overwrite=True)
-            if dataset_hparams.get("load_time_channel_sampling_groups"):
-                dataset_hparams.delete_group('load_time_channel_sampling_groups')
-            if dataset_hparams.get("access_time_channel_sampling_groups"):
-                dataset_hparams.delete_group('access_time_channel_sampling_groups')
+            dataset_hparams.delete_group('channel_sampling_groups', non_existing_ok=True)
             dataset_hparams.save_current()
     hparams.save_current()
 

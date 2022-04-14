@@ -23,6 +23,7 @@ from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from utime import Defaults
+from utime.utils import flatten_lists_recursively
 from utime.hyperparameters import YAMLHParams
 from utime.utils.scriptutils import assert_project_folder, get_splits_from_all_datasets, add_logging_file_handler
 
@@ -54,17 +55,14 @@ def get_argparser():
 
 
 def copy_dataset_hparams(hparams, hparams_out_path):
-    groups_to_save = ('select_channels', 'alternative_select_channels',
-                      'load_time_channel_sampling_groups')
+    groups_to_save = ('select_channels',
+                      'alternative_select_channels',
+                      'channel_sampling_groups')
     hparams = hparams.save_current(hparams_out_path, return_copy=True)
     groups = list(hparams.keys())
     for group in groups:
         if group not in groups_to_save:
             hparams.delete_group(group)
-    if "load_time_channel_sampling_groups" in hparams:
-        grp = hparams.get_group("load_time_channel_sampling_groups")
-        hparams.delete_group("load_time_channel_sampling_groups")
-        hparams.set_group("access_time_channel_sampling_groups", grp)
     hparams.save_current()
 
 
@@ -174,8 +172,16 @@ def run(args):
                                       args.out_path,
                                       split.identifier.split("/")[-1].lower(),
                                       split.period_length_sec)
+
                     # Overwrite potential load time channel sampler to None
-                    split.set_load_time_channel_sampling_groups(None)
+                    if split.channel_sampling_groups:
+                        unique_channels = list(set(flatten_lists_recursively(
+                            split.channel_sampling_groups
+                        )))
+                        logger.info(f"Found channel sampling groups '{split.channel_sampling_groups}'. "
+                                    f"Saving unique channels {unique_channels}.")
+                        split.set_channel_sampling_groups(None)
+                        split.select_channels = unique_channels
 
                     # Create dataset group
                     split_group = h5_file.create_group(split.identifier)
