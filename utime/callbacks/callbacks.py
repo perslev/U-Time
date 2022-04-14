@@ -46,15 +46,10 @@ class Validation(Callback):
         self.log_round = 4
         self._supports_tf_logs = True
 
-    def _compute_counts(self, pred, true, ignore_class=None):
+    def _compute_counts(self, pred, true):
         # Argmax and CM elements
         pred = pred.argmax(-1).ravel()
         true = true.ravel()
-
-        if ignore_class:
-            mask = np.where(true != ignore_class)
-            true = true[mask]
-            pred = pred[mask]
 
         # Compute relevant CM elements
         # We select the number following the largest class integer when
@@ -103,9 +98,7 @@ class Validation(Callback):
                     pred_numpy = pred.numpy()
                 else:
                     pred_numpy = pred
-                tps, rel, sel = self._compute_counts(pred=pred_numpy,
-                                                     true=y,
-                                                     ignore_class=5)
+                tps, rel, sel = self._compute_counts(pred=pred_numpy, true=y)
                 true_pos[id_] += tps
                 relevant[id_] += rel
                 selected[id_] += sel
