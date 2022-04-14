@@ -174,14 +174,15 @@ def run(args):
                                       split.period_length_sec)
 
                     # Overwrite potential load time channel sampler to None
-                    if split.channel_sampling_groups:
+                    channel_sampling_groups = dataset_hparams.get('channel_sampling_groups')
+                    if channel_sampling_groups:
                         unique_channels = list(set(flatten_lists_recursively(
-                            split.channel_sampling_groups
+                            channel_sampling_groups
                         )))
-                        logger.info(f"Found channel sampling groups '{split.channel_sampling_groups}'. "
+                        logger.info(f"Found channel sampling groups '{channel_sampling_groups}'. "
                                     f"Saving unique channels {unique_channels}.")
                         split.set_channel_sampling_groups(None)
-                        split.select_channels = unique_channels
+                        split.set_select_channels(unique_channels)
 
                     # Create dataset group
                     split_group = h5_file.create_group(split.identifier)
