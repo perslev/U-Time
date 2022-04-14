@@ -20,6 +20,7 @@ setup(
     version=__version__,
     description='A deep learning framework for automatic PSG sleep analysis.',
     long_description=readme + "\n\n" + history,
+    long_description_content_type='text/markdown',
     author='Mathias Perslev',
     author_email='map@di.ku.dk',
     url='https://github.com/perslev/U-Time',
@@ -38,6 +39,6 @@ setup(
     classifiers=['Environment :: Console',
                  'Operating System :: POSIX',
                  'Programming Language :: Python :: 3.6',
-                 'Programming Language :: Python :: 3.7'
+                 'Programming Language :: Python :: 3.7',
                  'License :: OSI Approved :: MIT License']
 )
