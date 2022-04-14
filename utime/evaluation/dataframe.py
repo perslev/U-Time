@@ -26,7 +26,7 @@ def with_grand_mean_col(eval_dict, col_name="Grand mean"):
 
 
 def log_eval_df_to_screen(eval_dict, round=4, txt=None):
-    log = f"[*] {txt or 'EVALUATION RESULTS'}"
+    log = f"\n[*] {txt or 'EVALUATION RESULTS'}"
     logger.info(
         log + "\n" + "-"*len(log) + "\n" + str(eval_dict.round(round)) + "\n" + "-"*len(log)
     )

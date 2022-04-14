@@ -221,7 +221,7 @@ class Validation(Callback):
                 to_print[f.split("_")[-1]] = list(scores) + [res]
             df = pd.DataFrame(to_print)
             df.index = self.IDs + ["mean"]
-            logger.info(str(df.round(self.print_round)) + "\n")
+            logger.info("\n" + str(df.round(self.print_round)) + "\n")
 
 
 class MemoryConsumption(Callback):
