@@ -78,7 +78,8 @@ class _Defaults(Defaults):
                 os.remove(path)
             elif "a" not in mode:
                 raise OSError(f"Logging path {path} already exists and 'overwrite_existing' argument is set False. "
-                              f"If using the utime scripts, set the --overwrite flag to overwrite.")
+                              f"If using the utime scripts, set the --overwrite flag to overwrite or use the "
+                              f"--log_dir and/or --log_file flag(s) to specify a different logging path.")
         if path is None:
             raise ValueError("Attribute 'LOG_DIR' on Defaults object has not yet been set.")
         folder = os.path.split(path)[0]
