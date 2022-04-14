@@ -189,10 +189,10 @@ file of your project directory. In this demo, we are going to run only a very sh
 Run the following command:
 
 ```
-ut train --num_GPUs=1 --preprocessed --seed 123
+ut train --num_gpus=1 --preprocessed --seed 123
 ```
 
-You may replace the `--num_GPUs=1` parameter in the above command with `--num_GPUs=0` if you do not have a GPU available, and wish to train on the CPU. Training on CPU may take up to 30 minutes.
+You may replace the `--num_gpus=1` parameter in the above command with `--num_gpus=0` if you do not have a GPU available, and wish to train on the CPU. Training on CPU may take up to 30 minutes.
 
 Following training, a set of candidate models will be available in the folder `model`. Using the best one observed (highest validation mean F1 score), 
 we may predict on the testing sets of both `SEDF-SC` and `DCSM` using all channel combinations as well as compute majority votes by invoking the following `ut predict` command:
@@ -201,7 +201,7 @@ we may predict on the testing sets of both `SEDF-SC` and `DCSM` using all channe
 #### Predicting and evaluating on the test sets
 
 ```
-ut predict --num_GPUs=1 \
+ut predict --num_gpus=1 \
            --data_split test_data \
            --strip_func strip_to_match \
            --one_shot \
@@ -276,14 +276,14 @@ We did our best to make this process as easy as possible. You should take the fo
 If you have 40+ GiB system memory available, train U-Sleep using the following command:
 
 ```
-ut train --num_GPUs 1 --max_loaded_per_dataset 40 --num_access_before_reload 32 --train_queue_type limitation --val_queue_type lazy --max_train_samples_per_epoch 1000000
+ut train --num_gpus 1 --max_loaded_per_dataset 40 --num_access_before_reload 32 --train_queue_type limitation --val_queue_type lazy --max_train_samples_per_epoch 1000000
 ```
 
 On systems with less memory, you may either 1) reduce the `--max_loaded_per_dataset` parameter from the current `40` to a lower value (this will keep fewer PSG records in the active memory pool, which will reduce randomness when selecting records), or 2) preprocess the data and stream data during training (as demonstrated in the Demo above) by invoking the following two commands (replacing [LOCAL_PATH] as applicable):
 
 ```
 ut preprocess --out_path '[LOCAL_PATH]/processed_data.h5' --dataset_splits train_data val_data
-ut train --num_GPUs 1 --preprocessed --max_train_samples_per_epoch 1000000
+ut train --num_gpus 1 --preprocessed --max_train_samples_per_epoch 1000000
 ```
 
 This will apply all preprocessing, create a data archive suitable for streaming, and train U-Sleep using samples loaded on-the-fly from disk.
@@ -317,7 +317,7 @@ ut init --name my_utime_project \
 
 <b># Start training</b>
 cd my_utime_project
-ut train --num_GPUs=1 --channels 'EEG Fpz-Cz'
+ut train --num_gpus=1 --channels 'EEG Fpz-Cz'
 
 <b># Predict and evaluate</b>
 ut evaluate --out_dir eval --one_shot
