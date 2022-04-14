@@ -1,18 +1,20 @@
 import logging
 import numpy as np
 import tensorflow as tf
+from functools import wraps
 
 logger = logging.getLogger(__name__)
 
 
-def ignore_out_of_bounds_classes_wrapper(loss_func):
+def ignore_out_of_bounds_classes_wrapper(func):
     """
     For a model that outputs 'n_pred_classes' classes, this wrapper removes entries in the
     true/pred pairs for which the true label is not in the range [0, 1, ..., n_pred_classes - 1].
     'n_pred_classes' is determined as the length of the prediction tensor on the last dimension.
     """
+    @wraps(func)
     @tf.function
-    def wrapper(true, pred):
+    def wrapper(true, pred, **kwargs):
         true.set_shape(pred.get_shape()[:-1] + [1])
         n_pred_classes = pred.get_shape()[-1]
         true = tf.reshape(true, [-1])
@@ -26,8 +28,8 @@ def ignore_out_of_bounds_classes_wrapper(loss_func):
         mask = tf.cast(mask, tf.bool)
         true = tf.boolean_mask(true, mask, axis=0)
         pred = tf.boolean_mask(pred, mask, axis=0)
-        return loss_func(true, pred)
-    logger.info(f"Wrapping loss/metric function '{loss_func}' to ignore 'true' "
+        return func(true, pred, **kwargs)
+    logger.info(f"Wrapping loss/metric function '{func}' to ignore 'true' "
                 f"classes with integer values outside of the model prediction integer range "
                 f"(e.g., ignoring true class labels of value 5 or -1 if n_classes=5, "
                 f"i.e. when model outputs values in [0, 1, 2, 3, 4]).")
