@@ -79,13 +79,13 @@ def _assert_all_classes(list_of_classes, assert_subclass_of):
             )
 
 
-def _init_losses_or_metrics(list_of_losses_or_metrics, ignore_out_of_bounds_classes, **init_kwargs):
+def _init_losses_or_metrics(list_of_losses_or_metrics, ignore_out_of_bounds_classes, wrap_method_name=None, **init_kwargs):
     """
     TODO
     """
-    for i, func in enumerate(list_of_losses_or_metrics):
+    for i, func_or_cls in enumerate(list_of_losses_or_metrics):
         try:
-            func = func(**init_kwargs)
+            func_or_cls = func_or_cls(**init_kwargs)
         except TypeError as e:
             if "reduction" in str(e):
                 raise TypeError("All loss functions must currently be "
@@ -101,8 +101,16 @@ def _init_losses_or_metrics(list_of_losses_or_metrics, ignore_out_of_bounds_clas
             else:
                 raise e
         if ignore_out_of_bounds_classes:
-            func = ignore_out_of_bounds_classes_wrapper(func)
-        list_of_losses_or_metrics[i] = func
+            if wrap_method_name:
+                # Wrap a specific method on the class
+                if not hasattr(func_or_cls, wrap_method_name):
+                    raise AttributeError(f"Cannot wrap method of name '{wrap_method_name}' on "
+                                         f"class '{func_or_cls}'. Class hos n such attribute.")
+                wrapped = ignore_out_of_bounds_classes_wrapper(getattr(func_or_cls, wrap_method_name))
+                setattr(func_or_cls, wrap_method_name, wrapped)
+            else:
+                func_or_cls = ignore_out_of_bounds_classes_wrapper(func_or_cls)
+        list_of_losses_or_metrics[i] = func_or_cls
     return list_of_losses_or_metrics
 
 
@@ -136,6 +144,7 @@ def init_losses(loss_string_list, reduction, ignore_out_of_bounds_classes=False,
     return _init_losses_or_metrics(losses,
                                    reduction=reduction,
                                    ignore_out_of_bounds_classes=ignore_out_of_bounds_classes,
+                                   wrap_method_name='call',
                                    **kwargs)
 
 
@@ -150,6 +159,7 @@ def init_metrics(metric_string_list, ignore_out_of_bounds_classes=False, **kwarg
     _assert_all_classes(metrics, assert_subclass_of=tensorflow.keras.metrics.Metric)
     return _init_losses_or_metrics(metrics,
                                    ignore_out_of_bounds_classes=ignore_out_of_bounds_classes,
+                                   wrap_method_name='update_state',
                                    **kwargs)
 
 
