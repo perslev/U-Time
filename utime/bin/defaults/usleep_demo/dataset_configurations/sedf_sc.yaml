@@ -21,7 +21,7 @@ test_data:
 
 set_sample_rate: 128
 
-load_time_channel_sampling_groups: [
+channel_sampling_groups: [
   [EEG Fpz-Cz, EEG Pz-Oz],
   [EOG horizontal]
 ]

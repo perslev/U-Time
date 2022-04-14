@@ -8,7 +8,7 @@ test_data:
 
 set_sample_rate: 128
 
-load_time_channel_sampling_groups: [
+channel_sampling_groups: [
   ['C3-M2', 'F4-M1', 'F3-F4', 'F3-M2', 'F4-O2', 'F3-O1', 'FP1-F3', 'FP1-M2', 'FP1-O1', 'FP2-F4', 'FP2-M1', 'FP2-O2'],
   ['EOG1', 'EOG2']
 ]
