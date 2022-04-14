@@ -1,10 +1,14 @@
 import logging
 import numpy as np
 import tensorflow
+from typing import List
 from tensorflow_addons import optimizers as addon_optimizers
 from tensorflow_addons import activations as addon_activations
+from tensorflow_addons import losses as addon_losses
+from tensorflow_addons import metrics as addon_metrics
 from sleeputils.utils import ensure_list_or_tuple
 from utime.errors import NotSparseError
+from utime.evaluation import loss_functions as custom_loss_functions
 from utime.evaluation.utils import ignore_out_of_bounds_classes_wrapper
 
 logger = logging.getLogger(__name__)
@@ -26,7 +30,7 @@ def ensure_sparse(loss_and_metric_names: list):
                                  " with the naming convention of TensorFlow.keras.")
 
 
-def _get_classes_or_funcs(string_list, tf_funcs, custom_funcs=None):
+def _get_classes_or_funcs(string_list: list, func_modules: list) -> List[callable]:
     """
     Helper for 'init_losses' or 'init_metrics'.
     Please refer to their docstrings.
@@ -36,26 +40,25 @@ def _get_classes_or_funcs(string_list, tf_funcs, custom_funcs=None):
                                or loss to use for training. The name should
                                refer to a function or class in either tf_funcs
                                or custom_funcs modules.
-        tf_funcs:     (module or list of modules) A Tensorflow.keras module of losses or metrics,
+        func_modules: (module or list of modules) A Tensorflow.keras module of losses or metrics,
                                                   or a list of various modules to look through.
-        custom_funcs: (module) A custom module or losses or metrics
 
     Returns:
-        A list of len(string_list) of classes/functions of losses or metrics
+        A list of len(string_list) of classes/functions of losses/metrics/optimizers/activation functions etc.
     """
     functions_or_classes = []
-    tf_funcs = ensure_list_or_tuple(tf_funcs)
+    func_modules = ensure_list_or_tuple(func_modules)
     for func_or_class_str in ensure_list_or_tuple(string_list):
-        found = list(filter(None, [getattr(m, func_or_class_str, None) for m in tf_funcs]))
-        if found:
-            functions_or_classes.append(found[0])  # return the first found
-        elif custom_funcs:
-            # Fall back to look in custom module
-            functions_or_classes.append(getattr(custom_funcs, func_or_class_str))
-        else:
+        found = False
+        for module in func_modules:
+            found = getattr(module, func_or_class_str, False)
+            if found:
+                logger.info(f"Found requested class '{func_or_class_str}' in module '{module}'")
+                functions_or_classes.append(found)  # return the first found
+                break
+        if not found:
             raise AttributeError(f"Did not find loss/metric function {func_or_class_str} "
-                                 f"in TF module '{tf_funcs.__name__}' and no custom function "
-                                 f"module was passed")
+                                 f"in the module(s) '{func_modules}'")
     return functions_or_classes
 
 
@@ -127,8 +130,9 @@ def init_losses(loss_string_list, reduction, ignore_out_of_bounds_classes=False,
         classes
     """
     losses = _get_classes_or_funcs(loss_string_list,
-                                   tf_funcs=tensorflow.keras.losses,
-                                   custom_funcs=None)
+                                   func_modules=[tensorflow.keras.losses,
+                                                 addon_losses,
+                                                 custom_loss_functions])
     _assert_all_classes(losses, assert_subclass_of=tensorflow.keras.losses.Loss)
     return _init_losses_or_metrics(losses,
                                    reduction=reduction,
@@ -142,8 +146,8 @@ def init_metrics(metric_string_list, ignore_out_of_bounds_classes=False, **kwarg
     Please refer to the 'init_losses' docstring.
     """
     metrics = _get_classes_or_funcs(metric_string_list,
-                                    tf_funcs=tensorflow.keras.metrics,
-                                    custom_funcs=None)
+                                    func_modules=[tensorflow.keras.metrics,
+                                                  addon_metrics])
     _assert_all_classes(metrics, assert_subclass_of=tensorflow.keras.metrics.Metric)
     return _init_losses_or_metrics(metrics,
                                    ignore_out_of_bounds_classes=ignore_out_of_bounds_classes,
@@ -157,23 +161,23 @@ def init_optimizer(optimizer_string, **kwargs):
     """
     optimizer = _get_classes_or_funcs(
         optimizer_string,
-        tf_funcs=[tensorflow.keras.optimizers, addon_optimizers],
-        custom_funcs=None,
-    )[0]
-    return optimizer(**kwargs)
+        func_modules=[tensorflow.keras.optimizers, addon_optimizers]
+    )
+    assert len(optimizer) == 1, f'Received unexpected number of optimizers ({len(optimizer)}, expected 1)'
+    return optimizer[0](**kwargs)
 
 
-def init_activation(activation_string, **kwargs):
+def get_activation_function(activation_string):
     """
     Same as 'init_losses', but for optimizers.
     Please refer to the 'init_losses' docstring.
     """
     activation = _get_classes_or_funcs(
         activation_string,
-        tf_funcs=[tensorflow.keras.activations, addon_activations],
-        custom_funcs=None,
-    )[0]
-    return activation
+        func_modules=[tensorflow.keras.activations, addon_activations]
+    )
+    assert len(activation) == 1, f'Received unexpected number of activation functions ({len(activation)}, expected 1)'
+    return activation[0]
 
 
 def get_steps(samples_per_epoch, sequence):
