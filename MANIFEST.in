@@ -1,0 +1,6 @@
+include requirements.txt
+include HISTORY.rst
+include LICENSE.txt
+include README.md
+recursive-include utime/bin/defaults *.yaml
+prune resources
