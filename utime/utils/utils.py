@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 import time
+from collections.abc import Iterable
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,14 @@ def create_folders(folders, create_deep=False):
                 continue
             if not os.path.exists(f):
                 safe_make(f, make_func)
+
+
+def flatten_lists_recursively(list_of_lists):
+    for list_ in list_of_lists:
+        if isinstance(list_, Iterable) and not isinstance(list_, (str, bytes)):
+            yield from flatten_lists_recursively(list_)
+        else:
+            yield list_
 
 
 def highlighted(string):
