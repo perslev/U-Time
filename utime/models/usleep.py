@@ -16,7 +16,7 @@ from tensorflow.keras.layers import Input, BatchNormalization, \
                                     UpSampling2D, Conv2D, \
                                     AveragePooling2D, Layer
 from mpunet.utils.conv_arithmetics import compute_receptive_fields
-from mpunet.train.utils import init_activation
+from utime.train.utils import get_activation_function
 
 logger = logging.getLogger(__name__)
 
@@ -348,7 +348,7 @@ class USleep(Model):
         regularizer = regularizers.l2(self.l2_reg) if self.l2_reg else None
 
         # Get activation func from tf or tfa
-        activation = init_activation(activation_string=self.activation)
+        activation = get_activation_function(activation_string=self.activation)
 
         settings = {
             "depth": self.depth,

@@ -16,7 +16,7 @@ from tensorflow.keras.layers import (Input, BatchNormalization, Cropping2D,
                                      UpSampling2D, ZeroPadding2D, Lambda,
                                      Conv2D, AveragePooling2D)
 from mpunet.utils.conv_arithmetics import compute_receptive_fields
-from mpunet.train.utils import init_activation
+from utime.train.utils import get_activation_function
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +302,7 @@ class UTime(Model):
         regularizer = regularizers.l2(self.l2_reg) if self.l2_reg else None
 
         # Get activation func from tf or tfa
-        activation = init_activation(activation_string=self.activation)
+        activation = get_activation_function(activation_string=self.activation)
 
         settings = {
             "depth": self.depth,
