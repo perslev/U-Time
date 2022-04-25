@@ -63,11 +63,11 @@ It is possible to train the model on smaller machines, and without GPUs, but doi
 * A computer with a Linux operating system installed. We have developed and tested the software for Red Hat Enterprise (v7.8) and Ubuntu (v18.04) servers, but any modern distribution should work. The software has also been tested on MacOS Catalina (10.15.6) for CPU-based training and prediction only.
 * [Anaconda](https://www.anaconda.com) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html), v4.5 or higher, 64-bit.
 
-If you are going to train a U-Sleep model yourself from scratch, we highly recommend doing so on a GPU. In order to use the `U-Time` package with a GPU, the `tensorflow-gpu` (v2.1) library is required. For this, the following additional software is required on your system:
+If you are going to train a U-Sleep model yourself from scratch, we highly recommend doing so on a GPU. In order to use the `U-Time` package with a GPU, the `tensorflow` (`v2.8.0`) library is required. For this, the following additional software is required on your system:
 
-* [NVIDIA GPU drivers](https://www.nvidia.com/drivers) v418.x or higher.
-* [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive) v10.1.
-* [cuDNN SDK](https://developer.nvidia.com/cudnn) v7.6.
+* [NVIDIA GPU drivers](https://www.nvidia.com/drivers) v450.x or higher.
+* [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit-archive) v11.2.
+* [cuDNN SDK](https://developer.nvidia.com/cudnn) v8.1.
 
 Please refer to [https://www.tensorflow.org/install/gpu](https://www.tensorflow.org/install/gpu) for additional details. You do not need to install TensorFlow yourself (see [Installation Guide](#installation-guide) below), but the above software must be installed before proceeding.
 
