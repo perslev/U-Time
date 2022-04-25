@@ -91,13 +91,13 @@ def _extract(file_,
     chan_creator = ChannelMontageCreator(existing_channels=channels_in_file,
                                          channels_required=channels,
                                          allow_missing=True)
-    logger.info(f"[*] Channels in file: {', '.join(chan_creator.existing_channels.names)}\n"
+    logger.info(f"\n[*] Channels in file: {', '.join(chan_creator.existing_channels.names)}\n"
                 f"[*] Output channels: {', '.join(chan_creator.output_channels.names)}\n"
                 f"[*] Channels to load: {', '.join(chan_creator.channels_to_load.names)}")
     try:
         psg, header = load_psg(file_,
                                load_channels=chan_creator.channels_to_load,
-                               check_num_channels=False)
+                               allow_missing_channels=True)
     except ChannelNotFoundError as e:
         logger.info(f"\n-----\n"
                     f"CHANNEL ERROR ON FILE {file_}\n"
@@ -158,7 +158,7 @@ def extract(files, out_dir, channels, renamed_channels, trim_leading_seconds_dic
             name = os.path.split(os.path.split(file_)[0])[-1]
         else:
             name = os.path.splitext(os.path.split(file_)[-1])[0]
-        logger.info("------------------\n"
+        logger.info("\n------------------\n"
                     f"[*] {i+1}/{len(files)} Processing {name}")
         out_dir_subject = os.path.join(out_dir, name)
         if not os.path.exists(out_dir_subject):
@@ -205,6 +205,7 @@ def get_trim_dict(path):
 def run(args):
     logger.info(f"Args dump: {vars(args)}")
     files = glob(args.file_regex)
+    print(os.getcwd(), args.file_regex, files)
     out_dir = os.path.abspath(args.out_dir)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
