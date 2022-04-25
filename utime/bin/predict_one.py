@@ -124,6 +124,7 @@ def get_processed_args(args):
     # Check project folder is valid
     from utime.utils.scriptutils.scriptutils import assert_project_folder
     assert_project_folder(project_dir, evaluation=True)
+    args.project_dir = project_dir
 
     # Set absolute input file path
     args.f = os.path.abspath(args.f)
@@ -157,17 +158,19 @@ def predict_study(study, model, channel_groups, no_argmax):
     psg = np.expand_dims(study.get_all_periods(), 0)
     pred = None
     for channel_group in channel_groups:
-        logger.info(f"--- Channel names: {channel_group.channel_names}\n"
-                    f"    Channel inds:  {channel_group.channel_indices}")
         # Get PSG for particular group
         psg_subset = psg[..., tuple(channel_group.channel_indices)]
-        logger.info(f"    Extracted PSG shape: {psg_subset.shape}")
+        logger.info(f"\n--- Channel names: {channel_group.channel_names}\n"
+                    f"--- Channel inds: {channel_group.channel_indices}\n"
+                    f"--- Extracted PSG shape: {psg_subset.shape}")
         if pred is None:
             pred = model.predict_on_batch(psg_subset)
         else:
             # Sum into if using multiple channel groups
             pred += model.predict_on_batch(psg_subset)
-    pred = pred.numpy().reshape(-1, pred.shape[-1])
+    if hasattr(pred, "numpy") and callable(pred.numpy):
+        pred = pred.numpy()
+    pred = pred.reshape(-1, pred.shape[-1])
     if no_argmax:
         return pred
     else:
@@ -223,8 +226,8 @@ def save_prediction(pred, out_path, period_length_sec, no_argmax):
         out_path = os.path.join(dir_, basename + ".npy")
         save_func = save_npy
     # Save pred to disk
-    logger.info(f"* Saving prediction array of shape {pred.shape} to {out_path}")
-    logger.info(f"* Using save function: {save_func.__name__}")
+    logger.info(f"Saving prediction array of shape {pred.shape} to {out_path}")
+    logger.info(f"Using save function: {save_func.__name__}")
     save_func(out_path, pred, period_length_sec=period_length_sec)
 
 
@@ -335,7 +338,7 @@ def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_
     channels_to_load, channel_groups = unpack_channel_groups(channels)
     channels_to_load, channel_groups, channel_types = strip_and_infer_channel_types(channels_to_load,
                                                                                     channel_groups)
-    logger.info(f"Found:\n"
+    logger.info(f"\nFound:\n"
                 f"-- Load channels: {channels_to_load}\n"
                 f"-- Groups: {channel_groups}\n"
                 f"-- Types: {channel_types}")
@@ -389,7 +392,7 @@ def get_sleep_study(psg_path,
                                                                    auto_channel_grouping,
                                                                    auto_reference_types)
 
-    logger.info(f"Loading channels: {channels_to_load}\n"
+    logger.info(f"\nLoading channels: {channels_to_load}\n"
                 f"Channel groups: {channel_groups}")
     study.set_strip_func(**params['strip_func'])
     study.select_channels = channels_to_load
@@ -397,7 +400,7 @@ def get_sleep_study(psg_path,
     study.scaler = params['scaler']
     study.set_quality_control_func(**params['quality_control_func'])
     study.load()
-    logger.info(f"Study loaded with shape: {study.get_psg_shape()}\n"
+    logger.info(f"\nStudy loaded with shape: {study.get_psg_shape()}\n"
                 f"Channels: {study.select_channels} (org names: {study.select_channels.original_names})")
     return study, channel_groups
 
@@ -416,7 +419,7 @@ def run(args, return_prediction=False, dump_args=None):
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
-    hparams = YAMLHParams(Defaults.get_hparams_path(Defaults.PROJECT_DIRECTORY), no_version_control=True)
+    hparams = YAMLHParams(Defaults.get_hparams_path(args.project_dir), no_version_control=True)
 
     # Get the sleep study
     logger.info("Loading and pre-processing PSG file...")
@@ -434,13 +437,13 @@ def run(args, return_prediction=False, dump_args=None):
     logger.info(f"Predicting with {args.data_per_prediction} data per prediction")
     model = get_and_load_one_shot_model(
         n_periods=study.n_periods,
-        project_dir=Defaults.PROJECT_DIRECTORY,
+        project_dir=args.project_dir,
         hparams=hparams,
         weights_file_name=hparams.get('weights_file_name')
     )
     logger.info("Predicting...")
     pred = predict_study(study, model, channel_groups, args.no_argmax)
-    logger.info(f"--> Predicted shape: {pred.shape}")
+    logger.info(f"Predicted shape: {pred.shape}")
     if return_prediction:
         return pred
     else:
