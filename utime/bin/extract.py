@@ -205,7 +205,6 @@ def get_trim_dict(path):
 def run(args):
     logger.info(f"Args dump: {vars(args)}")
     files = glob(args.file_regex)
-    print(os.getcwd(), args.file_regex, files)
     out_dir = os.path.abspath(args.out_dir)
     if not os.path.exists(out_dir):
         os.mkdir(out_dir)
