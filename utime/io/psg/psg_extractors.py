@@ -38,7 +38,11 @@ def extract_from_edf(psg_file_path, header, include_channels, exclude_channels, 
                            exclude=exclude_channels_short)
         # Update header with actually used sample rate
         header["sample_rate"] = int(edf.info['sfreq'])
-        return edf.get_data().T
+        data = edf.get_data().T
+        # Order channel data according to requested 'include_channels' ordering
+        order = [edf.info['ch_names'].index(channel) for channel in include_channels]
+        data = data[:, order]
+        return data
 
 
 def extract_from_wfdb(wfdb_file_path, include_channels, header, **kwargs):
