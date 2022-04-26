@@ -37,7 +37,7 @@ def extract_from_edf(psg_file_path, header, include_channels, exclude_channels, 
                            stim_channel=None, verbose=False,
                            exclude=exclude_channels_short)
         # Update header with actually used sample rate
-        header["sample_rate"] = float(edf.info['sfreq'])
+        header["sample_rate"] = int(edf.info['sfreq'])
         return edf.get_data().T
 
 
