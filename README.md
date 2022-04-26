@@ -40,7 +40,9 @@ In the following we will introduce the software behind U-Sleep in greater detail
 
 
 #### U-Time and U-Sleep - What's the Difference?
-This repository stores code for training and evaluating the *U-Sleep* sleep staging model. It builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time/tree/utime-latest) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model currently in press [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate the U-Sleep model.
+This repository stores code for training and evaluating the *U-Sleep* sleep staging model. It builds upon and significantly extends our [U-Time](https://github.com/perslev/U-Time/tree/utime-latest) repository, published at NeurIPS 2019 [[1]](#utime_ref). In the following, we will use the term *U-Sleep* to denote the resilient high frequency sleep staging model [[2]](#usleep_ref), and *U-Time* to denote this repository of code used to train and evaluate the U-Sleep model.
+
+You can still use this repository to train the older U-Time model, see [U-Time Example](#u-time-example) below.
 
 ## System Requirements
 **Minimal Hardware Requirements**
