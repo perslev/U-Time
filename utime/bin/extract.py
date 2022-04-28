@@ -150,7 +150,7 @@ def _extract(file_,
     to_h5_file(out_path, psg, **header)
 
 
-def extract(files, out_dir, channels, renamed_channels, trim_leading_seconds_dict, logger, args):
+def extract(files, out_dir, channels, renamed_channels, trim_leading_seconds_dict, args):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     for i, file_ in enumerate(files):
@@ -229,7 +229,7 @@ def run(args):
                 (f"Saving channels under names {renamed_channels}\n" if renamed_channels else "") +
                 f"Saving .h5 files to '{out_dir}'\n" +
                 f"Re-sampling: {args.resample}\n" +
-                (f"Using (trailing) trim dict at path '{args.trim_leading_seconds_dict}'\n" if trim_leading_seconds_dict else "") +
+                (f"Using (leading) trim dict at path '{args.trim_leading_seconds_dict}'\n" if trim_leading_seconds_dict else "") +
                 "-*--*--*--*--*--*--*--*--*--*--*--*--*--*--*--*-")
     extract(
         files=files,
@@ -237,7 +237,6 @@ def run(args):
         channels=channels,
         renamed_channels=renamed_channels,
         trim_leading_seconds_dict=trim_leading_seconds_dict,
-        logger=logger,
         args=args
     )
 
