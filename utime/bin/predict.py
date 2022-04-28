@@ -44,9 +44,13 @@ def get_argparser():
     parser.add_argument("--majority", action="store_true",
                         help="Output a majority vote across channel groups in addition "
                              "to the individual channels.")
+    parser.add_argument("--datasets", type=str, nargs="+", default=None,
+                        help="Optional space separated list of datasets of those stored in the hparams "
+                             "file that prediction should be performed on. Ignored when --folder_regex is set. "
+                             "Default is 'None' in which case all datasets are predicted on.")
     parser.add_argument("--data_split", type=str, default="test_data",
                         help="Which split of data of those stored in the "
-                             "hparams file should the evaluation be performed "
+                             "hparams file should the prediction be performed "
                              "on. Ignored when --folder_regex is set.")
     parser.add_argument("--out_dir", type=str, default="predictions",
                         help="Output folder to store results")
@@ -162,11 +166,16 @@ def get_datasets(hparams, args):
         # predict on datasets described in the hyperparameter files
         datasets = []
         for dataset_id, dataset_hparams in all_dataset_hparams.items():
-            datasets.append(get_dataset_splits_from_hparams(
-                hparams=dataset_hparams,
-                splits_to_load=(args.data_split,),
-                id=dataset_id
-            ))
+            if not args.datasets or dataset_id in args.datasets:
+                datasets.append(get_dataset_splits_from_hparams(
+                    hparams=dataset_hparams,
+                    splits_to_load=(args.data_split,),
+                    id=dataset_id
+                ))
+        if len(datasets) == 0:
+            raise RuntimeError(f"Cannot run prediction on 0 datasets. "
+                               f"No datasets left with --datasets {args.datasets} and datasets in "
+                               f"hparams: {list(all_dataset_hparams.keys())}")
     return datasets
 
 
