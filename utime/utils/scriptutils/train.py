@@ -248,7 +248,7 @@ def get_samples_per_epoch(train_seq, max_train_samples_per_epoch):
         total_periods = train_seq.total_periods
     except (NotLoadedError, TypeError):
         # train_seq.total_period is not available (not all samples loaded or limitation queue). Use estimate.
-        n_studies = len(train_seq.dataset_queue.dataset)
+        n_studies = train_seq.num_pairs
         total_periods = 2000 * n_studies
         logger.warning(f"Property 'total_periods' not available on sequence {train_seq}. "
                        f"Using (over)estimate total periods of {total_periods} based on dataset length of {n_studies}.")
