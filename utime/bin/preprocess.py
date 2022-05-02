@@ -46,11 +46,11 @@ def get_argparser():
                         help="Number of threads to use for loading and "
                              "writing. Note: HDF5 must be compiled in "
                              "thread-safe mode!")
-    parser.add_argument("--log_file", type=str, default="preprocessing_logs/preprocessing",
+    parser.add_argument("--log_file", type=str, default="preprocessing",
                         help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
                              "output log file for this script. "
                              "Set to an empty string to not save any logs to file for this run. "
-                             "Default is 'preprocessing_logs/preprocessing'")
+                             "Default is 'preprocessing'")
     return parser
 
 
