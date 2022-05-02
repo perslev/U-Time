@@ -105,6 +105,10 @@ class MultiSequence(_BaseSequence):
         return bs
 
     @property
+    def num_pairs(self):
+        return np.sum([s.num_pairs] for s in self.sequences)
+
+    @property
     def total_periods(self):
         """ Returns the sum of total periods over all sequences """
         return np.sum([s.total_periods for s in self.sequences])

@@ -80,6 +80,13 @@ class _BaseSequence(Sequence):
     def __len__(self):
         raise NotImplemented
 
+    def get_pairs(self):
+        raise NotImplemented
+
+    @property
+    def num_pairs(self):
+        return len(self.get_pairs())
+
     def batch_shape(self):
         raise NotImplemented
 
