@@ -83,7 +83,7 @@ def assert_project_folder(project_folder, evaluation=False):
     return not files_in_model_dir
 
 
-def get_all_dataset_hparams(hparams, project_dir=None):
+def get_all_dataset_hparams(hparams, project_dir=None, dataset_ids=None):
     """
     Takes a YAMLHParams object and returns a dictionary of one or more entries
     of dataset ID to YAMLHParams objects pairs; one for each dataset described
@@ -95,13 +95,15 @@ def get_all_dataset_hparams(hparams, project_dir=None):
     will be the only returned value (with no ID).
 
     Args:
-        hparams: (YAMLHParams)   A hyperparameter object storing reference to
-                                 one or more datasets in the 'datasets' field, or
-                                 directly in 'hparams.
-        project_dir: [None, str] Optional path to a project directory storing
-                                 hyperparameters relevant to the 'hparams' object.
-                                 If not specified, will use the Default.PROJECT_DIR
-                                 value which is set at runtime for all utime scripts.
+        hparams: (YAMLHParams)    A hyperparameter object storing reference to
+                                  one or more datasets in the 'datasets' field, or
+                                  directly in 'hparams.
+        project_dir: [None, str]  Optional path to a project directory storing
+                                  hyperparameters relevant to the 'hparams' object.
+                                  If not specified, will use the Default.PROJECT_DIR
+                                  value which is set at runtime for all utime scripts.
+        dataset_ids (None, list)  Only returns hparams for datasets with IDs in 'dataset_ids'.
+                                  If None, return hparams for all datasets.
 
     Returns:
         A dictonary if dataset ID to YAMLHParams object pairs
@@ -118,6 +120,9 @@ def get_all_dataset_hparams(hparams, project_dir=None):
                              "Defaults.PROJECT_DIRECTORY property must have been set before calling "
                              "this function (e.g., by invoking the utime entry script).")
         for id_, path in ids_and_paths:
+            if dataset_ids and id_ not in dataset_ids:
+                logger.warning(f"Ignoring dataset '{id_}' in hparams (not in 'dataset_ids' list).")
+                continue
             yaml_path = os.path.join(Defaults.get_hparams_dir(project_dir), path)
             dataset_hparams[id_] = YAMLHParams(yaml_path,
                                                no_version_control=True)
@@ -182,7 +187,7 @@ def get_dataset_splits_from_hparams_file(hparams_path, splits_to_load, id=""):
     return get_dataset_splits_from_hparams(hparams, splits_to_load, id)
 
 
-def get_splits_from_all_datasets(hparams, splits_to_load, return_data_hparams=False):
+def get_splits_from_all_datasets(hparams, splits_to_load, return_data_hparams=False, dataset_ids=None):
     """
     Wrapper around the 'get_dataset_splits_from_hparams_file' and
     'get_dataset_splits_from_hparams' files loading all sub-datasets according
@@ -198,18 +203,20 @@ def get_splits_from_all_datasets(hparams, splits_to_load, return_data_hparams=Fa
     Please refer to 'get_dataset_splits_from_hparams' for details.
 
     Args:
-        hparams:        A YAMLHparams object storing references to one or more
-                        datasets
-        splits_to_load: A string, list or tuple of strings giving the name
-                        of all sub-datasets to load according to their hparams
-                        descriptions.
-        return_data_hparams: TODO
+        hparams:                  A YAMLHparams object storing references to one or more
+                                  datasets
+        splits_to_load:           A string, list or tuple of strings giving the name
+                                  of all sub-datasets to load according to their hparams
+                                  descriptions.
+        return_data_hparams:      TODO
+        dataset_ids (None, list)  Only returns hparams for datasets with IDs in 'dataset_ids'.
+                                  If None, return hparams for all datasets.
 
     Returns:
         Yields one or more splits of data from datasets as described by
         'hparams'
     """
-    data_hparams = get_all_dataset_hparams(hparams)
+    data_hparams = get_all_dataset_hparams(hparams, dataset_ids=dataset_ids)
     for dataset_id, hparams in data_hparams.items():
         ds = get_dataset_splits_from_hparams(
                 hparams=hparams,
