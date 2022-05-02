@@ -53,6 +53,10 @@ def get_argparser():
                              "output log file for this script. "
                              "Set to an empty string to not save any logs to file for this run. "
                              "Default is 'training_log'")
+    parser.add_argument("--datasets", nargs="*", default=None,
+                        help="Optional space-sepparated list of dataset IDs as specified in hyperparameters file to "
+                             "consider for training and validation (unless --no_val flag is set). Ignores all other "
+                             "datasets specified in the file (e.g., datasets to use only for testing).")
     parser.add_argument("--just", type=int, default=None,
                         help="For testing purposes, run only on the first "
                              "[just] training and validation samples.")
@@ -206,7 +210,7 @@ def run(args):
     update_hparams_with_command_line_arguments(hparams, args)
 
     # Initialize and load (potentially multiple) datasets
-    train_datasets, val_datasets = dataset_func(hparams, args.no_val, args.train_on_val)
+    train_datasets, val_datasets = dataset_func(hparams, args.no_val, args.train_on_val, args.datasets)
 
     if args.just:
         keep_n_random(*train_datasets, *val_datasets, keep=args.just)

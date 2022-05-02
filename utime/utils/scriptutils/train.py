@@ -41,7 +41,7 @@ def init_default_project_structure(project_folder, required_folders=('logs', 'mo
         os.mkdir(folder)
 
 
-def get_train_and_val_datasets(hparams, no_val, train_on_val):
+def get_train_and_val_datasets(hparams, no_val, train_on_val, dataset_ids=None):
     """
     Return all pairs of (train, validation) SleepStudyDatasets as described in
     the YAMLHParams object 'hparams'. A list is returned, as more than 1
@@ -58,6 +58,8 @@ def get_train_and_val_datasets(hparams, no_val, train_on_val):
         train_on_val: (bool)        Load validation data, but merge it into
                                     the training data. Then return only the
                                     'trainin' (train+val) dataset.
+        dataset_ids (None, list)    Only load datasets with IDs in 'dataset_ids'.
+                                    If None, load all datasets.
 
     Returns:
         A list of training SleepStudyDataset objects
@@ -69,7 +71,7 @@ def get_train_and_val_datasets(hparams, no_val, train_on_val):
             raise ValueError("Should not specify --no_val with --train_on_val")
     else:
         load = ("train_data", "val_data")
-    datasets = [*get_splits_from_all_datasets(hparams, load)]
+    datasets = [*get_splits_from_all_datasets(hparams, load, dataset_ids=dataset_ids)]
     if train_on_val:
         if any([len(ds) != 2 for ds in datasets]):
             raise ValueError("Did not find a validation set for one or more "
@@ -85,7 +87,7 @@ def get_train_and_val_datasets(hparams, no_val, train_on_val):
     return train_datasets, val_datasets
 
 
-def get_h5_train_and_val_datasets(hparams, no_val, train_on_val):
+def get_h5_train_and_val_datasets(hparams, no_val, train_on_val, dataset_ids=None):
     """
     TODO
 
@@ -96,6 +98,8 @@ def get_h5_train_and_val_datasets(hparams, no_val, train_on_val):
         train_on_val: (bool)        Load validation data, but merge it into
                                     the training data. Then return only the
                                     'trainin' (train+val) dataset.
+        dataset_ids (None, list)    Only load datasets with IDs in 'dataset_ids'.
+                                    If None, load all datasets.
 
     Returns:
         A list of training SleepStudyDataset objects
@@ -121,7 +125,7 @@ def get_h5_train_and_val_datasets(hparams, no_val, train_on_val):
     if train_on_val:
         raise NotImplementedError("Training on validation data is not yet "
                                   "implemented for preprocessed H5 datasets.")
-    data_hparams = get_all_dataset_hparams(hparams)
+    data_hparams = get_all_dataset_hparams(hparams, dataset_ids=dataset_ids)
     h5_dataset = None
     train_datasets, val_datasets = [], []
     for dataset_id, hparams in data_hparams.items():
