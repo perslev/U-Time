@@ -253,7 +253,7 @@ def run(args):
 
     # Set the GPU visibility
     num_gpus = find_and_set_gpus(args.num_gpus, args.force_gpus)
-    gpus = tf.config.list_physical_devices('GPU')
+    gpus = [g.name.replace("physical_device", "device") for g in tf.config.list_physical_devices('GPU')]
     assert len(gpus) == num_gpus, "Unexpected difference in number of visible and requested GPUs."
     # Initialize and potential load parameters into the model
     strategy = tf.distribute.MirroredStrategy(gpus) if gpus else tf.distribute.OneDeviceStrategy('/device:CPU:0')
