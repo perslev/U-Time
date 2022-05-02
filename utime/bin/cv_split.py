@@ -322,12 +322,11 @@ def run(args):
     # Assert suitable folders
     assert_dir_structure(data_dir, out_dir)
 
-    # Create sub-folders
-    create_view_folders(out_dir, n_splits)
-
     # Get subject dirs
     subject_dirs = glob(os.path.join(data_dir, args.subject_dir_pattern))
-    org_n_dirs = len(subject_dirs)
+
+    # Create sub-folders
+    create_view_folders(out_dir, n_splits)
 
     if args.subject_matching_regex:
         logger.info(f"OBS: Pairing files based on regex {args.subject_matching_regex}")
