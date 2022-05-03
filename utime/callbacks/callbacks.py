@@ -56,7 +56,7 @@ class Validation(Callback):
         mask = np.where(np.logical_and(
             np.greater_equal(true, 0),
             np.less(true, self.n_classes)
-        ), np.ones_like(true), np.zeros_like(true))
+        ), np.ones_like(true), np.zeros_like(true)).astype(bool)
         pred = pred[mask]
         true = true[mask]
 
