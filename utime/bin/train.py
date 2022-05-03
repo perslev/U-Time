@@ -62,8 +62,10 @@ def get_argparser():
                              "[just] training and validation samples.")
     parser.add_argument("--no_val", action="store_true",
                         help="For testing purposes, do not perform validation.")
-    parser.add_argument("--max_train_samples_per_epoch", type=int,
-                        default=5e5,
+    parser.add_argument("--max_val_studies_per_dataset", type=int, default=20,
+                        help="Maximum number of sleep studies per dataset to perform validation on after "
+                             "each training epoch (see also --max_train_samples_per_epoch). Defaults to 20.")
+    parser.add_argument("--max_train_samples_per_epoch", type=int, default=5e5,
                         help="Maximum number of sleep stages to sample in each"
                              "epoch. (defaults to 5e5)")
     parser.add_argument("--n_epochs", type=int, default=None,
@@ -275,6 +277,7 @@ def run(args):
     _ = trainer.fit(train=train_seq,
                     val=val_seq,
                     train_samples_per_epoch=samples_pr_epoch,
+                    max_val_studies_per_dataset=args.max_val_studies_per_dataset,
                     **hparams["fit"])
 
     # Save weights to project_dir/model/{final_weights_file_name}.h5

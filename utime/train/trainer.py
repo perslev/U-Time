@@ -110,6 +110,7 @@ class Trainer(object):
              n_epochs,
              callbacks,
              train_samples_per_epoch,
+             max_val_studies_per_dataset,
              verbose=1,
              init_epoch=0,
              **unused):
@@ -141,7 +142,7 @@ class Trainer(object):
             # Add validation callback
             # Important: Should be first in callbacks list as other CBs may
             # depend on the validation metrics/loss
-            callbacks = [Validation(val), MeanReduceLogArrays()] + callbacks
+            callbacks = [Validation(val, max_val_studies_per_dataset), MeanReduceLogArrays()] + callbacks
 
         # Add various callbacks for plotting learning curves etc.
         callbacks.append(LearningCurve())
