@@ -51,6 +51,15 @@ class Validation(Callback):
         pred = pred.argmax(-1).ravel()
         true = true.ravel()
 
+        # True array may include negative or non-negative integers larger than n_classes, e.g. int class 5 "UNKNOWN"
+        # Here we mask out any out-of-range values any evaluate only on in-range classes.
+        mask = np.where(np.logical_and(
+            np.greater_equal(true, 0),
+            np.less(true, self.n_classes)
+        ), np.ones_like(true), np.zeros_like(true))
+        pred = pred[mask]
+        true = true[mask]
+
         # Compute relevant CM elements
         # We select the number following the largest class integer when
         # y != pred, then bincount and remove the added dummy class
