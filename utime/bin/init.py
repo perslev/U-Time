@@ -6,6 +6,7 @@ import logging
 import os
 from argparse import ArgumentParser
 from utime import Defaults
+from utime.utils import create_folders
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
@@ -82,22 +83,22 @@ def init_project_folder(default_folder, preset, out_folder, data_dir=None):
         data_dir:       (string) Optional path to a directory storing data to
                                  use for this project.
     """
-    # Copy files and folders to project dir, set data_dirs if specified
-    in_folder = os.path.join(default_folder, preset)
-    # Create hyperparameters folder
-    out_folder = Defaults.get_hparams_dir(out_folder)
     logger.info(f"Initializing project in project folder: {out_folder} (model preset: '{preset}')")
-    if not os.path.exists(out_folder):
-        os.mkdir(out_folder)
-    for dir_path, dir_names, file_names in os.walk(in_folder):
+    # Copy files and folders to project dir, set data_dirs if specified
+    hparams_in_dir = os.path.join(default_folder, preset)
+    # Create hyperparameters folder
+    hparams_out_dir = Defaults.get_hparams_dir(out_folder)
+    model_dir = Defaults.get_model_dir(out_folder)
+    create_folders([out_folder, hparams_out_dir, model_dir])
+    for dir_path, dir_names, file_names in os.walk(hparams_in_dir):
         for dir_name in dir_names:
-            p_ = os.path.join(out_folder, dir_name)
+            p_ = os.path.join(hparams_out_dir, dir_name)
             if not os.path.exists(p_):
                 os.mkdir(p_)
         for file_name in file_names:
             in_file_path = os.path.join(dir_path, file_name)
-            sub_dir = dir_path.replace(in_folder, "").strip("/")
-            out_file_path = os.path.join(out_folder, sub_dir, file_name)
+            sub_dir = dir_path.replace(hparams_in_dir, "").strip("/")
+            out_file_path = os.path.join(hparams_out_dir, sub_dir, file_name)
             copy_yaml_and_set_data_dirs(in_file_path, out_file_path, data_dir)
 
 
@@ -123,12 +124,7 @@ def run(args):
             raise OSError(f"Folder at '{out_folder}' already exists and --overwrite flag was not set. "
                           f"Note that running this script with --overwrite will only replace "
                           f"hyperparameter file data.")
-        try:
-            os.makedirs(out_folder)
-        except FileExistsError:
-            # Already accepted to overwrite
-            pass
-    init_project_folder(default_folder, args.model, out_folder, data_dir)
+        init_project_folder(default_folder, args.model, out_folder, data_dir)
 
 
 def entry_func(args=None):
