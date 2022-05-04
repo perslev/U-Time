@@ -18,6 +18,7 @@ class _Defaults(Defaults):
     # Default hyperparameters path (relative to project dir)
     HPARAMS_DIR = 'hyperparameters'
     HPARAMS_NAME = 'hparams.yaml'
+    MODEL_DIR = 'model'
     PRE_PROCESSED_HPARAMS_NAME = 'pre_proc_hparams.yaml'
     DATASET_CONF_DIR = "dataset_configurations"
     PRE_PROCESSED_DATA_CONF_DIR = "preprocessed"
@@ -112,6 +113,10 @@ class _Defaults(Defaults):
     @classmethod
     def get_hparams_path(cls, project_dir=None):
         return os.path.join(project_dir or cls.PROJECT_DIRECTORY, cls.HPARAMS_DIR, cls.HPARAMS_NAME)
+
+    @classmethod
+    def get_model_dir(cls, project_dir=None):
+        return os.path.join(project_dir or cls.PROJECT_DIRECTORY, cls.MODEL_DIR)
 
     @classmethod
     def get_pre_processed_hparams_path(cls, project_dir=None):
