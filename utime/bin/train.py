@@ -218,22 +218,23 @@ def run(args):
         keep_n_random(*train_datasets, *val_datasets, keep=args.just)
 
     # Get a data loader queue object for each dataset
-    train_datasets_queues = get_data_queues(
+    train_datasets_queues, train_study_loader = get_data_queues(
         datasets=train_datasets,
         queue_type=train_queue_type,
         max_loaded_per_dataset=args.max_loaded_per_dataset,
-        num_access_before_reload=args.num_access_before_reload
+        num_access_before_reload=args.num_access_before_reload,
+        n_load_processes=7  # Only in effect with queue_type LimitationQueue, otherwise main process
     )
     if val_datasets:
-        val_dataset_queues = get_data_queues(
+        val_dataset_queues, val_study_loader = get_data_queues(
             datasets=val_datasets,
             queue_type=val_queue_type,
             max_loaded_per_dataset=args.max_loaded_per_dataset,
             num_access_before_reload=args.num_access_before_reload,
-            study_loader=getattr(train_datasets_queues[0], 'study_loader', None)
+            n_load_processes=1  # Only in effect with queue_type LimitationQueue, otherwise main process
         )
     else:
-        val_dataset_queues = None
+        val_dataset_queues, val_study_loader = None, None
 
     # Get sequence generators for all datasets
     train_seq, val_seq = get_generators(train_datasets_queues,
@@ -274,18 +275,25 @@ def run(args):
     # Fit the model on a number of samples as specified in args
     samples_pr_epoch = get_samples_per_epoch(train_seq, args.max_train_samples_per_epoch)
 
-    _ = trainer.fit(train=train_seq,
-                    val=val_seq,
-                    train_samples_per_epoch=samples_pr_epoch,
-                    max_val_studies_per_dataset=args.max_val_studies_per_dataset,
-                    **hparams["fit"])
+    try:
+        _ = trainer.fit(train=train_seq,
+                        val=val_seq,
+                        train_samples_per_epoch=samples_pr_epoch,
+                        max_val_studies_per_dataset=args.max_val_studies_per_dataset,
+                        **hparams["fit"])
+    finally:
+        # Stop loading processes and threads if existing
+        if train_study_loader:
+            train_study_loader.stop()
+        if val_study_loader:
+            val_study_loader.stop()
 
-    # Save weights to project_dir/model/{final_weights_file_name}.h5
-    # Note: these weights are rarely used, as a checkpoint callback also saves
-    # weights to this directory through training
-    save_final_weights(project_dir,
-                       model=model,
-                       file_name=args.final_weights_file_name)
+        # Save weights to project_dir/model/{final_weights_file_name}.h5
+        # Note: these weights are rarely used, as a checkpoint callback also saves
+        # weights to this directory through training
+        save_final_weights(project_dir,
+                           model=model,
+                           file_name=args.final_weights_file_name)
 
 
 def entry_func(args=None):
