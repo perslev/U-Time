@@ -36,7 +36,7 @@ This software allows simultaneous training of U-Sleep across any number of PSG d
 In the following we will introduce the software behind U-Sleep in greater detail. Please note that:
 
 * If you are interested to re-implement, extend, or train U-Sleep yourself e.g. on other datasets, you are at the right place!
-* If you are looking to use our pre-trained U-Sleep model for automated sleep staging, please refer to https://sleep.ai.ku.dk and follow the displayed guide. See also (this repository)[https://github.com/perslev/U-Sleep-API-Python-Bindings] for Python bindings to the webserver API.
+* If you are looking to use our pre-trained U-Sleep model for automated sleep staging, please refer to https://sleep.ai.ku.dk and follow the displayed guide. See also [this repository](https://github.com/perslev/U-Sleep-API-Python-Bindings) for Python bindings to the webserver API.
 
 
 #### U-Time and U-Sleep - What's the Difference?
