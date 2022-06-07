@@ -1,6 +1,6 @@
 test_data:
   data_dir: LOCAL_PATH/dod/dod_h/
-  period_length_sec: 30
+  period_length: 30
   identifier: "TEST"
   psg_regex: signals.h5
   hyp_regex: hypnogram.npy
