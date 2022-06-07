@@ -92,7 +92,7 @@ def run(args):
                 continue
             os.remove(out)
         inits, durs, stages = extract_ids_from_hyp_file(file_,
-                                                        period_length_sec=30,
+                                                        period_length=30,
                                                         extract_func=args.extract_func,
                                                         replace_zero_durations=args.correct_zero_durations)
         if args.remove_offset:

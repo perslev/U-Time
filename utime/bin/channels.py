@@ -42,7 +42,7 @@ def run(args):
             ss = SleepStudy(subject_dir=subject_dir,
                             psg_regex=psg_regex,
                             no_hypnogram=True,
-                            period_length_sec=30)
+                            period_length=30)
             header = extract_header(ss.psg_file_path)
             logger.info(header['channel_names'], header['sample_rate'], " Hz")
 
