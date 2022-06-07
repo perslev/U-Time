@@ -44,9 +44,8 @@ strip_func:
   class_int: 5
 
 quality_control_func:
-  # Keep blank to apply no strip function
-  quality_control_func: "zero_out_noisy_epochs"
-  max_times_global_iqr: 20
+  quality_control_func: "clip_noisy_values"
+  min_max_times_global_iqr: 20
 
 # Options: MinMaxScaler, StandardScaler, MaxAbsScaler,
 #          RobustScaler, QuantileTransformer, Null
