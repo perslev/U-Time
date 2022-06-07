@@ -87,7 +87,7 @@ fit:
   balanced_sampling: True
   use_multiprocessing: False
   channel_mixture: False
-  margin: 11
+  margin: 17
 
   # Loss function(s)
   loss: [SparseCategoricalCrossentropy]
