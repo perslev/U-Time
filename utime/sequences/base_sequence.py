@@ -98,7 +98,7 @@ class _BaseSequence(Sequence):
 
     def get_batch_shapes(self, batch_size=None):
         x_shape = self.batch_shape
-        y_shape = x_shape[:-2] + [1]
+        y_shape = x_shape[:-2]
         if batch_size:
             # Overwrite
             x_shape[0] = batch_size
