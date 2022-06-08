@@ -116,7 +116,7 @@ def get_h5_train_and_val_datasets(hparams, no_val, train_on_val, dataset_ids=Non
                              ".h5 file. Found two or more different files.")
         dataset = h5_dataset.get_datasets(
             load_match_regex=regex,
-            period_length_sec=hparams.get('period_length_sec'),
+            period_length=hparams.get('period_length'),
             annotation_dict=hparams.get('sleep_stage_annotations')
         )
         assert len(dataset) == 1
