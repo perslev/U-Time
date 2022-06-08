@@ -26,6 +26,7 @@ from utime import Defaults
 from utime.utils import flatten_lists_recursively
 from utime.hyperparameters import YAMLHParams
 from utime.utils.scriptutils import assert_project_folder, get_splits_from_all_datasets, add_logging_file_handler
+from psg_utils.time_utils import TimeUnit
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,7 @@ def run(args):
                     add_dataset_entry(hparams_out_path,
                                       args.out_path,
                                       split.identifier.split("/")[-1].lower(),
-                                      split.period_length_sec)
+                                      split.pairs[0].get_period_length_in(TimeUnit.SECOND))
 
                     # Overwrite potential load time channel sampler to None
                     channel_sampling_groups = dataset_hparams.get('channel_sampling_groups')
