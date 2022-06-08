@@ -37,11 +37,11 @@ class SparseDiceLoss(tf.keras.losses.Loss):
                  smooth=1,
                  name='sparse_dice_loss',
                  **kwargs):
+        self.smooth = smooth
         super(SparseDiceLoss, self).__init__(
             name=name,
-            reduction=reduction,
-            smooth=smooth
+            reduction=reduction
         )
 
     def call(self, y_true, y_pred):
-        return sparse_dice_loss(y_true, y_pred)
+        return sparse_dice_loss(y_true, y_pred, smooth=self.smooth)
