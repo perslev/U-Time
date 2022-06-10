@@ -31,8 +31,6 @@ def get_argparser():
     parser.add_argument("--correct_zero_durations", type=int, default=None, help="Optionally change any stage with duration "
                                                                                  "0 seconds to some other duration. E.g., --correct_zero_durations 30 will set those events to 30 seconds.")
     parser.add_argument("--overwrite", action="store_true",
-                        help="Overwrite existing files of identical name")
-    parser.add_argument("--overwrite", action="store_true",
                         help="Overwrite existing files of identical name and log files")
     parser.add_argument("--log_file", type=str, default="hyp_extraction_log",
                         help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
