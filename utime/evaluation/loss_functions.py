@@ -43,5 +43,10 @@ class SparseDiceLoss(tf.keras.losses.Loss):
             reduction=reduction
         )
 
+    def get_config(self):
+        config = super().get_config()
+        config.update({'smooth': self.smooth})
+        return config
+
     def call(self, y_true, y_pred):
         return sparse_dice_loss(y_true, y_pred, smooth=self.smooth)
