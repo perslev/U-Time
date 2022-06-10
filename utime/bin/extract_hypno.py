@@ -94,11 +94,7 @@ def run(args):
                                                         extract_func=args.extract_func,
                                                         replace_zero_durations=args.correct_zero_durations)
         if args.remove_offset:
-            try:
-                inits = remove_offset(inits)
-            except ValueError:
-                import shutil
-                shutil.move(file_, "missing_labels")
+            inits = remove_offset(inits)
         if args.fill_blanks:
             inits, durs, stages = fill_hyp_gaps(inits, durs, stages, args.fill_blanks)
         to_ids(inits, durs, stages, out)
