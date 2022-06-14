@@ -191,7 +191,7 @@ def predict_study(sleep_study_pair, seq, model, model_func, num_test_time_augmen
     org_pred_shape = pred.shape
     if callable(getattr(pred, "numpy", None)):
         pred = pred.numpy()
-    pred, y = pred.reshape(-1, 5), y.reshape(-1, 1)
+    pred, y = pred.reshape(-1, pred.shape[-1]), y.reshape(-1, 1)
     if not no_argmax:
         pred = pred.argmax(-1)
     return pred, y, org_pred_shape
