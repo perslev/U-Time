@@ -387,7 +387,8 @@ def get_sleep_study(psg_path,
     study = SleepStudy(subject_dir=dir_, psg_regex=regex,
                        header_regex=header_file_name,
                        no_hypnogram=True,
-                       period_length_sec=params.get('period_length_sec', 30))
+                       period_length=params.get('period_length', 30),
+                       time_unit=params.get('time_unit', TimeUnit.SECOND))
 
     channels_to_load, channel_groups = get_load_and_group_channels(channels,
                                                                    auto_channel_grouping,
