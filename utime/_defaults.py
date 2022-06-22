@@ -47,8 +47,8 @@ class _Defaults(Defaults):
 
     @classmethod
     def get_logging_path(cls, log_file_name=None, log_dir=None):
-        if log_dir and cls.LOG_DIR is None:
-            return None
+        if log_dir is None and cls.LOG_DIR is None:
+            raise ValueError("Must specify either parameter 'log_dir' or have Defaults.LOG_DIR property set.")
         else:
             return os.path.join(log_dir or cls.LOG_DIR, log_file_name or "")
 

@@ -405,17 +405,16 @@ def get_sleep_study(psg_path,
     return study, channel_groups
 
 
-def run(args, return_prediction=False, dump_args=None):
+def run(args, return_prediction=False):
     """
     Run the script according to args - Please refer to the argparser.
     """
     args = get_processed_args(args)
+    logger.info(f"Args dump: {vars(args)}")
 
     # Get a logger
-    log_dir, log_file_name = os.path.split(args.logging_out_path)
+    log_dir, log_file_name = os.path.split(os.path.abspath(args.logging_out_path))
     add_logging_file_handler(log_file_name, args.overwrite, log_dir=log_dir, mode="w")
-    if dump_args:
-        logger.info(f"Args dump: {vars(args)}")
 
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
@@ -457,7 +456,7 @@ def entry_func(args=None):
     # Parse command line arguments
     parser = get_argparser()
     args = parser.parse_args(args)
-    run(args, dump_args=args)
+    run(args)
 
 
 if __name__ == "__main__":
