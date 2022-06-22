@@ -69,13 +69,13 @@ class OutputReshape(Layer):
         return tf.reshape(inputs, shape=shape)
 
 
-class PadEndToEvenLength(Layer):
+class PadStartToEvenLength(Layer):
     def __init__(self, name=None, **kwargs):
-        super(PadEndToEvenLength, self).__init__(name=name, **kwargs)
+        super(PadStartToEvenLength, self).__init__(name=name, **kwargs)
 
     def call(self, inputs, **kwargs):
         return tf.pad(inputs,
-                      paddings=[[0, 0], [0, shape_safe(inputs, 1) % 2], [0, 0], [0, 0]])
+                      paddings=[[0, 0], [shape_safe(inputs, 1) % 2, 0], [0, 0], [0, 0]])
 
 
 class PadToMatch(Layer):
@@ -223,7 +223,7 @@ class USleep(Model):
                           dilation_rate=dilation,
                           name=l_name + "_conv1", **other_conv_params)(in_)
             bn = BatchNormalization(name=l_name + "_BN1")(conv)
-            bn = PadEndToEvenLength(name=l_name + "_padding")(bn)
+            bn = PadStartToEvenLength(name=l_name + "_padding")(bn)
             in_ = MaxPooling2D(pool_size=(2, 1), name=l_name + "_pool")(bn)
 
             # add bn layer to list for residual conn.
@@ -300,7 +300,7 @@ class USleep(Model):
                      name="{}dense_classifier_out".format(name_prefix),
                      **other_conv_params)(in_)
         cls = PadToMatch(name="{}dense_classifier_out_pad".format(name_prefix))([cls, in_reshaped])
-        cls = CropToMatch(name="{}dense_classifier_out_crop".format(name_prefix))([cls, in_reshaped])
+        cls = CropToMatch(name="{}dense_classifier_out_crop".format(name_prefix))
         return cls
 
     @staticmethod
