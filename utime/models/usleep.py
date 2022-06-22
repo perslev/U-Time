@@ -285,7 +285,6 @@ class USleep(Model):
 
     def create_dense_modeling(self,
                               in_,
-                              in_reshaped,
                               filters,
                               dense_classifier_activation,
                               regularizer,
@@ -299,8 +298,6 @@ class USleep(Model):
                      activation=dense_classifier_activation,
                      name="{}dense_classifier_out".format(name_prefix),
                      **other_conv_params)(in_)
-        # cls = PadToMatch(name="{}dense_classifier_out_pad".format(name_prefix))([cls, in_reshaped])
-        # cls = CropToMatch(name="{}dense_classifier_out_crop".format(name_prefix))
         return cls
 
     @staticmethod
@@ -380,7 +377,6 @@ class USleep(Model):
         Dense class modeling layers
         """
         cls = self.create_dense_modeling(in_=up,
-                                         in_reshaped=inputs_reshaped,
                                          filters=self.n_classes,
                                          dense_classifier_activation=self.dense_classifier_activation,
                                          regularizer=regularizer,
