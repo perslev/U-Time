@@ -299,8 +299,8 @@ class USleep(Model):
                      activation=dense_classifier_activation,
                      name="{}dense_classifier_out".format(name_prefix),
                      **other_conv_params)(in_)
-        cls = PadToMatch(name="{}dense_classifier_out_pad".format(name_prefix))([cls, in_reshaped])
-        cls = CropToMatch(name="{}dense_classifier_out_crop".format(name_prefix))
+        # cls = PadToMatch(name="{}dense_classifier_out_pad".format(name_prefix))([cls, in_reshaped])
+        # cls = CropToMatch(name="{}dense_classifier_out_crop".format(name_prefix))
         return cls
 
     @staticmethod
