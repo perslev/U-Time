@@ -11,6 +11,7 @@ from psg_utils.dataset.sleep_study import SleepStudy
 from psg_utils.hypnogram.utils import dense_to_sparse
 from psg_utils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
 from psg_utils.io.channels import auto_infer_referencing as infer_channel_refs
+from psg_utils.time_utils import TimeUnit
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
@@ -448,7 +449,7 @@ def run(args, return_prediction=False):
     else:
         save_prediction(pred=pred,
                         out_path=args.o,
-                        period_length_sec=hparams.get('period_length_sec', 30),
+                        period_length_sec=study.get_period_length_in(TimeUnit.SECOND),
                         no_argmax=args.no_argmax)
 
 
