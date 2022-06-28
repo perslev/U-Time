@@ -103,19 +103,27 @@ def trim(p1, p2):
     return p1, p2
 
 
-def run(args):
+def glob_to_metrics_df(true_pattern: str,
+                       pred_pattern: str,
+                       wake_trim_min: int = None,
+                       ignore_classes: list = None,
+                       group_non_rem: bool = False,
+                       normalized: bool = False,
+                       round: int = 3,
+                       period_length_sec: int = 30,
+                       show_pairs: bool = False):
     """
     Run the script according to 'args' - Please refer to the argparser.
     """
     logger.info("Looking for files...")
-    true = sorted(glob(args.true_pattern))
-    pred = sorted(glob(args.pred_pattern))
+    true = sorted(true_pattern)
+    pred = sorted(pred_pattern)
     if not true:
         raise OSError("Did not find any 'true' files matching "
-                      "pattern {}".format(args.true_pattern))
+                      "pattern {}".format(true_pattern))
     if not pred:
         raise OSError("Did not find any 'true' files matching "
-                      "pattern {}".format(args.pred_pattern))
+                      "pattern {}".format(pred_pattern))
     if len(true) != len(pred):
         raise OSError("Did not find a matching number "
                       "of true and pred files ({} and {})"
@@ -130,7 +138,7 @@ def run(args):
                          "files")
 
     pairs = list(zip(true, pred))
-    if args.show_pairs:
+    if show_pairs:
         logger.info("PAIRS:\n{}".format(pairs))
     # Load the pairs
     logger.info("Loading {} pairs...".format(len(pairs)))
@@ -140,19 +148,17 @@ def run(args):
         if len(p1) != len(p2):
             logger.warning(f"Not equal lengths: {pairs[i]} {f'{len(p1)}/{len(p2)}'}. Trimming...")
             np_pairs[i] = trim(p1, p2)
-    if args.wake_trim_min:
+    if wake_trim_min:
         logger.info("OBS: Wake trimming of {} minutes (period length {} sec)"
-                    "".format(args.wake_trim_min, args.period_length_sec))
-        np_pairs = wake_trim(np_pairs,
-                             args.wake_trim_min,
-                             args.period_length_sec)
+                    "".format(wake_trim_min, period_length_sec))
+        np_pairs = wake_trim(np_pairs, wake_trim_min, period_length_sec)
     true, pred = map(lambda x: x.astype(np.uint8).reshape(-1, 1), concatenate_true_pred_pairs(pairs=np_pairs))
     labels = None
-    if args.ignore_classes:
-        logger.info("OBS: Ignoring class(es): {}".format(args.ignore_classes))
-        labels = list((set(np.unique(true)) | set(np.unique(pred))) - set(args.ignore_classes))
+    if ignore_classes:
+        logger.info("OBS: Ignoring class(es): {}".format(ignore_classes))
+        labels = list((set(np.unique(true)) | set(np.unique(pred))) - set(ignore_classes))
 
-    if args.group_non_rem:
+    if group_non_rem:
         ones = np.ones_like(true)
         true = np.where(np.isin(true, [1, 2, 3]), ones, true)
         pred = np.where(np.isin(pred, [1, 2, 3]), ones, pred)
@@ -160,7 +166,7 @@ def run(args):
         labels.pop(labels.index(3))
 
     cm = confusion_matrix(true, pred, labels=labels)
-    if args.normalized:
+    if normalized:
         cm = cm.astype(np.float64)
         cm /= cm.sum(axis=1, keepdims=True)
 
@@ -169,8 +175,8 @@ def run(args):
     cm = pd.DataFrame(data=cm,
                       index=["True {}".format(i) for i in range(classes)],
                       columns=["Pred {}".format(i) for i in range(classes)])
-    p = "Raw" if not args.normalized else "Normed"
-    logger.info(f"\n\n{p} Confusion Matrix:\n" + str(cm.round(args.round)) + "\n")
+    p = "Raw" if not normalized else "Normed"
+    logger.info(f"\n\n{p} Confusion Matrix:\n" + str(cm.round(round)) + "\n")
 
     # Print metrics
     f1 = f1_scores_from_cm(cm)
@@ -183,7 +189,8 @@ def run(args):
     }, index=["Class {}".format(i) for i in range(classes)])
     metrics = metrics.T
     metrics["mean"] = metrics.mean(axis=1)
-    logger.info(f"\n\n{p} Metrics:\n" + str(np.round(metrics.T, args.round)) + "\n")
+    logger.info(f"\n\n{p} Metrics:\n" + str(np.round(metrics.T, round)) + "\n")
+    return metrics
 
 
 def entry_func(args=None):
@@ -191,7 +198,7 @@ def entry_func(args=None):
     parser = get_argparser()
     args = parser.parse_args(args)
     add_logging_file_handler(args.log_file, args.overwrite, mode="w")
-    run(args)
+    glob_to_metrics_df(**vars(args))
 
 
 if __name__ == "__main__":
