@@ -198,7 +198,17 @@ def entry_func(args=None):
     parser = get_argparser()
     args = parser.parse_args(args)
     add_logging_file_handler(args.log_file, args.overwrite, mode="w")
-    glob_to_metrics_df(**vars(args))
+    glob_to_metrics_df(
+        true_pattern=args.true_pattern,
+        pred_pattern=args.pred_pattern,
+        wake_trim_min=args.wake_trim_min,
+        ignore_classes=args.ignore_classes,
+        group_non_rem=args.group_non_rem,
+        normalized=args.normalized,
+        round=args.round,
+        period_length_sec=args.period_length_sec,
+        show_pairs=args.show_pairs
+    )
 
 
 if __name__ == "__main__":
