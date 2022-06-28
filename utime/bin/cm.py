@@ -10,6 +10,7 @@ import pandas as pd
 from argparse import ArgumentParser
 from glob import glob
 from sklearn.metrics import confusion_matrix
+from utime import Defaults
 from utime.evaluation import concatenate_true_pred_pairs
 from utime.evaluation import (f1_scores_from_cm, precision_scores_from_cm,
                               recall_scores_from_cm)
@@ -182,11 +183,12 @@ def glob_to_metrics_df(true_pattern: str,
     f1 = f1_scores_from_cm(cm)
     prec = precision_scores_from_cm(cm)
     recall = recall_scores_from_cm(cm)
+    mapping = Defaults.get_class_int_to_stage_string()
     metrics = pd.DataFrame({
         "F1": f1,
         "Precision": prec,
         "Recall/Sens.": recall
-    }, index=["Class {}".format(i) for i in range(classes)])
+    }, index=[mapping[i] for i in range(classes)])
     metrics = metrics.T
     metrics["mean"] = metrics.mean(axis=1)
     logger.info(f"\n\n{p} Metrics:\n" + str(np.round(metrics.T, round)) + "\n")
