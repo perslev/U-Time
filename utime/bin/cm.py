@@ -116,8 +116,8 @@ def glob_to_metrics_df(true_pattern: str,
     Run the script according to 'args' - Please refer to the argparser.
     """
     logger.info("Looking for files...")
-    true = sorted(true_pattern)
-    pred = sorted(pred_pattern)
+    true = sorted(glob(true_pattern))
+    pred = sorted(glob(pred_pattern))
     if not true:
         raise OSError("Did not find any 'true' files matching "
                       "pattern {}".format(true_pattern))
