@@ -11,6 +11,7 @@ from psg_utils.dataset.sleep_study import SleepStudy
 from psg_utils.hypnogram.utils import dense_to_sparse
 from psg_utils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
 from psg_utils.io.channels import auto_infer_referencing as infer_channel_refs
+from psg_utils.io.channels.utils import get_channel_group_combinations
 from psg_utils.time_utils import TimeUnit
 from utime.utils.scriptutils import add_logging_file_handler
 
@@ -318,9 +319,9 @@ def get_channel_groups(channels, channel_types, channel_group_spec):
     channels_by_group = [[] for _ in range(len(channel_group_spec))]
     for channel, type_ in zip(channels, channel_types):
         channels_by_group[channel_group_spec.index(type_)].append(channel)
-    # Return all combinations
-    from itertools import product
-    return list(product(*channels_by_group))
+    # Return all combinations except unordered duplicates ([[EEG 1, EEG 2], [EEG 2, EEG 1]] -> [[EEG 1, EEG 2]])
+    combinations = get_channel_group_combinations(*channels_by_group, remove_unordered_duplicates=True)
+    return combinations
 
 
 def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_types):

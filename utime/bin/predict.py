@@ -17,6 +17,7 @@ from utime.bin.evaluate import (predict_on,
                                 get_and_load_one_shot_model, get_sequencer,
                                 get_out_dir)
 from psg_utils.io.channels import filter_non_available_channels
+from psg_utils.io.channels.utils import get_channel_group_combinations
 from utime.utils.scriptutils import add_logging_file_handler, with_logging_level_wrapper
 
 logger = logging.getLogger(__name__)
@@ -118,9 +119,8 @@ def get_prediction_channel_sets(sleep_study, dataset):
             psg_file_path=sleep_study.psg_file_path
         )
         channel_groups = [c.original_names for c in channel_groups]
-        # Return all combinations
-        from itertools import product
-        combinations = product(*channel_groups)
+        # Return all combinations except unordered duplicates ([[EEG 1, EEG 2], [EEG 2, EEG 1]] -> [[EEG 1, EEG 2]])
+        combinations = get_channel_group_combinations(*channel_groups, remove_unordered_duplicates=True)
         return [
             ("+".join(c), c) for c in combinations
         ]
