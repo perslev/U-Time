@@ -258,6 +258,7 @@ def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_
         if channels_to_load:
             logger.info(f" -- Channels: {channels_to_load}")
             sleep_study_pair.select_channels = channels_to_load
+        seq.n_channels = sleep_study_pair.n_channels
 
         # Get the prediction and true values
         pred, y = run_pred_on_channels(
