@@ -349,7 +349,7 @@ def get_sequencer(dataset, hparams):
     hparams["fit"]["balanced_sampling"] = False
     seq = get_batch_sequence(dataset_queue=dataset_queue,
                              random_batches=False,
-                             augmenters=hparams.get_group("augmenters"),
+                             augmenters=hparams.get("augmenters", None),
                              n_classes=hparams.get_group('/build/n_classes'),
                              **hparams["fit"],
                              no_log=True,
