@@ -9,6 +9,8 @@ originally described in the hyperparameter files.
 import logging
 import os
 import numpy as np
+import traceback
+import shutil
 from argparse import ArgumentParser
 from utime import Defaults
 from utime.utils.system import find_and_set_gpus
@@ -18,6 +20,7 @@ from utime.bin.evaluate import (predict_on,
                                 get_out_dir)
 from psg_utils.io.channels import filter_non_available_channels
 from psg_utils.io.channels.utils import get_channel_group_combinations
+from psg_utils.errors import CouldNotLoadError
 from utime.utils.scriptutils import add_logging_file_handler, with_logging_level_wrapper
 
 logger = logging.getLogger(__name__)
@@ -86,6 +89,11 @@ def get_argparser():
                              "output log file for this script. "
                              "Set to an empty string to not save any logs to file for this run. "
                              "Default is 'prediction_log'")
+    parser.add_argument("--move_study_to_folder_on_error", type=str, default=None,
+                        help="Optional path to a folder to which sleep study subject directories should be "
+                             "moved (including all content files) when the study cannot be loaded for 1 or more "
+                             "of the requested channel combinations. E.g., used to filter out all studies that need "
+                             "further manual investigation for data processing/loading issues.")
     return parser
 
 
@@ -319,15 +327,27 @@ def run_pred(dataset,
         if len(channel_sets) == 0:
             logger.info(f"Found no valid channel sets for study {sleep_study_pair}. Skipping study.")
         else:
-            run_pred_on_pair(
-                sleep_study_pair=sleep_study_pair,
-                seq=seq,
-                model=model,
-                model_func=model_func,
-                out_dir=out_dir,
-                channel_sets=channel_sets,
-                args=args
-            )
+            try:
+                run_pred_on_pair(
+                    sleep_study_pair=sleep_study_pair,
+                    seq=seq,
+                    model=model,
+                    model_func=model_func,
+                    out_dir=out_dir,
+                    channel_sets=channel_sets,
+                    args=args
+                )
+            except (CouldNotLoadError, RuntimeError) as e:
+                logger.error(f"Error on study {sleep_study_pair}: {str(e)}. "
+                             f"Traceback: {traceback.format_exc()}")
+                if args.move_study_to_folder_on_error:
+                    if not os.path.exists(args.move_study_to_folder_on_error):
+                        os.makedirs(args.move_study_to_folder_on_error)
+                    logger.info(f"Moving study folder {sleep_study_pair.subject_dir} -> "
+                                f"{args.move_study_to_folder_on_error}")
+                    shutil.move(sleep_study_pair.subject_dir, args.move_study_to_folder_on_error)
+                else:
+                    raise e
 
 
 def run(args):
