@@ -75,7 +75,7 @@ def get_argparser():
                              'giving 1 segmentation per 30 seconds of signal. '
                              'Set this to 1 to score every data point in the '
                              'signal.')
-    parser.add_argument("--num_gpus", type=int, default=1,
+    parser.add_argument("--num_gpus", type=int, default=0,
                         help="Number of GPUs to use for this job")
     parser.add_argument("--force_gpus", type=str, default="")
     parser.add_argument("--no_argmax", action="store_true",
