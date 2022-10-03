@@ -197,7 +197,7 @@ def save_ids(path, pred, period_length_sec, **kwargs):
     stage_strings = np.vectorize(Defaults.get_class_int_to_stage_string().get)(pred.ravel())
     ids = dense_to_sparse(stage_strings, period_length_sec, allow_trim=True)
     with open(path, "w") as out_f:
-        for i, d, s in ids:
+        for i, d, s in zip(*ids):
             out_f.write(f"{i},{d},{s}\n")
 
 
