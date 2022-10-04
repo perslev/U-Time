@@ -126,8 +126,9 @@ def get_processed_args(args):
             channel_types = usleep.get_model_description(model_name, model_version)['channel_types']
             args.auto_channel_grouping = channel_types
     else:
-        if args.channels is None:
-            raise RuntimeError("Must specify the --channels argument when not using the --model flag.")
+        if args.channels is None and args.auto_channel_grouping is None:
+            raise RuntimeError("Must specify the --channels or --auto_channel_grouping flag arguments "
+                               "when not using the --model flag.")
         project_dir = os.path.abspath(Defaults.PROJECT_DIRECTORY)
 
     if manual_grouping_is_used and args.auto_channel_grouping:
