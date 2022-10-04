@@ -472,9 +472,10 @@ def run(args, return_prediction=False):
     if return_prediction:
         return pred
     else:
+        pred_period_length_sec = (model.data_per_prediction / model.input_dims) * Defaults.PERIOD_LENGTH_SEC
         save_prediction(pred=pred,
                         out_path=args.o,
-                        period_length_sec=study.get_period_length_in(TimeUnit.SECOND),
+                        period_length_sec=pred_period_length_sec,
                         no_argmax=args.no_argmax)
 
 
