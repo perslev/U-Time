@@ -345,15 +345,21 @@ def get_channel_groups(channels, channel_types, channel_group_spec):
         return s.strip().upper()
     channel_types = list(map(upper_stripped, channel_types))
     channel_group_spec = list(map(upper_stripped, channel_group_spec))
-    if any([c not in channel_group_spec for c in channel_types]):
+    if any([c not in channel_group_spec for c in channel_types]) or \
+            any([c not in channel_types for c in channel_group_spec]):
         raise ValueError(f"Cannot get channel groups for spec {channel_group_spec} with channels "
                          f"{channels} and types {channel_types}: One or more types are not in the requested "
-                         f"channel group spec.")
+                         f"channel group spec or vice versa.")
     channels_by_group = [[] for _ in range(len(channel_group_spec))]
     for channel, type_ in zip(channels, channel_types):
-        channels_by_group[channel_group_spec.index(type_)].append(channel)
+        inds = np.where(np.asarray(channel_group_spec) == type_)[0]
+        for ind in inds:
+            channels_by_group[ind].append(channel)
     # Return all combinations except unordered duplicates ([[EEG 1, EEG 2], [EEG 2, EEG 1]] -> [[EEG 1, EEG 2]])
     combinations = get_channel_group_combinations(*channels_by_group, remove_unordered_duplicates=True)
+    if len(combinations) == 0:
+        raise NotImplementedError("Unexpected empty channel_groups list found. "
+                                  "Please raise an issue on GitHub if you encounter this error.")
     return combinations
 
 
