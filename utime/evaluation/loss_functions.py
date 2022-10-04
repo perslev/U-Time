@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow.python.keras.losses import LossFunctionWrapper
 
 
 def _get_shapes_and_one_hot(y_true, y_pred):
@@ -31,16 +30,23 @@ def sparse_dice_loss(y_true, y_pred, smooth=1):
     return 1.0 - tf.reduce_mean(dice, axis=-1, keepdims=True)
 
 
-class SparseDiceLoss(LossFunctionWrapper):
+class SparseDiceLoss(tf.keras.losses.Loss):
     """ tf reduction wrapper for sparse_dice_loss """
     def __init__(self,
                  reduction,
                  smooth=1,
                  name='sparse_dice_loss',
                  **kwargs):
+        self.smooth = smooth
         super(SparseDiceLoss, self).__init__(
-            sparse_dice_loss,
             name=name,
-            reduction=reduction,
-            smooth=smooth
+            reduction=reduction
         )
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({'smooth': self.smooth})
+        return config
+
+    def call(self, y_true, y_pred):
+        return sparse_dice_loss(y_true, y_pred, smooth=self.smooth)

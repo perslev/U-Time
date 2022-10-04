@@ -69,10 +69,32 @@ def _handle_version_format_changes(hparams):
                            f"To suppress this warning, delete the old tag manually from the hyperparameters file.")
 
 
+def _handle_period_length_sec(hparams):
+    any_changes = False
+    for data_group in ("train_data", "val_data", "test_data"):
+        try:
+            group = hparams.get_group(data_group)
+            period_length_sec = group.get('period_length_sec')
+            if period_length_sec:
+                logger.warning(f"Found deprecated 'period_length_sec' parameter in data group '{data_group}' "
+                               f"in hyperparameter file at path {hparams.yaml_path}. Since utime v1.1.0 this "
+                               f"parameter has been renamed to 'period_length' with units specified by the new "
+                               f"'time_unit' parameter. Setting 'period_length' and time_unit=SECONDS.")
+                hparams.delete_group(f"{data_group}/period_length_sec")
+                hparams.set_group(f"{data_group}/period_length", value=period_length_sec)
+                hparams.set_group(f"{data_group}/time_unit", value="SECONDS")
+                any_changes = True
+        except KeyError:
+            pass
+    if any_changes:
+        hparams.save_current()
+
+
 def check_deprecated_params(hparams):
     _handle_channel_sampling_group_renaming(hparams)
     _handle_metrics_renaming(hparams)
     _handle_version_format_changes(hparams)
+    _handle_period_length_sec(hparams)
 
 
 class YAMLHParams(_YAMLHParams):

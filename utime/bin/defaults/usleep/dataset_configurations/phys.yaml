@@ -1,20 +1,20 @@
 train_data:
   data_dir: LOCAL_PATH/phys/views/fixed_split/train
-  period_length_sec: 30
+  period_length: 30
   identifier: "TRAIN"
   psg_regex: .*[.]h5
   hyp_regex: .*[.]ids
 
 val_data:
   data_dir: LOCAL_PATH/phys/views/fixed_split/val
-  period_length_sec: 30
+  period_length: 30
   identifier: "VAL"
   psg_regex: .*[.]h5
   hyp_regex: .*[.]ids
 
 test_data:
   data_dir: LOCAL_PATH/phys/views/fixed_split/test
-  period_length_sec: 30
+  period_length: 30
   identifier: "TEST"
   psg_regex: .*[.]h5
   hyp_regex: .*[.]ids

@@ -1,16 +1,16 @@
 train_data:
   data_dir: Null
-  period_length_sec: 30
+  period_length: 30
   identifier: "TRAIN"
 
 val_data:
   data_dir: Null
-  period_length_sec: 30
+  period_length: 30
   identifier: "VAL"
 
 test_data:
   data_dir: Null
-  period_length_sec: 30
+  period_length: 30
   identifier: "TEST"
 
 # Re-sampling rate

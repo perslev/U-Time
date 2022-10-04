@@ -47,8 +47,8 @@ class _Defaults(Defaults):
 
     @classmethod
     def get_logging_path(cls, log_file_name=None, log_dir=None):
-        if log_dir and cls.LOG_DIR is None:
-            return None
+        if log_dir is None and cls.LOG_DIR is None:
+            raise ValueError("Must specify either parameter 'log_dir' or have Defaults.LOG_DIR property set.")
         else:
             return os.path.join(log_dir or cls.LOG_DIR, log_file_name or "")
 
@@ -56,9 +56,16 @@ class _Defaults(Defaults):
     def init_package_level_loggers(cls,
                                    level,
                                    package_names=None,
-                                   format='%(levelname)s | %(asctime)s | %(module)s:%(funcName)s:%(lineno)d | %(message)s',
+                                   format=None,
                                    datefmt="%Y/%m/%d %H:%M:%S",
                                    stream=sys.stdout):
+        if format is None:
+            if level == "DEBUG":
+                # Add module and line numbers in DEBUG mode
+                format = '\n%(asctime)s | %(levelname)s | %(module)s:%(funcName)s:%(lineno)d | %(message)s'
+            else:
+                format = '\n%(asctime)s | %(levelname)s | %(message)s'
+
         handler = logging.StreamHandler(stream)
         formatter = logging.Formatter(format, datefmt=datefmt)
         handler.setFormatter(formatter)

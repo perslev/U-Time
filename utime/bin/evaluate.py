@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_argparser():
-    """
+    """get_full_hypnogram
     Returns an argument parser for this script
     """
     parser = ArgumentParser(description='Evaluate a U-Time model.')
@@ -284,7 +284,7 @@ def predict_on(study_pair, seq, model=None, model_func=None, n_aug=None,
     if bool(model) == bool(model_func):
         raise RuntimeError("Must specify either model or model_func, "
                            "got both or neither.")
-    y = study_pair.get_full_hypnogram()
+    y = study_pair.get_all_hypnogram_periods()
     if not seq.margin:
         # Not a sequence model (no margin on center sleep segment)
         if callable(model_func):
@@ -349,7 +349,7 @@ def get_sequencer(dataset, hparams):
     hparams["fit"]["balanced_sampling"] = False
     seq = get_batch_sequence(dataset_queue=dataset_queue,
                              random_batches=False,
-                             augmenters=hparams.get_group("augmenters"),
+                             augmenters=hparams.get("augmenters", None),
                              n_classes=hparams.get_group('/build/n_classes'),
                              **hparams["fit"],
                              no_log=True,

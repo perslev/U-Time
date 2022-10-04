@@ -26,6 +26,7 @@ from utime import Defaults
 from utime.utils import flatten_lists_recursively
 from utime.hyperparameters import YAMLHParams
 from utime.utils.scriptutils import assert_project_folder, get_splits_from_all_datasets, add_logging_file_handler
+from psg_utils.time_utils import TimeUnit
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +71,8 @@ def add_dataset_entry(hparams_out_path, h5_path,
                       split_identifier, period_length_sec):
     field = f"{split_identifier}_data:\n" + \
             f"  data_dir: {h5_path}\n" + \
-            f"  period_length_sec: {period_length_sec}\n" + \
+            f"  period_length: {period_length_sec}\n" + \
+            f"  time_unit: SECOND\n" + \
             f"  identifier: {split_identifier.upper()}\n\n"
     with open(hparams_out_path, "a") as out_f:
         out_f.write(field)
@@ -95,7 +97,7 @@ def preprocess_study(h5_file_group, study):
         for chan_ind, channel_name in enumerate(study.select_channels):
             # Create PSG channel datasets
             psg_group.create_dataset(channel_name.original_name,
-                                     data=X[..., chan_ind])
+                                     data=X[..., chan_ind].ravel())
         # Create hypnogram dataset
         study_group.create_dataset("hypnogram", data=y)
 
@@ -171,7 +173,7 @@ def run(args):
                     add_dataset_entry(hparams_out_path,
                                       args.out_path,
                                       split.identifier.split("/")[-1].lower(),
-                                      split.period_length_sec)
+                                      split.pairs[0].get_period_length_in(TimeUnit.SECOND))
 
                     # Overwrite potential load time channel sampler to None
                     channel_sampling_groups = dataset_hparams.get('channel_sampling_groups')

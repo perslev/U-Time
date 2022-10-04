@@ -62,7 +62,7 @@ def _get_classes_or_funcs(string_list: list, func_modules: list) -> List[callabl
     return functions_or_classes
 
 
-def _assert_all_classes(list_of_classes, assert_subclass_of):
+def _assert_all_classes(list_of_classes, assert_subclass_of=None):
     """
     Check that all members of list_of_classes are classes and
     that all members are subclasses of class 'assert_subclass_of'.

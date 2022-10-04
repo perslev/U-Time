@@ -90,15 +90,11 @@ def run(args):
                 continue
             os.remove(out)
         inits, durs, stages = extract_ids_from_hyp_file(file_,
-                                                        period_length_sec=30,
+                                                        period_length=30,
                                                         extract_func=args.extract_func,
                                                         replace_zero_durations=args.correct_zero_durations)
         if args.remove_offset:
-            try:
-                inits = remove_offset(inits)
-            except ValueError:
-                import shutil
-                shutil.move(file_, "missing_labels")
+            inits = remove_offset(inits)
         if args.fill_blanks:
             inits, durs, stages = fill_hyp_gaps(inits, durs, stages, args.fill_blanks)
         to_ids(inits, durs, stages, out)

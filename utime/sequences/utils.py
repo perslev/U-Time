@@ -83,9 +83,11 @@ def get_batch_sequence(dataset_queue,
         A BatchSequence object
     """
     data_per_epoch, n_channels = infer_dpe_and_chans(dataset_queue)
+    logger.info(f"Inferred DPE: {data_per_epoch}, n_channels={n_channels} for dataset queue '{dataset_queue}'")
 
     # Init and return the proper BatchSequence sub-class
     sequence_class = get_sequence_class(random_batches, balanced_sampling)
+    logger.info(f"Creating sequence class '{sequence_class}'")
     return sequence_class(dataset_queue=dataset_queue,
                           batch_size=batch_size,
                           data_per_period=data_per_epoch,

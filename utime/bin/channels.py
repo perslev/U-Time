@@ -3,24 +3,24 @@ Small script that prints the channels found in one or more PSG files
 matching a glob pattern.
 """
 
-import os
 import logging
 from argparse import ArgumentParser
 from glob import glob
 from psg_utils.io.header import extract_header
-from psg_utils.dataset import SleepStudy
+from psg_utils.io.channels import infer_channel_types
 from utime.utils.scriptutils import add_logging_file_handler
 
 logger = logging.getLogger(__name__)
 
 
 def get_argparser():
-    parser = ArgumentParser(description='Print the channels of files '
-                                        'matching a glob pattern.')
-    parser.add_argument("--subject_dir_pattern", type=str, required=True)
-    parser.add_argument("--psg_regex", type=str, required=False)
+    parser = ArgumentParser(description='Print the channels of one or more files')
+    parser.add_argument("-f", type=str, required=True, help='Path or glob-like statement to one or more files.')
     parser.add_argument("--overwrite", action='store_true',
                         help='Overwrite existing log files.')
+    parser.add_argument("--select_types", type=str, nargs="+", default=None,
+                        help='A list of channel types (e.g., EEG EOG) to select and '
+                             'print to screen as an escaped list (e.g., may output: "EEG Fpz-Cz" "EOG horizontal").')
     parser.add_argument("--log_file", type=str, default=None,
                         help="Relative path (from Defaults.LOG_DIR as specified by ut --log_dir flag) of "
                              "output log file for this script. "
@@ -30,21 +30,22 @@ def get_argparser():
 
 
 def run(args):
-    files = glob(args.subject_dir_pattern)
+    files = glob(args.f)
     if len(files) == 0:
         logger.info(f"No subject dirs match pattern {args.subject_dir_pattern}")
     else:
-        logger.info("Channels:")
-        for subject_dir in files:
-            psg_regex = args.psg_regex or None
-            if not psg_regex and os.path.isfile(subject_dir):
-                subject_dir, psg_regex = os.path.split(subject_dir)
-            ss = SleepStudy(subject_dir=subject_dir,
-                            psg_regex=psg_regex,
-                            no_hypnogram=True,
-                            period_length_sec=30)
-            header = extract_header(ss.psg_file_path)
-            logger.info(header['channel_names'], header['sample_rate'], " Hz")
+        select_types = [type_.upper().strip() for type_ in (args.select_types or [])]
+        for file_ in files:
+            logger.info(f"File: {file_}")
+            header = extract_header(file_)
+            inferred_types = infer_channel_types(header['channel_names'])
+            selected = []
+            for name, type_ in zip(header['channel_names'], inferred_types):
+                if type_ in select_types:
+                    selected.append(f"'{name}=={type_}'")
+                logger.info(f"{name} ({type_}?)")
+            if selected:
+                logger.info(f"Selected: {' '.join(selected)}")
 
 
 def entry_func(args=None):
