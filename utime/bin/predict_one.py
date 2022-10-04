@@ -28,7 +28,8 @@ def get_argparser():
     parser.add_argument("-o", type=str, required=True,
                         help="Output path for storing predictions. "
                              "Valid extensions are '.hyp' (text file with 1 stage (string) per line), "
-                             "'.ids' (init-duration-stage (string) format text file) and '.npy' (numpy array "
+                             "'.ids' (init-duration-stage (string) format text file), .tsv "
+                             "(like .ids but using tabs and a header line) and '.npy' (numpy array "
                              "of shape [N, 1] storing stages (ints)). "
                              "If any other or no extension is specified, '.npy' is assumed.")
     parser.add_argument("--header_file_name", type=str, default=None,
@@ -189,16 +190,34 @@ def save_hyp(path, pred, **kwargs):
         out_f.write("\n".join(stage_strings))
 
 
+def _to_ids(pred, period_length_sec):
+    """
+    Map prediction integer values to string stages and convert dense stages to sparse IDS formatted tuples
+    """
+    stage_strings = np.vectorize(Defaults.get_class_int_to_stage_string().get)(pred.ravel())
+    ids = dense_to_sparse(stage_strings, period_length_sec, allow_trim=True)
+    return ids
+
+
 def save_ids(path, pred, period_length_sec, **kwargs):
     """
     Save predictions as stage strings in init-duration-stage format in a plain text file.
     """
-    # Map integer outputs to string stages
-    stage_strings = np.vectorize(Defaults.get_class_int_to_stage_string().get)(pred.ravel())
-    ids = dense_to_sparse(stage_strings, period_length_sec, allow_trim=True)
+    ids = _to_ids(pred, period_length_sec)
     with open(path, "w") as out_f:
         for i, d, s in zip(*ids):
             out_f.write(f"{i},{d},{s}\n")
+
+
+def save_tsv(path, pred, period_length_sec, **kwargs):
+    """
+    Save predictions as stage strings in init-duration-stage format in a plain text file.
+    """
+    ids = _to_ids(pred, period_length_sec)
+    with open(path, "w") as out_f:
+        out_f.write("init_sec\tduration_sec\tstage\n")
+        for i, d, s in zip(*ids):
+            out_f.write(f"{i}\t{d}\t{s}\n")
 
 
 def save_npy(path, pred, **kwargs):
@@ -223,6 +242,10 @@ def save_prediction(pred, out_path, period_length_sec, no_argmax):
         out_path = os.path.join(dir_, basename + ext)
         save_func = save_ids
         assert not no_argmax, "Cannot save to .ids format with the --no_argmax flag. Please use .npy."
+    elif ext == ".tsv":
+        # Save as plain text in .tsv format with a header
+        out_path = os.path.join(dir_, basename + ext)
+        save_func = save_tsv
     else:
         # Save as npy
         out_path = os.path.join(dir_, basename + ".npy")
