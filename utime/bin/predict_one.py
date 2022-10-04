@@ -9,6 +9,7 @@ from utime.utils.system import find_and_set_gpus
 from utime.bin.evaluate import get_and_load_one_shot_model
 from psg_utils.dataset.sleep_study import SleepStudy
 from psg_utils.hypnogram.utils import dense_to_sparse
+from psg_utils.io.header import extract_header
 from psg_utils.io.channels import infer_channel_types, VALID_CHANNEL_TYPES
 from psg_utils.io.channels import auto_infer_referencing as infer_channel_refs
 from psg_utils.io.channels.utils import get_channel_group_combinations
@@ -37,7 +38,6 @@ def get_argparser():
     parser.add_argument("--logging_out_path", type=str, default=None,
                         help='Optional path to store prediction log. If not set, <out_folder>/<file_name>.log is used.')
     parser.add_argument("--channels", nargs='+', type=str, default=None,
-                        required=True,
                         help="A list of channels to use for prediction. "
                              "To predict on multiple channel groups, pass a string where "
                              "each channel in each channel group is separated by '++' and different groups are "
@@ -126,6 +126,8 @@ def get_processed_args(args):
             channel_types = usleep.get_model_description(model_name, model_version)['channel_types']
             args.auto_channel_grouping = channel_types
     else:
+        if args.channels is None:
+            raise RuntimeError("Must specify the --channels argument when not using the --model flag.")
         project_dir = os.path.abspath(Defaults.PROJECT_DIRECTORY)
 
     if manual_grouping_is_used and args.auto_channel_grouping:
@@ -363,22 +365,38 @@ def get_channel_groups(channels, channel_types, channel_group_spec):
     return combinations
 
 
-def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_types):
+def get_load_and_group_channels(auto_channel_grouping,
+                                auto_reference_types,
+                                channels=None,
+                                channels_in_file=None):
     """
     TODO
 
     Args:
-        channels:
-        auto_channel_grouping:
-        auto_reference_types:
+        channels: list
+        auto_channel_grouping: list
+        auto_reference_types: list
+        channels_in_file: list
+        inferred_types: list
 
     Returns:
 
     """
-    logger.info(f"Processing input channels: {channels}")
-    channels_to_load, channel_groups = unpack_channel_groups(channels)
+    if channels is None and channels_in_file is None:
+        raise ValueError("Must specify either 'channels' or 'channels_in_file' (recieved None for both)")
+    logger.info(f"Processing input channels: {channels or 'AUTOMATIC (not set)'}")
+    channels_to_load, channel_groups = unpack_channel_groups(channels or channels_in_file)
     channels_to_load, channel_groups, channel_types = strip_and_infer_channel_types(channels_to_load,
                                                                                     channel_groups)
+    if not channels:
+        # Keep only channels as per auto_channel_grouping
+        channels_to_load, channel_types = zip(*[(chan, type_) for chan, type_ in
+                                                zip(channels_to_load, channel_types) if type_ in auto_channel_grouping])
+        channel_groups = [channels_to_load]
+        logger.warning(f"--channels flag not set! Considering only the automatically inferred channels of "
+                       f"types {auto_channel_grouping}: {channels_to_load} (types: {channel_types}) from the "
+                       f"original full set of channels in the file: {channels_in_file}")
+
     logger.info(f"\nFound:\n"
                 f"-- Load channels: {channels_to_load}\n"
                 f"-- Groups: {channel_groups}\n"
@@ -393,7 +411,7 @@ def get_load_and_group_channels(channels, auto_channel_grouping, auto_reference_
         logger.warning(f"OBS: Auto referencing returned channels: {channels_to_load}")
     if isinstance(auto_channel_grouping, list):
         channel_groups = get_channel_groups(channels_to_load, channel_types, auto_channel_grouping)
-        logger.warning(f"OBS: Auto channel grouping returned groups: {channel_groups}")
+        logger.warning(f"OBS: Auto channel grouping returned groups: {channel_groups} (required groups: {auto_channel_grouping})")
 
     # Add channel inds to groups
     channel_set = namedtuple("ChannelSet", ["channel_names", "channel_indices"])
@@ -424,15 +442,18 @@ def get_sleep_study(psg_path,
                                   "supported. Use ut predict/evaluate instead")
     logger.info(f"Evaluating using parameters:\n{pformat(params)}")
     dir_, regex = os.path.split(os.path.abspath(psg_path))
-    study = SleepStudy(subject_dir=dir_, psg_regex=regex,
+    study = SleepStudy(subject_dir=dir_,
+                       psg_regex=regex,
                        header_regex=header_file_name,
                        no_hypnogram=True,
                        period_length=params.get('period_length', 30),
                        time_unit=params.get('time_unit', TimeUnit.SECOND))
 
-    channels_to_load, channel_groups = get_load_and_group_channels(channels,
-                                                                   auto_channel_grouping,
-                                                                   auto_reference_types)
+    file_header = extract_header(study.psg_file_path, study.header_file_path)
+    channels_to_load, channel_groups = get_load_and_group_channels(auto_channel_grouping,
+                                                                   auto_reference_types,
+                                                                   channels=channels,
+                                                                   channels_in_file=file_header['channel_names'])
 
     logger.info(f"\nLoading channels: {channels_to_load}\n"
                 f"Channel groups: {channel_groups}")
