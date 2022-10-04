@@ -56,9 +56,16 @@ class _Defaults(Defaults):
     def init_package_level_loggers(cls,
                                    level,
                                    package_names=None,
-                                   format='%(levelname)s | %(asctime)s | %(module)s:%(funcName)s:%(lineno)d | %(message)s',
+                                   format=None,
                                    datefmt="%Y/%m/%d %H:%M:%S",
                                    stream=sys.stdout):
+        if format is None:
+            if level == "DEBUG":
+                # Add module and line numbers in DEBUG mode
+                format = '\n%(asctime)s | %(levelname)s | %(module)s:%(funcName)s:%(lineno)d | %(message)s'
+            else:
+                format = '\n%(asctime)s | %(levelname)s | %(message)s'
+
         handler = logging.StreamHandler(stream)
         formatter = logging.Formatter(format, datefmt=datefmt)
         handler.setFormatter(formatter)
