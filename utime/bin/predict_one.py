@@ -110,6 +110,7 @@ def get_processed_args(args):
     args = Namespace(**modified_args)
     assert args.num_gpus >= 0, "--num_gpus must be positive or 0."
 
+    manual_grouping_is_used = args.channels and any('++' in c for c in args.channels)
     if args.model:
         logger.info(f"Using the --model flag. "
                     f"Models (if any) at project directory path {Defaults.PROJECT_DIRECTORY} (if set) "
@@ -121,8 +122,17 @@ def get_processed_args(args):
                                "not installed.") from e
         model_name, model_version = args.model.split(":")
         project_dir = usleep.get_model_path(model_name, model_version)
+        if not manual_grouping_is_used and not args.auto_channel_grouping:
+            channel_types = usleep.get_model_description(model_name, model_version)['channel_types']
+            args.auto_channel_grouping = channel_types
     else:
         project_dir = os.path.abspath(Defaults.PROJECT_DIRECTORY)
+
+    if manual_grouping_is_used and args.auto_channel_grouping:
+        # If manually specifying groups, don't allow auto channel grouping
+        args.auto_channel_grouping = None
+        raise RuntimeWarning("Note that the --auto_channel_grouping flag has no effect when manually specifying "
+                             "prediction groups in the --channels flag and should thus not be set.")
 
     # Check project folder is valid
     from utime.utils.scriptutils.scriptutils import assert_project_folder
