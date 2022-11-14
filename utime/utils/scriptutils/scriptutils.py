@@ -248,6 +248,8 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams):
         period_length = hparams['prediction_params'].get('period_length', None)
         time_unit = hparams['prediction_params'].get('time_unit', "SECOND")
         pre_proc_params = hparams['prediction_params']
+        if ann_dict is None:
+            ann_dict = pre_proc_params.get("sleep_stage_annotations")
     else:
         period_length = (hparams.get("train_data") or
                          hparams.get("test_data")).get('period_length', None)
