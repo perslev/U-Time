@@ -244,18 +244,12 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams):
         A SleepStudy object with settings set as per 'hparams'
     """
     ann_dict = hparams.get("sleep_stage_annotations")
-    if 'prediction_params' in hparams:
-        period_length = hparams['prediction_params'].get('period_length', None)
-        time_unit = hparams['prediction_params'].get('time_unit', "SECOND")
-        pre_proc_params = hparams['prediction_params']
-        if ann_dict is None:
-            ann_dict = pre_proc_params.get("sleep_stage_annotations")
-    else:
-        period_length = (hparams.get("train_data") or
-                         hparams.get("test_data")).get('period_length', None)
-        time_unit = (hparams.get("train_data") or
-                     hparams.get("test_data")).get('time_unit', "SECOND")
-        pre_proc_params = hparams
+    period_length = (hparams.get("train_data") or
+                     hparams.get("test_data") or
+                     hparams).get('period_length', None)
+    time_unit = (hparams.get("train_data") or
+                 hparams.get("test_data") or
+                 hparams).get('time_unit', "SECOND")
     data_dir, pattern = os.path.split(os.path.abspath(regex_pattern))
     ssd = SleepStudyDataset(folder_regex=pattern,
                             data_dir=data_dir,
@@ -264,5 +258,5 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams):
                             annotation_dict=ann_dict)
     # Apply transformations, scaler etc.
     from utime.utils.scriptutils import select_sample_strip_scale_quality
-    select_sample_strip_scale_quality(ssd, hparams=pre_proc_params)
+    select_sample_strip_scale_quality(ssd, hparams=hparams)
     return ssd
