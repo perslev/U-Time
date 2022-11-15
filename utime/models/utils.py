@@ -40,7 +40,9 @@ def get_best_model(model_dir):
         if models:
             scores = []
             for m in models:
-                scores.append(float(re.findall(r"(\d+[.]\d+)", m)[0]))
+                matches = re.findall(r"(\d+[.]\d+)", os.path.split(m)[-1])
+                assert len(matches) == 1
+                scores.append(float(matches[0]))
             return os.path.abspath(models[select_func(np.array(scores))])
     m = os.path.abspath(os.path.join(model_dir, "model_weights.h5"))
     if not os.path.exists(m):
