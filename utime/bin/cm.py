@@ -173,10 +173,10 @@ def glob_to_metrics_df(true_pattern: str,
         del mapping[3]
         logger.info(f"Merging all NREM stages into one. New labels: {labels} / {[mapping[i] for i in labels]}")
 
-    # Print macro matrics
+    # Print macro metrics
     keep_mask = np.where(np.isin(true, labels))
     logger.info(f"Unweighted global scores:\n"
-        f"Accurary: {np.round((true[keep_mask] == pred[keep_mask]).mean(), round)}\n"
+        f"Accuracy: {np.round((true[keep_mask] == pred[keep_mask]).mean(), round)}\n"
         f"Macro F1: {np.round(f1_score(true[keep_mask], pred[keep_mask], average='macro'), round)}\n"
         f"Micro F1: {np.round(f1_score(true[keep_mask], pred[keep_mask], average='micro'), round)}\n"
         f"Kappa:    {np.round(cohen_kappa_score(true[keep_mask], pred[keep_mask]), round)}")
@@ -187,7 +187,6 @@ def glob_to_metrics_df(true_pattern: str,
         cm /= cm.sum(axis=1, keepdims=True)
 
     # Pretty print
-    classes = len(cm)
     cm = pd.DataFrame(data=cm,
                       index=["True {}".format(mapping[i]) for i in labels],
                       columns=["Pred {}".format(mapping[i]) for i in labels])
