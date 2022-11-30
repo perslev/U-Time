@@ -1,5 +1,5 @@
 from .scriptutils import (assert_project_folder,
-                          select_sample_strip_scale_quality,
+                          set_preprocessing_pipeline,
                           get_splits_from_all_datasets,
                           get_dataset_splits_from_hparams,
                           get_dataset_from_regex_pattern,
