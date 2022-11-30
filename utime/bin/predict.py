@@ -123,6 +123,12 @@ def set_new_filter_settings(dataset_hparams, filter_settings):
     dataset_hparams['filter_settings'] = filter_settings
 
 
+def set_new_notch_filter_settings(dataset_hparams, notch_filter_settings):
+    if 'notch_filter_settings' not in dataset_hparams:
+        dataset_hparams['notch_filter_settings'] = {}
+    dataset_hparams['notch_filter_settings'] = notch_filter_settings
+
+
 def get_prediction_channel_sets(sleep_study, dataset):
     """
     TODO
@@ -172,6 +178,9 @@ def get_datasets(hparams, args):
         if args.filter_settings:
             # Replace the set filter settings
             set_new_filter_settings(dataset_hparams, args.filter_settings)
+        if args.notch_filter_settings:
+            # Replace set set notch filter settings
+            set_new_notch_filter_settings(dataset_hparams, args.notch_filter_settings)
         # Check if channel sampling groups are set
         channel_groups = dataset_hparams.get('channel_sampling_groups')
         if channel_groups:
