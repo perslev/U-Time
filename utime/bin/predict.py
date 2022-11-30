@@ -116,7 +116,7 @@ def set_new_strip_func(dataset_hparams, strip_func):
 def set_new_filter_settings(dataset_hparams, filter_settings):
     if 'filter_settings' not in dataset_hparams:
         dataset_hparams['filter_settings'] = {}
-    dataset_hparams['filter_settings'] = {'filter_settings': filter_settings}
+    dataset_hparams['filter_settings'] = filter_settings
 
 
 def get_prediction_channel_sets(sleep_study, dataset):
