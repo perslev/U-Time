@@ -67,7 +67,11 @@ def get_argparser():
     parser.add_argument("--filter_settings", type=json.loads, default=None,
                         help="Use a different set of filtering settings from the one "
                              "specified in the hyperparameters file. You must pass a JSON string, e.g.: "
-                             "\"{'l_freq': 0.3, 'h_freq': 35}\".")
+                             "\"{'l_freq': 0.3, 'h_freq': 35}\" for a 0.3-35 band-pass filter.")
+    parser.add_argument("--notch_filter_settings", type=json.loads, default=None,
+                        help="Use a different set of notch filtering settings from the one "
+                             "specified in the hyperparameters file. You must pass a JSON string, e.g.: "
+                             "\"{'freqs': 50\" for a 50 Hz notch filter.")
     parser.add_argument("--num_test_time_augment", type=int, default=0,
                         help="Number of prediction passes over each sleep "
                              "study with augmentation enabled.")
