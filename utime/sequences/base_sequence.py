@@ -413,7 +413,10 @@ class BaseSequence(_BaseSequence):
 
         expected_dim = len(self.batch_shape)
         if X.ndim == expected_dim-1:
-            X, y = np.expand_dims(X, 0), np.expand_dims(y, 0)
+            if self.batch_shape[1] == 1:
+                X = np.expand_dims(X, 1)
+            else:
+                X, y = np.expand_dims(X, 0), np.expand_dims(y, 0)
         elif X.ndim != expected_dim:
             raise RuntimeError("Dimensionality of X is {} (shape {}), but "
                                "expected {}".format(X.ndim,
