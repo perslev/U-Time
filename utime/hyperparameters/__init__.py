@@ -90,11 +90,21 @@ def _handle_period_length_sec(hparams):
         hparams.save_current()
 
 
+def _handle_strip_func_str_renaming(hparams):
+    if hparams.get('strip_func') and hparams['strip_func'].get('strip_func_str'):
+        logger.warning("Renaming parameter 'strip_func_str' -> 'strip_func'")
+        mem = hparams['strip_func']['strip_func_str']
+        del hparams['strip_func']['strip_func_str']
+        hparams['strip_func']['strip_func'] = mem
+        hparams.save_current()
+
+
 def check_deprecated_params(hparams):
     _handle_channel_sampling_group_renaming(hparams)
     _handle_metrics_renaming(hparams)
     _handle_version_format_changes(hparams)
     _handle_period_length_sec(hparams)
+    _handle_strip_func_str_renaming(hparams)
 
 
 class YAMLHParams(_YAMLHParams):

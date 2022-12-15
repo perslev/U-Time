@@ -487,7 +487,7 @@ def run(args, return_prediction=False):
     # Get the sleep study
     logger.info("Loading and pre-processing PSG file...")
     hparams['channels'] = args.channels
-    hparams['strip_func']['strip_func_str'] = args.strip_func
+    hparams['strip_func']['strip_func'] = args.strip_func
     study, channel_groups = get_sleep_study(psg_path=args.f,
                                             header_file_name=args.header_file_name,
                                             auto_channel_grouping=args.auto_channel_grouping,
