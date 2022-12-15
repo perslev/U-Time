@@ -430,7 +430,7 @@ def get_sleep_study(psg_path,
                     header_file_name=None,
                     auto_channel_grouping=False,
                     auto_reference_types=False,
-                    **params):
+                    **hparams):
     """
     Loads a specified sleep study object with no labels
     Sets scaler and quality control function
@@ -438,17 +438,19 @@ def get_sleep_study(psg_path,
     Returns:
         A loaded SleepStudy object
     """
-    if params.get('batch_wise_scaling'):
+    if hparams.get('batch_wise_scaling'):
         raise NotImplementedError("Batch-wise scaling is currently not "
                                   "supported. Use ut predict/evaluate instead")
-    logger.info(f"Evaluating using parameters:\n{pformat(params)}")
+    used_hparams = {key: hparams.get(key) for key in ("period_length", "time_unit", "strip_func",
+                                                      "set_sample_rate", "scaler", "quality_control_func")}
+    logger.info(f"Evaluating using parameters:\n{pformat(used_hparams)}")
     dir_, regex = os.path.split(os.path.abspath(psg_path))
     study = SleepStudy(subject_dir=dir_,
                        psg_regex=regex,
                        header_regex=header_file_name,
                        no_hypnogram=True,
-                       period_length=params.get('period_length', 30),
-                       time_unit=params.get('time_unit', TimeUnit.SECOND))
+                       period_length=used_hparams.get('period_length', 30),
+                       time_unit=used_hparams.get('time_unit', TimeUnit.SECOND))
 
     file_header = extract_header(study.psg_file_path, study.header_file_path)
     channels_to_load, channel_groups = get_load_and_group_channels(auto_channel_grouping,
@@ -458,11 +460,11 @@ def get_sleep_study(psg_path,
 
     logger.info(f"\nLoading channels: {channels_to_load}\n"
                 f"Channel groups: {channel_groups}")
-    study.set_strip_func(**params['strip_func'])
+    study.set_strip_func(**used_hparams['strip_func'])
     study.select_channels = channels_to_load
-    study.sample_rate = params['set_sample_rate']
-    study.scaler = params['scaler']
-    study.set_quality_control_func(**params['quality_control_func'])
+    study.sample_rate = used_hparams['set_sample_rate']
+    study.scaler = used_hparams['scaler']
+    study.set_quality_control_func(**used_hparams['quality_control_func'])
     study.load()
     logger.info(f"\nStudy loaded with shape: {study.get_psg_shape()}\n"
                 f"Channels: {study.select_channels} (org names: {study.select_channels.original_names})")
