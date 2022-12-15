@@ -510,7 +510,7 @@ def run(args, return_prediction=False):
         n_periods=study.n_periods,
         project_dir=args.project_dir,
         hparams=hparams,
-        weights_file_name=hparams.get('weights_file_name')
+        weights_file_name=args.weights_file_name
     )
     logger.info("Predicting...")
     pred = predict_study(study, model, channel_groups, args.no_argmax)

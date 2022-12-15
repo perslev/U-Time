@@ -99,12 +99,20 @@ def _handle_strip_func_str_renaming(hparams):
         hparams.save_current()
 
 
+def _handle_weights_file_name(hparams):
+    if hparams.get('weights_file_name'):
+        logger.warning("Removing parameter 'weights_file_name' from hparams object (DEPRECATED)")
+        del hparams['weights_file_name']
+        hparams.save_current()
+
+
 def check_deprecated_params(hparams):
     _handle_channel_sampling_group_renaming(hparams)
     _handle_metrics_renaming(hparams)
     _handle_version_format_changes(hparams)
     _handle_period_length_sec(hparams)
     _handle_strip_func_str_renaming(hparams)
+    _handle_weights_file_name(hparams)
 
 
 class YAMLHParams(_YAMLHParams):
