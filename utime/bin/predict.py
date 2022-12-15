@@ -11,6 +11,7 @@ import os
 import numpy as np
 import traceback
 import shutil
+import json
 from argparse import ArgumentParser
 from utime import Defaults
 from utime.utils.system import find_and_set_gpus
@@ -63,6 +64,14 @@ def get_argparser():
     parser.add_argument("--strip_func", type=str, default=None,
                         help="Use a different strip function from the one "
                              "specified in the hyperparameters file")
+    parser.add_argument("--filter_settings", type=json.loads, default=None,
+                        help="Use a different set of filtering settings from the one "
+                             "specified in the hyperparameters file. You must pass a JSON string, e.g.: "
+                             "\"{'l_freq': 0.3, 'h_freq': 35}\" for a 0.3-35 band-pass filter.")
+    parser.add_argument("--notch_filter_settings", type=json.loads, default=None,
+                        help="Use a different set of notch filtering settings from the one "
+                             "specified in the hyperparameters file. You must pass a JSON string, e.g.: "
+                             "\"{'freqs': 50\" for a 50 Hz notch filter.")
     parser.add_argument("--num_test_time_augment", type=int, default=0,
                         help="Number of prediction passes over each sleep "
                              "study with augmentation enabled.")
@@ -106,6 +115,18 @@ def set_new_strip_func(dataset_hparams, strip_func):
     if 'strip_func' not in dataset_hparams:
         dataset_hparams['strip_func'] = {}
     dataset_hparams['strip_func'] = {'strip_func': strip_func}
+
+
+def set_new_filter_settings(dataset_hparams, filter_settings):
+    if 'filter_settings' not in dataset_hparams:
+        dataset_hparams['filter_settings'] = {}
+    dataset_hparams['filter_settings'] = filter_settings
+
+
+def set_new_notch_filter_settings(dataset_hparams, notch_filter_settings):
+    if 'notch_filter_settings' not in dataset_hparams:
+        dataset_hparams['notch_filter_settings'] = {}
+    dataset_hparams['notch_filter_settings'] = notch_filter_settings
 
 
 def get_prediction_channel_sets(sleep_study, dataset):
@@ -154,6 +175,12 @@ def get_datasets(hparams, args):
         if args.strip_func:
             # Replace the set strip function
             set_new_strip_func(dataset_hparams, args.strip_func)
+        if args.filter_settings:
+            # Replace the set filter settings
+            set_new_filter_settings(dataset_hparams, args.filter_settings)
+        if args.notch_filter_settings:
+            # Replace set set notch filter settings
+            set_new_notch_filter_settings(dataset_hparams, args.notch_filter_settings)
         # Check if channel sampling groups are set
         channel_groups = dataset_hparams.get('channel_sampling_groups')
         if channel_groups:

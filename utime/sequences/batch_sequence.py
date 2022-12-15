@@ -159,11 +159,8 @@ class BatchSequence(BaseSequence):
     @property
     def batch_shape(self):
         """ Returns the shape of the X output array that will be sampled """
-        if self.margin == 0:
-            return [self.batch_size, self.data_per_period, self.n_channels]
-        else:
-            return [self.batch_size, self.margin * 2 + 1,
-                    self.data_per_period, self.n_channels]
+        return [self.batch_size, self.margin * 2 + 1,
+                self.data_per_period, self.n_channels]
 
     @property
     def margin(self):

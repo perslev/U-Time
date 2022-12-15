@@ -7,7 +7,7 @@ import os
 from functools import wraps
 from psg_utils.utils import ensure_list_or_tuple
 from psg_utils.dataset import SleepStudyDataset
-from psg_utils.preprocessing.utils import select_sample_strip_scale_quality
+from psg_utils.preprocessing.utils import set_preprocessing_pipeline
 from utime import Defaults
 
 logger = logging.getLogger(__name__)
@@ -135,7 +135,7 @@ def get_all_dataset_hparams(hparams, project_dir=None, dataset_ids=None):
 def get_dataset_splits_from_hparams(hparams, splits_to_load, id=""):
     """
     Return all initialized and prepared (according to the prep. function of
-    'select_sample_strip_scale_quality') SleepStudyDataset objects as described
+    'set_preprocessing_pipeline') SleepStudyDataset objects as described
     in a YAMLHparams object.
 
     Args:
@@ -168,7 +168,7 @@ def get_dataset_splits_from_hparams(hparams, splits_to_load, id=""):
         datasets.append(dataset)
 
     # Apply transformations, scaler etc.
-    select_sample_strip_scale_quality(*datasets, hparams=hparams)
+    set_preprocessing_pipeline(*datasets, hparams=hparams)
     return datasets
 
 
@@ -193,7 +193,7 @@ def get_splits_from_all_datasets(hparams, splits_to_load, return_data_hparams=Fa
     'get_dataset_splits_from_hparams' files loading all sub-datasets according
     to 'splits_to_load from each dataset specified in the file.
     The dataset is processed according to hparams in the prep. function
-    'select_sample_strip_scale_quality'.
+    'set_preprocessing_pipeline'.
 
     I.e. if hparams refer to 2 different datasets, e.g. 'Sleep-EDF-153' and
     'DCSM' and you want to load the training and validation data from each
@@ -231,7 +231,7 @@ def get_splits_from_all_datasets(hparams, splits_to_load, return_data_hparams=Fa
 def get_dataset_from_regex_pattern(regex_pattern, hparams):
     """
     Initializes a SleepStudy dataset and applies prep. function
-    'select_sample_strip_scale_quality' from all subject folders that match
+    'set_preprocessing_pipeline' from all subject folders that match
     a regex statement.
 
     Args:
@@ -244,16 +244,12 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams):
         A SleepStudy object with settings set as per 'hparams'
     """
     ann_dict = hparams.get("sleep_stage_annotations")
-    if 'prediction_params' in hparams:
-        period_length = hparams['prediction_params'].get('period_length', None)
-        time_unit = hparams['prediction_params'].get('time_unit', "SECOND")
-        pre_proc_params = hparams['prediction_params']
-    else:
-        period_length = (hparams.get("train_data") or
-                         hparams.get("test_data")).get('period_length', None)
-        time_unit = (hparams.get("train_data") or
-                     hparams.get("test_data")).get('time_unit', "SECOND")
-        pre_proc_params = hparams
+    period_length = (hparams.get("train_data") or
+                     hparams.get("test_data") or
+                     hparams).get('period_length', None)
+    time_unit = (hparams.get("train_data") or
+                 hparams.get("test_data") or
+                 hparams).get('time_unit', "SECOND")
     data_dir, pattern = os.path.split(os.path.abspath(regex_pattern))
     ssd = SleepStudyDataset(folder_regex=pattern,
                             data_dir=data_dir,
@@ -261,6 +257,6 @@ def get_dataset_from_regex_pattern(regex_pattern, hparams):
                             time_unit=time_unit,
                             annotation_dict=ann_dict)
     # Apply transformations, scaler etc.
-    from utime.utils.scriptutils import select_sample_strip_scale_quality
-    select_sample_strip_scale_quality(ssd, hparams=pre_proc_params)
+    from utime.utils.scriptutils import set_preprocessing_pipeline
+    set_preprocessing_pipeline(ssd, hparams=hparams)
     return ssd

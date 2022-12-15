@@ -430,7 +430,7 @@ def get_sleep_study(psg_path,
                     header_file_name=None,
                     auto_channel_grouping=False,
                     auto_reference_types=False,
-                    **params):
+                    **hparams):
     """
     Loads a specified sleep study object with no labels
     Sets scaler and quality control function
@@ -438,17 +438,19 @@ def get_sleep_study(psg_path,
     Returns:
         A loaded SleepStudy object
     """
-    if params.get('batch_wise_scaling'):
+    if hparams.get('batch_wise_scaling'):
         raise NotImplementedError("Batch-wise scaling is currently not "
                                   "supported. Use ut predict/evaluate instead")
-    logger.info(f"Evaluating using parameters:\n{pformat(params)}")
+    used_hparams = {key: hparams.get(key) for key in ("period_length", "time_unit", "strip_func",
+                                                      "set_sample_rate", "scaler", "quality_control_func")}
+    logger.info(f"Evaluating using parameters:\n{pformat(used_hparams)}")
     dir_, regex = os.path.split(os.path.abspath(psg_path))
     study = SleepStudy(subject_dir=dir_,
                        psg_regex=regex,
                        header_regex=header_file_name,
                        no_hypnogram=True,
-                       period_length=params.get('period_length', 30),
-                       time_unit=params.get('time_unit', TimeUnit.SECOND))
+                       period_length=used_hparams.get('period_length', 30),
+                       time_unit=used_hparams.get('time_unit', TimeUnit.SECOND))
 
     file_header = extract_header(study.psg_file_path, study.header_file_path)
     channels_to_load, channel_groups = get_load_and_group_channels(auto_channel_grouping,
@@ -458,11 +460,11 @@ def get_sleep_study(psg_path,
 
     logger.info(f"\nLoading channels: {channels_to_load}\n"
                 f"Channel groups: {channel_groups}")
-    study.set_strip_func(**params['strip_func'])
+    study.set_strip_func(**used_hparams['strip_func'])
     study.select_channels = channels_to_load
-    study.sample_rate = params['set_sample_rate']
-    study.scaler = params['scaler']
-    study.set_quality_control_func(**params['quality_control_func'])
+    study.sample_rate = used_hparams['set_sample_rate']
+    study.scaler = used_hparams['scaler']
+    study.set_quality_control_func(**used_hparams['quality_control_func'])
     study.load()
     logger.info(f"\nStudy loaded with shape: {study.get_psg_shape()}\n"
                 f"Channels: {study.select_channels} (org names: {study.select_channels.original_names})")
@@ -483,16 +485,24 @@ def run(args, return_prediction=False):
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
     hparams = YAMLHParams(Defaults.get_hparams_path(args.project_dir), no_version_control=True)
+    datasets = hparams.get('datasets')
+    if datasets:
+        path = list(datasets.values())[0]
+        if not os.path.isabs(path):
+            path = os.path.join(Defaults.get_hparams_dir(args.project_dir), path)
+        hparams.update(
+            YAMLHParams(path, no_version_control=True)
+        )
 
     # Get the sleep study
     logger.info("Loading and pre-processing PSG file...")
-    hparams['prediction_params']['channels'] = args.channels
-    hparams['prediction_params']['strip_func']['strip_func_str'] = args.strip_func
+    hparams['channels'] = args.channels
+    hparams['strip_func']['strip_func'] = args.strip_func
     study, channel_groups = get_sleep_study(psg_path=args.f,
                                             header_file_name=args.header_file_name,
                                             auto_channel_grouping=args.auto_channel_grouping,
                                             auto_reference_types=args.auto_reference_types,
-                                            **hparams['prediction_params'])
+                                            **hparams)
 
     # Set GPU and get model
     find_and_set_gpus(args.num_gpus, args.force_gpus)
@@ -502,7 +512,7 @@ def run(args, return_prediction=False):
         n_periods=study.n_periods,
         project_dir=args.project_dir,
         hparams=hparams,
-        weights_file_name=hparams.get('weights_file_name')
+        weights_file_name=args.weights_file_name
     )
     logger.info("Predicting...")
     pred = predict_study(study, model, channel_groups, args.no_argmax)

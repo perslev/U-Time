@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from utime.utils.scriptutils import get_all_dataset_hparams, get_splits_from_all_datasets
 from utime.sequences import MultiSequence, ValidationMultiSequence, get_batch_sequence
-from psg_utils.preprocessing.utils import select_sample_strip_scale_quality
+from psg_utils.preprocessing.utils import set_preprocessing_pipeline
 from psg_utils.dataset.sleep_study_dataset import SingleH5Dataset
 from psg_utils.errors import NotLoadedError
 
@@ -146,7 +146,7 @@ def get_h5_train_and_val_datasets(hparams, no_val, train_on_val, dataset_ids=Non
             )
             ds.append(val)
             val_datasets.append(val)
-        select_sample_strip_scale_quality(*ds, hparams=hparams)
+        set_preprocessing_pipeline(*ds, hparams=hparams)
     return train_datasets, val_datasets
 
 

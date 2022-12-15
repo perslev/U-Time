@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from argparse import ArgumentParser
 from glob import glob
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, f1_score, cohen_kappa_score
 from utime import Defaults
 from utime.evaluation import concatenate_true_pred_pairs
 from utime.evaluation import (f1_scores_from_cm, precision_scores_from_cm,
@@ -153,11 +153,14 @@ def glob_to_metrics_df(true_pattern: str,
         logger.info("OBS: Wake trimming of {} minutes (period length {} sec)"
                     "".format(wake_trim_min, period_length_sec))
         np_pairs = wake_trim(np_pairs, wake_trim_min, period_length_sec)
+    mapping = Defaults.get_class_int_to_stage_string()
     true, pred = map(lambda x: x.astype(np.uint8).reshape(-1, 1), concatenate_true_pred_pairs(pairs=np_pairs))
+
     labels = None
     if ignore_classes:
-        logger.info("OBS: Ignoring class(es): {}".format(ignore_classes))
         labels = list((set(np.unique(true)) | set(np.unique(pred))) - set(ignore_classes))
+        logger.info(f"OBS: Ignoring class(es): {ignore_classes} / {[mapping[i] for i in ignore_classes]}. "
+                    f"I.e., only epochs with true labels in {labels} / {[mapping[i] for i in labels]} will be considered.")
 
     if group_non_rem:
         ones = np.ones_like(true)
@@ -165,6 +168,18 @@ def glob_to_metrics_df(true_pattern: str,
         pred = np.where(np.isin(pred, [1, 2, 3]), ones, pred)
         labels.pop(labels.index(2))
         labels.pop(labels.index(3))
+        mapping[1] = "NREM"
+        del mapping[2]
+        del mapping[3]
+        logger.info(f"Merging all NREM stages into one. New labels: {labels} / {[mapping[i] for i in labels]}")
+
+    # Print macro metrics
+    keep_mask = np.where(np.isin(true, labels))
+    logger.info(f"Unweighted global scores:\n"
+        f"Accuracy: {np.round((true[keep_mask] == pred[keep_mask]).mean(), round)}\n"
+        f"Macro F1: {np.round(f1_score(true[keep_mask], pred[keep_mask], average='macro'), round)}\n"
+        f"Micro F1: {np.round(f1_score(true[keep_mask], pred[keep_mask], average='micro'), round)}\n"
+        f"Kappa:    {np.round(cohen_kappa_score(true[keep_mask], pred[keep_mask]), round)}")
 
     cm = confusion_matrix(true, pred, labels=labels)
     if normalized:
@@ -172,23 +187,21 @@ def glob_to_metrics_df(true_pattern: str,
         cm /= cm.sum(axis=1, keepdims=True)
 
     # Pretty print
-    classes = len(cm)
     cm = pd.DataFrame(data=cm,
-                      index=["True {}".format(i) for i in range(classes)],
-                      columns=["Pred {}".format(i) for i in range(classes)])
+                      index=["True {}".format(mapping[i]) for i in labels],
+                      columns=["Pred {}".format(mapping[i]) for i in labels])
     p = "Raw" if not normalized else "Normed"
     logger.info(f"\n\n{p} Confusion Matrix:\n" + str(cm.round(round)) + "\n")
 
-    # Print metrics
+    # Print stage-wise metrics
     f1 = f1_scores_from_cm(cm)
     prec = precision_scores_from_cm(cm)
     recall = recall_scores_from_cm(cm)
-    mapping = Defaults.get_class_int_to_stage_string()
     metrics = pd.DataFrame({
         "F1": f1,
         "Precision": prec,
         "Recall/Sens.": recall
-    }, index=[mapping[i] for i in range(classes)])
+    }, index=[mapping[i] for i in labels])
     metrics = metrics.T
     metrics["mean"] = metrics.mean(axis=1)
     logger.info(f"\n\n{p} Metrics:\n" + str(np.round(metrics.T, round)) + "\n")
