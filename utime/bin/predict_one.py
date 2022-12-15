@@ -483,6 +483,14 @@ def run(args, return_prediction=False):
     # Get hyperparameters and init all described datasets
     from utime.hyperparameters import YAMLHParams
     hparams = YAMLHParams(Defaults.get_hparams_path(args.project_dir), no_version_control=True)
+    datasets = hparams.get('datasets')
+    if datasets:
+        path = list(datasets.values())[0]
+        if not os.path.isabs(path):
+            path = os.path.join(Defaults.get_hparams_dir(args.project_dir), path)
+        hparams.update(
+            YAMLHParams(path, no_version_control=True)
+        )
 
     # Get the sleep study
     logger.info("Loading and pre-processing PSG file...")
