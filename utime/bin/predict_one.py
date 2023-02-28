@@ -161,12 +161,6 @@ def get_processed_args(args):
     elif os.path.isdir(args.logging_out_path):
         args.logging_out_path = os.path.join(args.logging_out_path, os.path.split(default_log_file_path)[-1])
 
-    if args.auto_channel_grouping is not None:
-        # Check if --auto_channel_grouping has correct format and at least 2 groups
-        assert len(args.auto_channel_grouping) > 1, "Should specify at least 2 channel type groups " \
-                                                    "with parameter --auto_channel_grouping, " \
-                                                    f"e.g. 'EEG' 'EOG', but got {args.auto_channel_grouping}"
-
     return args
 
 
