@@ -7,7 +7,7 @@ ut extract --file_regex '[LOCAL_PATH]/shhs/polysomnography/edfs/shhs*/*.edf' --o
 
 #### Extract hypno command
 ```
-ut extract --file_regex '[LOCAL_PATH]/shhs/polysomnography/annotations-events-nsrr/shhs*/*.xml' --out_dir '[LOCAL_PATH]/processed/shhs/'
+ut extract_hypno --file_regex '[LOCAL_PATH]/shhs/polysomnography/annotations-events-nsrr/shhs*/*.xml' --out_dir '[LOCAL_PATH]/processed/shhs/'
 ```
 
 #### Views command
