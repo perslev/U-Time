@@ -4,7 +4,7 @@ channels:
   - conda-forge
 dependencies:
   - conda>=4.10.3
-  - python>=3.7.7
+  - python>=3.7.7, <3.12
   - pip>=21.2.4
   - setuptools>=52.0.0
   - tk>=8.6.10
