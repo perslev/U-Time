@@ -91,6 +91,41 @@ Alternatively, you may install the package from [PyPi](https://pypi.org) (may be
 pip install utime
 ```
 
+### Cuda Installation Guide
+
+The following NVIDIA software are only required for GPU support:
+
+* CUDA Toolkit 11.2
+* cuDNN SDK 8.1
+
+If not installed:
+
+```
+conda install -c conda-forge cudatoolkit=11.2 cudnn=8.1.0
+```
+
+If you encounter the following error:
+
+```
+Can't find libdevice directory ${CUDA_DIR}/nvvm/libdevice.
+```
+
+You will need to run the following commands:
+
+```
+# Install NVCC
+conda install -c nvidia cuda-nvcc=11.3.58
+# Configure the XLA cuda directory
+mkdir -p $CONDA_PREFIX/etc/conda/activate.d
+printf 'export XLA_FLAGS=--xla_gpu_cuda_data_dir=$CONDA_PREFIX/lib/\n' >> $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+source $CONDA_PREFIX/etc/conda/activate.d/env_vars.sh
+# Copy libdevice file to the required path
+mkdir -p $CONDA_PREFIX/lib/nvvm/libdevice
+cp $CONDA_PREFIX/lib/libdevice.10.bc $CONDA_PREFIX/lib/nvvm/libdevice/
+```
+
+
+
 ## Demo
 In this following we will demonstrate how to launch a short training session of U-Sleep on a significantly limited subset of the datasets used in [[2]](#usleep_ref).
 
