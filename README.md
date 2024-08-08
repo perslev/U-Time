@@ -37,6 +37,7 @@ In the following we will introduce the software behind U-Sleep in greater detail
 
 * If you are interested to re-implement, extend, or train U-Sleep yourself e.g. on other datasets, you are at the right place!
 * If you are looking to use our pre-trained U-Sleep model for automated sleep staging, please refer to https://sleep.ai.ku.dk and follow the displayed guide. See also [this repository](https://github.com/perslev/U-Sleep-API-Python-Bindings) for Python bindings to the webserver API.
+* U-Sleep is also available under research and commercial licenses on the [youSleep BETA platform](https://yousleep.ai).
 
 
 #### U-Time and U-Sleep - What's the Difference?
