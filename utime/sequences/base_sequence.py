@@ -201,7 +201,7 @@ class BaseSequence(_BaseSequence):
             An ndarray of class counts across all stored SleepStudy objects
             Shape [self.n_classes], dtype np.int
         """
-        counts = np.zeros(shape=[self.n_classes], dtype=np.int)
+        counts = np.zeros(shape=[self.n_classes], dtype=np.int32)
         for im in self.dataset_queue:
             count_dict = im.get_class_counts(as_dict=True)
             for cls, count in count_dict.items():

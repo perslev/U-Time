@@ -115,7 +115,7 @@ class MultiSequence(_BaseSequence):
 
     def get_class_counts(self):
         """ Returns the sum of class counts over all sequences """
-        counts = np.zeros(shape=[self.sequences[0].n_classes], dtype=np.int)
+        counts = np.zeros(shape=[self.sequences[0].n_classes], dtype=np.int32)
         for seq in self.sequences:
             counts += seq.get_class_counts()
         return counts

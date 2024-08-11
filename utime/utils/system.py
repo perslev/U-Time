@@ -34,7 +34,7 @@ def get_free_gpus(max_allowed_mem_usage=400):
     try:
         # Get list of GPUs
         gpu_list = check_output(["nvidia-smi", "-L"], universal_newlines=True)
-        gpu_ids = np.array(re.findall(r"GPU[ ]+(\d+)", gpu_list), dtype=np.int)
+        gpu_ids = np.array(re.findall(r"GPU[ ]+(\d+)", gpu_list), dtype=np.int32)
 
         # Query memory usage stats from nvidia-smi
         output = check_output(["nvidia-smi", "-q", "-d", "MEMORY"], universal_newlines=True)

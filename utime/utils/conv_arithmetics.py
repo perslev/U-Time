@@ -24,7 +24,7 @@ def output_features(in_filter_size, padding, kernel_size, stride=1, dim=2):
                                                                   stride],
                                                                  dim=dim)
 
-    return np.floor((in_filter_size + (2*padding) - kernel_size)/stride).astype(np.int) + 1
+    return np.floor((in_filter_size + (2*padding) - kernel_size)/stride).astype(np.int32) + 1
 
 
 def output_feature_distance(input_feature_distance, stride, dim=2):
@@ -82,9 +82,9 @@ def compute_receptive_fields(layers, verbose=False):
 
         # Get potential dilation rates
         try:
-            dilation = np.array(layer.dilation_rate).astype(np.int)
+            dilation = np.array(layer.dilation_rate).astype(np.int32)
         except AttributeError:
-            dilation = np.ones(shape=[dim], dtype=np.int)
+            dilation = np.ones(shape=[dim], dtype=np.int32)
         if hasattr(layer, "dilations"):
             assert (dilation == 1).all()
             dilation = np.array(layer.dilations)
