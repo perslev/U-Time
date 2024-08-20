@@ -328,6 +328,13 @@ This will apply all preprocessing, create a data archive suitable for streaming,
 Due to the vast size of the dataset considered, training U-Sleep with the default parameters may take very long. 
 We suggest increasing the learning rate (from the current `1e-7` to e.g. `1e-6`) unless you are looking to re-create U-Sleep under the exact conditions considered in [[2]](#usleep_ref).
 
+## Train on ZMax Datasets
+
+#### Prepare the datasets
+
+1) Prepare the datasets for U-Sleep using `zmax-datasets`
+2) Run `ut cv_split` on all zmax datasets
+
 ## U-Time Example
 You can still use this repository to train the older U-Time model. 
 In the following we show an end-to-end example. The commands listed below prepares a project folder, downloads the sleep-edf-153 dataset, fits and evaluates
