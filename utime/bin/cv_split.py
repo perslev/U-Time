@@ -267,10 +267,9 @@ def run_on_split(split_path, test_split, train_val_data, n_val, args):
         args:            (tuple)  Parsed arguments, see argparser.
     """
     # Define train, val and test sub-dirs
-    train_path = os.path.join(split_path, "train")
+    train_path = os.path.join(split_path, "train") if len(train_val_data) - n_val else None
     val_path = os.path.join(split_path, "val") if n_val else None
-    test_path = os.path.join(split_path, "test")
-
+    test_path = os.path.join(split_path, "test") if len(test_split) else None
     # Create folders if not existing
     create_folders([train_path, val_path, test_path])
 
@@ -292,11 +291,9 @@ def run_on_split(split_path, test_split, train_val_data, n_val, args):
     train_records = add_files(training, train_path, move_func)
     # Add test data
     test_records = add_files(test_split, test_path, move_func)
-    if n_val:
-        # Add validation
-        val_records = add_files(validation, val_path, move_func)
-    else:
-        val_records = 0
+    # Add validation
+    val_records = add_files(validation, val_path, move_func)
+
     return train_records, val_records, test_records
 
 
@@ -311,13 +308,15 @@ def run(args):
     else:
         out_dir = os.path.join(data_dir, args.out_dir, "fixed_split")
 
-    if n_splits == 1 and not args.test_fraction:
-        raise ValueError("Must specify --test_fraction with --CV=1.")
+    if n_splits == 1 and args.test_fraction == 0.0:
+        logger.warning("Should specify a test_fraction >= 0 with --CV=1.")
+    
+    if (args.test_fraction != _DEFAULT_TEST_FRACTION) and (args.CV > 1):
+        raise ValueError("Should not set --test_fraction with --CV > 1")
+
     if args.copy and args.file_list:
         raise ValueError("Only one of --copy and --file_list "
                          "flags must be set.")
-    if (args.test_fraction != _DEFAULT_TEST_FRACTION) and (args.CV > 1):
-        raise ValueError("Should not set --test_fraction with --CV > 1")
 
     # Assert suitable folders
     assert_dir_structure(data_dir, out_dir)

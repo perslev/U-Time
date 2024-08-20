@@ -2,3 +2,4 @@
 build/
 utime.egg-info/
 __pycache__/
+logs/

@@ -138,7 +138,7 @@ def get_h5_train_and_val_datasets(hparams, no_val, train_on_val, dataset_ids=Non
         )
         train_datasets.append(train)
         ds = [train]
-        if not no_val:
+        if not no_val and hparams.get('val_data') is not None:
             val = _get_dataset(
                 h5_dataset=h5_dataset,
                 regex=f'/{dataset_id}/VAL',
@@ -192,7 +192,7 @@ def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
     else:
         train_seq = train_seqs[0]
     if val_seq:
-        assert len(val_seq) == len(train_seqs)
+        # assert len(val_seq) == len(train_seqs)
         val_seq = ValidationMultiSequence(val_seq)
     return train_seq, val_seq
 

@@ -157,8 +157,10 @@ def get_dataset_splits_from_hparams(hparams, splits_to_load, id=""):
     datasets = []
     for data_key in ensure_list_or_tuple(splits_to_load):
         if data_key not in hparams:
-            raise ValueError("Dataset with key '{}' does not exists in the "
+            logger.warning("Dataset with key '{}' does not exists in the "
                              "hyperparameters file".format(data_key))
+            continue
+        
         new_id = f"{id}{'/' if id else ''}{hparams[data_key]['identifier']}"
         hparams[data_key]["identifier"] = new_id
 
