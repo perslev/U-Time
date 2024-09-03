@@ -124,8 +124,6 @@ mkdir -p $CONDA_PREFIX/lib/nvvm/libdevice
 cp $CONDA_PREFIX/lib/libdevice.10.bc $CONDA_PREFIX/lib/nvvm/libdevice/
 ```
 
-
-
 ## Demo
 In this following we will demonstrate how to launch a short training session of U-Sleep on a significantly limited subset of the datasets used in [[2]](#usleep_ref).
 
@@ -331,9 +329,11 @@ We suggest increasing the learning rate (from the current `1e-7` to e.g. `1e-6`)
 ## Train on ZMax Datasets
 
 #### Prepare the datasets
+You should take the following steps:
 
-1) Prepare the datasets for U-Sleep using `zmax-datasets`
-2) Run `ut cv_split` on all zmax datasets
+1) Prepare the datasets as specified for each dataset separately in files under the folder `resources/usleep_dataset_pred/zmax` of this repository. These commands will extract and place data into a folder-structure and format that U-Time accepts, as well as split the data into subsets.
+2) Initialize a U-Sleep project: `ut init --name usleep_zmax --model [model_name]`, where `[model_name]` is one of `utime` or `usleep` or `deepsleepnet`.
+7) For each dataset create a configuration file in `hyperparameters/dataset_configurations/` based on the sample conffiguration file `usleep_zmax/hyperparameters/dataset_configurations/dataset_1.yaml`.
 
 ## U-Time Example
 You can still use this repository to train the older U-Time model. 
