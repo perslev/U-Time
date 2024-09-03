@@ -95,7 +95,7 @@ def assert_dir_structure(data_dir, out_dir):
     if not os.path.exists(data_dir):
         raise OSError("Invalid data directory '%s'. Does not exist." % data_dir)
     if os.path.exists(out_dir):
-        raise OSError("Output directory at '%s' already exists." % out_dir)
+        logger.info(f"Output directory at {out_dir} already exists.")
 
 
 def create_view_folders(out_dir, n_splits):
