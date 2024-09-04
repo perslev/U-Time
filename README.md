@@ -328,12 +328,27 @@ We suggest increasing the learning rate (from the current `1e-7` to e.g. `1e-6`)
 
 ## Train on ZMax Datasets
 
-#### Prepare the datasets
 You should take the following steps:
 
 1) Prepare the datasets as specified for each dataset separately in files under the folder `resources/usleep_dataset_pred/zmax` of this repository. These commands will extract and place data into a folder-structure and format that U-Time accepts, as well as split the data into subsets.
-2) Initialize a U-Sleep project: `ut init --name usleep_zmax --model [model_name]`, where `[model_name]` is one of `utime` or `usleep` or `deepsleepnet`.
-7) For each dataset create a configuration file in `hyperparameters/dataset_configurations/` based on the sample conffiguration file `usleep_zmax/hyperparameters/dataset_configurations/dataset_1.yaml`.
+
+2) Initialize a U-Sleep project: 
+```
+ut init --name usleep_zmax \
+        --model [model_name] \
+        --data_dir [path_to_fix_split_directory]`
+```
+where `[model_name]` is one of `utime` or `usleep` or `deepsleepnet`, `[path_to_fix_split_directory]` is the path to the directory containing the split files.
+
+3) This will create `hparams.yaml` which hold the hyperparameters for the training process and `dataset_configurations/zmax.yaml` which for the dataset configuration.
+4) Preprocess the data:
+```
+ut preprocess --out_path data/processed_data.h5 --dataset_splits train_data val_data
+``` 
+5) Train the model:
+```
+ut train --num_gpus=1 --preprocessed --seed 123
+```
 
 ## U-Time Example
 You can still use this repository to train the older U-Time model. 
