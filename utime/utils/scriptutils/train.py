@@ -192,7 +192,6 @@ def get_generators(train_datasets_queues, hparams, val_dataset_queues=None):
     else:
         train_seq = train_seqs[0]
     if val_seq:
-        # assert len(val_seq) == len(train_seqs)
         val_seq = ValidationMultiSequence(val_seq)
     return train_seq, val_seq
 
