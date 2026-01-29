@@ -20,8 +20,10 @@ diverge from the version described in [[2]](#usleep_ref). Earlier versions may b
 - [Installation Guide](#installation-guide)
 - [U-Sleep Demo](#demo)
 - [Full Reproduction of U-Sleep](#full-reproduction-of-u-sleep)
+- [Train on ZMax Datasets](#train-on-zmax-datasets)
 - [U-Time Example](#u-time-example)
-- [U-Time and U-Sleep References](#references)
+- [Weights & Biases Integration](#weights--biases-integration)
+- [References](#references)
 
 
 ## Overview
@@ -91,6 +93,21 @@ Alternatively, you may install the package from [PyPi](https://pypi.org) (may be
 ```
 pip install utime
 ```
+
+### Optional: Weights & Biases (wandb) Integration
+
+To enable experiment tracking with [Weights & Biases](https://wandb.ai), install U-Time with the `wandb` extra:
+
+```bash
+# Install from local repository with wandb support
+pip install U-Time/[wandb]
+
+# Or install wandb separately
+pip install utime
+pip install wandb
+```
+
+See the [Weights & Biases Integration](#weights--biases-integration) section below for usage instructions.
 
 ### Cuda Installation Guide
 
@@ -397,6 +414,211 @@ ut predict --folder_regex '../datasets/sedf_sc/SC400[1-2]E0' \
            --data_per_prediction 384 \
            --one_shot
 </pre>
+
+
+## Weights & Biases Integration
+
+This repo supports optional experiment tracking with [Weights & Biases](https://wandb.ai) (wandb), providing comprehensive logging of training metrics, hyperparameters, system information, and model artifacts.
+
+### Installation
+
+Install wandb support as described in the [Installation Guide](#optional-weights--biases-wandb-integration) above.
+
+### Setup
+
+1. **Create a W&B account** (free for academics): https://wandb.ai/signup
+
+2. **Login to wandb**:
+```bash
+wandb login
+```
+
+3. **Enable wandb in your project** (choose one method):
+
+   **Method A: Edit hyperparameters file** (recommended)
+   ```bash
+   # Edit hyperparameters/hparams.yaml
+   wandb:
+     enabled: true
+     project: "my-sleep-study"
+     entity: "my-team"  # Optional: your wandb team/username
+     tags: ["baseline", "multi-dataset"]
+   ```
+
+   **Method B: Use CLI flags**
+   ```bash
+   ut train --wandb --wandb-project my-sleep-study --num_gpus=1
+   ```
+
+### Training with Wandb
+
+Basic training with wandb enabled:
+```bash
+# Using YAML configuration
+ut train --num_gpus=1 --preprocessed
+
+# Using CLI flags (overrides YAML)
+ut train --wandb --wandb-project u-sleep-experiments --wandb-name baseline-v1 --num_gpus=1
+
+# With tags and grouping for organization
+ut train --wandb \
+         --wandb-project u-sleep-cv \
+         --wandb-group fold-1 \
+         --wandb-tags baseline attention \
+         --num_gpus=1
+
+# Offline mode (sync later with: wandb sync)
+WANDB_MODE=offline ut train --wandb --num_gpus=1
+```
+
+### Evaluation and Prediction with Wandb
+
+Resume an existing wandb run to log evaluation or prediction results:
+
+```bash
+# Evaluate and log results to training run
+ut evaluate --wandb-run-id <run-id> --out_dir eval
+
+# Predict and log statistics to training run
+ut predict --wandb-run-id <run-id> \
+           --data_split test_data \
+           --out_dir predictions
+```
+
+To find your run ID, check the wandb dashboard or training logs.
+
+### What Gets Logged
+
+**During Training:**
+- Training and validation metrics (loss, accuracy, dice, precision, recall)
+- Per-class and per-dataset metrics for multi-dataset training
+- Learning rate, batch size, and optimizer parameters
+- System metrics (GPU utilization, memory usage, CPU)
+- Training time per epoch and total training time
+- Model architecture and hyperparameters
+- Dataset information (sizes, splits, channels)
+- Carbon emissions (if CarbonTracker callback is enabled)
+- Model gradients and parameters (optional, via `watch_model: true`)
+- Model checkpoints as artifacts (optional, via `log_model: true`)
+
+**During Evaluation:**
+- Per-class evaluation metrics (dice, precision, recall)
+- Evaluation results as tables
+- Mean metrics across datasets
+
+**During Prediction:**
+- Number of predictions made
+- Prediction statistics and metadata
+
+### Configuration Options
+
+Edit `hyperparameters/hparams.yaml` to customize wandb behavior:
+
+```yaml
+wandb:
+  enabled: false              # Master switch
+  project: "u-sleep"          # W&B project name
+  entity: null                # W&B team/user (null = use default)
+  name: null                  # Run name (null = auto-generate)
+  group: null                 # Group related runs (e.g., "cv-fold-1")
+  tags: []                    # Tags for organization
+  notes: null                 # Run description
+  log_model: false            # Log model checkpoints as W&B artifacts
+  log_code: true              # Save git info and code snapshot
+  log_freq: "epoch"           # "epoch" or integer for batch-level logging
+  watch_model: true           # Log gradients/parameters with wandb.watch()
+  watch_freq: 100             # How often to log gradients (in batches)
+  save_confusion_matrix: true # Log confusion matrices
+  save_predictions: false     # Log prediction samples (can be large)
+```
+
+### CLI Flags Reference
+
+**Training:**
+- `--wandb` - Enable wandb (overrides YAML `enabled` setting)
+- `--wandb-project <name>` - W&B project name
+- `--wandb-entity <name>` - W&B team/username
+- `--wandb-name <name>` - Run name
+- `--wandb-group <name>` - Group name for related runs
+- `--wandb-tags <tag1> <tag2> ...` - Space-separated tags
+
+**Evaluation & Prediction:**
+- `--wandb-run-id <id>` - Resume existing run for logging
+- `--wandb-project <name>` - W&B project name (if not in resumed run)
+
+### Environment Variables
+
+Wandb respects standard environment variables:
+- `WANDB_API_KEY` - API authentication key
+- `WANDB_MODE` - Set to `offline` for offline logging, `disabled` to disable
+- `WANDB_PROJECT` - Override project from config
+- `WANDB_ENTITY` - Override entity from config
+
+### Tips
+
+1. **Cross-validation experiments**: Use `--wandb-group` to organize folds together
+   ```bash
+   for fold in 1 2 3 4 5; do
+     ut train --wandb --wandb-group cv-experiment-1 --wandb-name fold-${fold} --num_gpus=1
+   done
+   ```
+
+2. **Ablation studies**: Use tags to track different configurations
+   ```bash
+   ut train --wandb --wandb-tags ablation no-augmentation --num_gpus=1
+   ```
+
+3. **Large models**: Enable artifact logging to version checkpoints
+   ```yaml
+   wandb:
+     log_model: true  # in hparams.yaml
+   ```
+
+4. **Debugging**: Use offline mode to avoid network issues
+   ```bash
+   WANDB_MODE=offline ut train --wandb --num_gpus=1
+   wandb sync  # Sync later when ready
+   ```
+
+### Disabling Wandb
+
+Wandb is optional and disabled by default. To ensure it's disabled:
+
+1. Set `wandb.enabled: false` in `hparams.yaml` (default)
+2. Don't use the `--wandb` CLI flag
+3. Or set environment variable: `export WANDB_MODE=disabled`
+
+The code gracefully handles wandb not being installed - training will proceed normally with a warning message.
+
+### Example: Complete Training Session with Wandb
+
+```bash
+# 1. Initialize project
+ut init --name sleep_staging_experiment --model usleep
+
+# 2. Edit hyperparameters/hparams.yaml
+#    Set wandb.enabled: true and configure project name
+
+# 3. Login to wandb
+wandb login
+
+# 4. Train with wandb tracking
+ut train --num_gpus=1 --preprocessed
+
+# 5. Monitor training in real-time at:
+#    https://wandb.ai/<your-entity>/<project-name>
+
+# 6. Evaluate and log results to same run
+#    (get run ID from wandb dashboard or training logs)
+ut evaluate --wandb-run-id <run-id> --out_dir eval --one_shot
+
+# 7. Predict on test set
+ut predict --wandb-run-id <run-id> \
+           --data_split test_data \
+           --out_dir predictions
+```
+
+For more information on Weights & Biases, visit [https://docs.wandb.ai](https://docs.wandb.ai).
 
 
 ## References

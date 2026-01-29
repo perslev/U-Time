@@ -20,6 +20,7 @@ from utime.utils.scriptutils import (assert_project_folder,
                                      with_logging_level_wrapper)
 from utime.evaluation.dataframe import (get_eval_df, add_to_eval_df,
                                         log_eval_df, with_grand_mean_col)
+from utime.utils.wandb_logger import resume_wandb_run, finish_wandb_run, is_wandb_available
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,14 @@ def get_argparser():
                              "output log file for this script. "
                              "Set to an empty string to not save any logs to file for this run. "
                              "Default is 'evaluation_log'")
+    
+    # Weights & Biases (wandb) arguments
+    parser.add_argument("--wandb-run-id", type=str, default=None,
+                        help="W&B run ID to resume and log evaluation results to. "
+                             "If not provided, no W&B logging will be performed.")
+    parser.add_argument("--wandb-project", type=str, default=None,
+                        help="W&B project name (only used with --wandb-run-id)")
+    
     return parser
 
 
@@ -498,6 +507,15 @@ def run(args):
     logger.info(f"Args dump: \n{vars(args)}")
     project_dir = os.path.abspath(Defaults.PROJECT_DIRECTORY)
     assert_project_folder(project_dir, evaluation=True)
+    
+    wandb_run = None
+    if args.wandb_run_id:
+        if not is_wandb_available():
+            logger.warning("wandb not installed. Install with: pip install wandb")
+        else:
+            wandb_run = resume_wandb_run(args.wandb_run_id, args.wandb_project)
+            if wandb_run:
+                logger.info(f"Resumed wandb run: {args.wandb_run_id}")
 
     # Prepare output dir
     out_dir = get_out_dir(args.out_dir, args.data_split)
@@ -554,6 +572,32 @@ def run(args):
                           args=args)
     if len(eval_dirs) > 1:
         cross_dataset_eval(eval_dirs, out_dir)
+    
+    # Log evaluation results to wandb if enabled
+    if wandb_run:
+        try:
+            import wandb
+            # Log evaluation metrics from output directory
+            eval_csv_path = os.path.join(out_dir, "evaluation_dice.csv")
+            if os.path.exists(eval_csv_path):
+                import pandas as pd
+                eval_df = pd.read_csv(eval_csv_path)
+                
+                # Log per-class metrics
+                eval_metrics = {}
+                for col in eval_df.columns:
+                    if col != 'dataset' and col != 'subject_id':
+                        eval_metrics[f"eval/{col}"] = eval_df[col].mean()
+                
+                wandb.log(eval_metrics)
+                logger.info(f"Logged {len(eval_metrics)} evaluation metrics to wandb")
+                
+                # Log evaluation table
+                wandb.log({"eval/results_table": wandb.Table(dataframe=eval_df)})
+            
+            finish_wandb_run()
+        except Exception as e:
+            logger.warning(f"Failed to log evaluation results to wandb: {e}")
 
 
 def entry_func(args=None):

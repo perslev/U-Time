@@ -119,6 +119,23 @@ def get_argparser():
     parser.add_argument("--train_on_val", action="store_true",
                         help="Include the validation set in the training set."
                              " Will force --no_val to be active.")
+    
+    # Weights & Biases (wandb) arguments
+    parser.add_argument("--wandb", action="store_true",
+                        help="Enable Weights & Biases experiment tracking. "
+                             "Overrides wandb.enabled setting in hparams.yaml. "
+                             "Requires: pip install wandb")
+    parser.add_argument("--wandb-project", type=str, default=None,
+                        help="W&B project name (overrides hparams.yaml setting)")
+    parser.add_argument("--wandb-entity", type=str, default=None,
+                        help="W&B entity/team name (overrides hparams.yaml setting)")
+    parser.add_argument("--wandb-name", type=str, default=None,
+                        help="W&B run name (overrides hparams.yaml setting)")
+    parser.add_argument("--wandb-group", type=str, default=None,
+                        help="W&B group name for organizing related runs")
+    parser.add_argument("--wandb-tags", nargs='*', type=str, default=None,
+                        help="W&B tags for the run (space-separated)")
+    
     return parser
 
 
@@ -247,6 +264,45 @@ def run(args):
     hparams.set_group("/build/batch_shape", value=train_seq.batch_shape, overwrite=True)
     hparams.save_current()
 
+    # Initialize Weights & Biases (wandb) if enabled
+    from utime.utils.wandb_logger import (
+        is_wandb_enabled, init_wandb_run, create_wandb_callbacks, finish_wandb_run
+    )
+    
+    wandb_run = None
+    wandb_callbacks = []
+    if is_wandb_enabled(hparams, cli_wandb_flag=args.wandb):
+        try:
+            # Prepare CLI overrides for wandb config
+            cli_overrides = {
+                'project': args.wandb_project,
+                'entity': args.wandb_entity,
+                'name': args.wandb_name,
+                'group': args.wandb_group,
+                'tags': args.wandb_tags,
+            }
+            
+            # Get wandb config from hparams
+            wandb_config = hparams.get('wandb', {})
+            
+            # Initialize wandb run
+            wandb_run = init_wandb_run(
+                config=wandb_config,
+                hparams=hparams,
+                datasets=train_datasets + (val_datasets or []),
+                cli_overrides=cli_overrides
+            )
+            
+            if wandb_run:
+                # Create wandb callbacks (will be added to trainer later)
+                model_dir = Defaults.get_model_dir(project_dir)
+                wandb_callbacks = create_wandb_callbacks(wandb_config, hparams, model_dir)
+                logger.info(f"Wandb enabled: {len(wandb_callbacks)} callback(s) created")
+            
+        except Exception as e:
+            logger.warning(f"Failed to initialize wandb: {e}")
+            logger.info("Continuing training without wandb...")
+
     if args.continue_training:
         # Prepare the project directory for continued training.
         # Please refer to the function docstring for details
@@ -276,13 +332,28 @@ def run(args):
     # Fit the model on a number of samples as specified in args
     samples_pr_epoch = get_samples_per_epoch(train_seq, args.max_train_samples_per_epoch)
 
+    # Prepare fit kwargs and add wandb callbacks if available
+    fit_kwargs = hparams["fit"].copy()
+    if wandb_callbacks:
+        # Prepend wandb callbacks to existing callbacks
+        existing_callbacks = fit_kwargs.get('callbacks', [])
+        fit_kwargs['callbacks'] = wandb_callbacks + existing_callbacks
+        logger.info(f"Added {len(wandb_callbacks)} wandb callback(s) to training")
+
     try:
         _ = trainer.fit(train=train_seq,
                         val=val_seq,
                         train_samples_per_epoch=samples_pr_epoch,
                         max_val_studies_per_dataset=args.max_val_studies_per_dataset,
-                        **hparams["fit"])
+                        **fit_kwargs)
     finally:
+        # Finish wandb run if it was initialized
+        if wandb_run:
+            try:
+                finish_wandb_run()
+            except Exception as e:
+                logger.warning(f"Error finishing wandb run: {e}")
+        
         # Stop loading processes and threads if existing
         if train_study_loader:
             train_study_loader.stop()

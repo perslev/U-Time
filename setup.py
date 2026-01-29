@@ -37,6 +37,9 @@ setup(
        ],
     },
     install_requires=requirements,
+    extras_require={
+        'wandb': ['wandb>=0.16.0'],
+    },
     classifiers=['Environment :: Console',
                  'Operating System :: POSIX',
                  'Programming Language :: Python :: 3.6',

@@ -115,6 +115,14 @@ def get_argparser():
                         help="Specify how to group classes by summing probabilities. A comma-separated list of class mappings"
                              " in format 'source1:target1,source2:target2'. For example, '2:1,3:1' will sum probabilities "
                              "of classes 2 and 3 into class 1.")
+    
+    # Weights & Biases (wandb) arguments
+    parser.add_argument("--wandb-run-id", type=str, default=None,
+                        help="W&B run ID to resume and log prediction statistics to. "
+                             "If not provided, no W&B logging will be performed.")
+    parser.add_argument("--wandb-project", type=str, default=None,
+                        help="W&B project name (only used with --wandb-run-id)")
+    
     return parser
 
 
@@ -501,6 +509,18 @@ def run(args):
     project_dir = os.path.abspath(Defaults.PROJECT_DIRECTORY)
     assert_project_folder(project_dir, evaluation=True)
 
+    # Initialize Weights & Biases if run_id provided
+    from utime.utils.wandb_logger import resume_wandb_run, finish_wandb_run, is_wandb_available
+    
+    wandb_run = None
+    if args.wandb_run_id:
+        if not is_wandb_available():
+            logger.warning("wandb not installed. Install with: pip install wandb")
+        else:
+            wandb_run = resume_wandb_run(args.wandb_run_id, args.wandb_project)
+            if wandb_run:
+                logger.info(f"Resumed wandb run: {args.wandb_run_id}")
+
     # Prepare output dir
     if not args.folder_regex:
         out_dir = get_out_dir(args.out_dir, args.data_split)
@@ -548,6 +568,26 @@ def run(args):
                  hparams=hparams,
                  group_map=group_map,
                  args=args)
+    
+    # Log prediction statistics to wandb if enabled
+    if wandb_run:
+        try:
+            import wandb
+            # Count prediction files
+            pred_files = list(Path(out_dir).rglob("*PRED.npy"))
+            n_predictions = len(pred_files)
+            
+            # Log statistics
+            wandb.log({
+                "predict/n_predictions": n_predictions,
+                "predict/data_split": args.data_split,
+                "predict/output_dir": out_dir
+            })
+            logger.info(f"Logged {n_predictions} prediction(s) to wandb")
+            
+            finish_wandb_run()
+        except Exception as e:
+            logger.warning(f"Failed to log prediction results to wandb: {e}")
 
 
 def entry_func(args=None):
