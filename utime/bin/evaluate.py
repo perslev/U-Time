@@ -86,11 +86,18 @@ def get_argparser():
                              "Default is 'evaluation_log'")
     
     # Weights & Biases (wandb) arguments
+    parser.add_argument("--wandb", action="store_true",
+                        help="Enable W&B logging. Creates a new run for evaluation. "
+                             "Use --wandb-run-id to resume an existing training run instead.")
     parser.add_argument("--wandb-run-id", type=str, default=None,
                         help="W&B run ID to resume and log evaluation results to. "
-                             "If not provided, no W&B logging will be performed.")
+                             "If provided, creates a new evaluation run linked to this training run.")
     parser.add_argument("--wandb-project", type=str, default=None,
-                        help="W&B project name (only used with --wandb-run-id)")
+                        help="W&B project name (default: 'u-time-evaluation')")
+    parser.add_argument("--wandb-name", type=str, default=None,
+                        help="W&B run name (auto-generated if not provided)")
+    parser.add_argument("--wandb-tags", nargs='*', type=str, default=None,
+                        help="W&B tags for the evaluation run (space-separated)")
     
     return parser
 
@@ -509,13 +516,38 @@ def run(args):
     assert_project_folder(project_dir, evaluation=True)
     
     wandb_run = None
-    if args.wandb_run_id:
+    if args.wandb or args.wandb_run_id:
         if not is_wandb_available():
             logger.warning("wandb not installed. Install with: pip install wandb")
         else:
-            wandb_run = resume_wandb_run(args.wandb_run_id, args.wandb_project)
-            if wandb_run:
-                logger.info(f"Resumed wandb run: {args.wandb_run_id}")
+            if args.wandb_run_id:
+                # Resume existing run
+                wandb_run = resume_wandb_run(args.wandb_run_id, args.wandb_project)
+                if wandb_run:
+                    logger.info(f"Resumed wandb run: {args.wandb_run_id}")
+            else:
+                # Create new evaluation run
+                try:
+                    import wandb as wandb_module
+                    project = args.wandb_project or "u-time-evaluation"
+                    run_name = args.wandb_name or f"eval-{args.data_split}"
+                    tags = args.wandb_tags or ["evaluation"]
+                    
+                    wandb_run = wandb_module.init(
+                        project=project,
+                        name=run_name,
+                        tags=tags,
+                        job_type="evaluation",
+                        config={
+                            "data_split": args.data_split,
+                            "one_shot": args.one_shot,
+                            "preprocessed": args.preprocessed
+                        }
+                    )
+                    logger.info(f"Created new wandb evaluation run: {wandb_run.name} (ID: {wandb_run.id})")
+                    logger.info(f"View at: {wandb_run.url}")
+                except Exception as e:
+                    logger.warning(f"Failed to initialize wandb: {e}")
 
     # Prepare output dir
     out_dir = get_out_dir(args.out_dir, args.data_split)

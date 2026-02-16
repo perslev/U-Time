@@ -473,7 +473,7 @@ WANDB_MODE=offline ut train --wandb --num_gpus=1
 
 ### Evaluation and Prediction with Wandb
 
-Resume an existing wandb run to log evaluation or prediction results:
+**Option 1: Resume an existing training run** (link evaluation/prediction to training):
 
 ```bash
 # Evaluate and log results to training run
@@ -486,6 +486,29 @@ ut predict --wandb-run-id <run-id> \
 ```
 
 To find your run ID, check the wandb dashboard or training logs.
+
+**Option 2: Create a new standalone run** (useful for pretrained models):
+
+```bash
+# Evaluate pretrained model with new wandb run
+ut evaluate --wandb \
+            --wandb-project my-evaluation \
+            --wandb-name pretrained-eval \
+            --wandb-tags pretrained baseline \
+            --out_dir eval
+
+# Predict with pretrained model and log to wandb
+ut predict --wandb \
+           --wandb-project my-predictions \
+           --wandb-name pretrained-pred \
+           --data_split test_data \
+           --out_dir predictions
+```
+
+This is especially useful when:
+- Using a pretrained model not trained by you
+- Evaluating a model trained without wandb
+- Running standalone evaluation/prediction experiments
 
 ### What Gets Logged
 
@@ -543,8 +566,11 @@ wandb:
 - `--wandb-tags <tag1> <tag2> ...` - Space-separated tags
 
 **Evaluation & Prediction:**
-- `--wandb-run-id <id>` - Resume existing run for logging
-- `--wandb-project <name>` - W&B project name (if not in resumed run)
+- `--wandb` - Enable wandb (creates new evaluation/prediction run)
+- `--wandb-run-id <id>` - Resume existing run for logging (alternative to --wandb)
+- `--wandb-project <name>` - W&B project name
+- `--wandb-name <name>` - Run name (auto-generated if not provided)
+- `--wandb-tags <tag1> <tag2> ...` - Space-separated tags
 
 ### Environment Variables
 
@@ -578,6 +604,18 @@ Wandb respects standard environment variables:
    ```bash
    WANDB_MODE=offline ut train --wandb --num_gpus=1
    wandb sync  # Sync later when ready
+   ```
+
+5. **Pretrained models**: Evaluate or predict with pretrained models using standalone wandb runs
+   ```bash
+   # Download or obtain a pretrained model
+   # Place it in your project's model/ directory
+   
+   # Evaluate with wandb tracking
+   ut evaluate --wandb \
+               --wandb-project pretrained-evaluation \
+               --wandb-tags pretrained public-model \
+               --out_dir eval
    ```
 
 ### Disabling Wandb
