@@ -668,8 +668,38 @@ def run(args):
     else:
         model = get_and_load_model(project_dir, hparams, args.weights_file_name)
 
+    # Get datasets once (also used for wandb config below)
+    datasets = get_datasets(hparams, args)
+
+    # If wandb enabled, capture a rich config snapshot (args + derived values)
+    if wandb_run:
+        try:
+            import wandb
+            dataset_identifiers = []
+            for ds_tuple in datasets:
+                ds = ds_tuple[0]
+                dataset_identifiers.append(getattr(ds, "identifier", str(ds)))
+
+            wandb.config.update(
+                {
+                    **vars(args),
+                    # Derived / convenient fields
+                    "argmax": (not args.no_argmax),
+                    "project_dir": project_dir,
+                    "hparams_path": Defaults.get_hparams_path(project_dir),
+                    "output_dir": os.path.abspath(out_dir),
+                    "datasets_predicted": dataset_identifiers,
+                    "n_datasets_predicted": len(dataset_identifiers),
+                    "data_per_prediction": hparams["build"].get("data_per_prediction", args.data_per_prediction),
+                    "n_classes": hparams["build"].get("n_classes", None),
+                },
+                allow_val_change=True
+            )
+        except Exception as e:
+            logger.warning(f"Failed to update wandb config with args/derived values: {e}")
+
     # Run pred on all datasets
-    for dataset in get_datasets(hparams, args):
+    for dataset in datasets:
         dataset = dataset[0]
         if "/" in dataset.identifier:
             # Multiple datasets, separate results into sub-folders
@@ -696,10 +726,13 @@ def run(args):
             # Count prediction files
             pred_files = list(Path(out_dir).rglob("*PRED.npy"))
             n_predictions = len(pred_files)
+            true_files = list(Path(out_dir).rglob("*_TRUE.npy"))
+            n_true_files = len(true_files)
             
             # Log statistics
             wandb.log({
                 "predict/n_predictions": n_predictions,
+                "predict/n_true_files": n_true_files,
                 "predict/data_split": args.data_split,
                 "predict/output_dir": out_dir
             })
@@ -720,6 +753,24 @@ def run(args):
                 artifact.add_dir(os.path.abspath(out_dir))
                 wandb_run.log_artifact(artifact)
                 logger.info(f"Logged wandb artifact '{artifact_name}' from {out_dir}")
+
+            # Save true labels as a dedicated artifact when present
+            if n_true_files > 0:
+                true_artifact_name = f"{wandb_run.id}-true-labels"
+                true_artifact = wandb.Artifact(
+                    name=true_artifact_name,
+                    type="labels",
+                    metadata={
+                        "data_split": args.data_split,
+                        "folder_regex": args.folder_regex,
+                        "out_dir": os.path.abspath(out_dir),
+                        "n_true_files": n_true_files
+                    }
+                )
+                for f in true_files:
+                    true_artifact.add_file(str(f))
+                wandb_run.log_artifact(true_artifact)
+                logger.info(f"Logged wandb true-label artifact '{true_artifact_name}' ({n_true_files} file(s))")
             
             finish_wandb_run()
         except Exception as e:
