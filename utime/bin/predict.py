@@ -125,11 +125,48 @@ def get_argparser():
                         help="W&B run ID to resume and log prediction results to. "
                              "If provided, resumes the existing run for logging.")
     parser.add_argument("--wandb-project", type=str, default=None,
-                        help="W&B project name (default: 'u-time-prediction')")
+                        help="W&B project name")
+    parser.add_argument("--wandb-group", type=str, default=None,
+                        help="W&B group name (groups related prediction runs)")
     parser.add_argument("--wandb-name", type=str, default=None,
-                        help="W&B run name (auto-generated if not provided)")
+                        help="W&B run name")
     parser.add_argument("--wandb-tags", nargs='*', type=str, default=None,
                         help="W&B tags for the prediction run (space-separated)")
+    parser.add_argument("--wandb-save-artifact", action="store_true",
+                        help="If set, save prediction outputs as a W&B artifact (uploads the output directory).")
+    parser.add_argument("--wandb-artifact-name", type=str, default=None,
+                        help="Optional W&B artifact name (default: '<run_id>-predictions').")
+    parser.add_argument("--wandb-artifact-type", type=str, default="predictions",
+                        help="W&B artifact type (default: 'predictions').")
+
+    # Optional output structuring arguments
+    parser.add_argument(
+        "--split_study_suffix_to_subdir",
+        action="store_true",
+        help="If set, and a study identifier ends with <sep><suffix> (e.g. '123_LEFT'), "
+             "predictions are saved to '<out_dir>/<suffix>/' and file names use the base id "
+             "(e.g. '123_PRED.npy') instead of the full identifier."
+    )
+    parser.add_argument(
+        "--study_suffixes",
+        nargs="*",
+        type=str,
+        default=["LEFT", "RIGHT"],
+        help="Suffix tokens that trigger --split_study_suffix_to_subdir. "
+             "Matched against the final token after splitting by --study_suffix_sep. "
+             "Default: LEFT RIGHT."
+    )
+    parser.add_argument(
+        "--study_suffix_sep",
+        type=str,
+        default="_",
+        help="Separator used when parsing --study_suffixes from study identifiers. Default: '_'"
+    )
+    parser.add_argument(
+        "--study_suffix_case_sensitive",
+        action="store_true",
+        help="If set, suffix matching for --study_suffixes is case sensitive. Default is case-insensitive."
+    )
     
     return parser
 
@@ -180,6 +217,53 @@ def set_new_notch_filter_settings(dataset_hparams, notch_filter_settings):
     if 'notch_filter_settings' not in dataset_hparams:
         dataset_hparams['notch_filter_settings'] = {}
     dataset_hparams['notch_filter_settings'] = notch_filter_settings
+
+
+def _split_study_identifier_suffix(identifier: str,
+                                  sep: str,
+                                  suffixes,
+                                  case_sensitive: bool):
+    """
+    Split a study identifier like '<base><sep><suffix>' into (base, suffix).
+    Returns (identifier, None) if no match.
+    """
+    if not identifier or not sep or not suffixes:
+        return identifier, None
+    if sep not in identifier:
+        return identifier, None
+
+    base, suffix = identifier.rsplit(sep, 1)
+    if not base or not suffix:
+        return identifier, None
+
+    if case_sensitive:
+        suffix_set = set(suffixes)
+        return (base, suffix) if suffix in suffix_set else (identifier, None)
+    else:
+        suffix_set = {s.lower() for s in suffixes}
+        return (base, suffix) if suffix.lower() in suffix_set else (identifier, None)
+
+
+def get_save_out_dir_and_stem(out_dir: str, identifier: str, args):
+    """
+    Decide where to save outputs and what filename stem to use.
+
+    Important: We do NOT modify sleep_study_pair.identifier, as that may be used
+    internally for data loading (sequencer/dataset keys). This function only
+    affects output structure and file naming.
+    """
+    if not getattr(args, "split_study_suffix_to_subdir", False):
+        return out_dir, identifier
+
+    base, suffix = _split_study_identifier_suffix(
+        identifier=identifier,
+        sep=getattr(args, "study_suffix_sep", "_"),
+        suffixes=getattr(args, "study_suffixes", None),
+        case_sensitive=getattr(args, "study_suffix_case_sensitive", False)
+    )
+    if suffix is None:
+        return out_dir, identifier
+    return os.path.join(out_dir, suffix), base
 
 
 def get_prediction_channel_sets(sleep_study, dataset):
@@ -375,8 +459,12 @@ def group_class_labels(array, group_map):
 
 def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_sets, group_map, args):
     majority_voted = None
-    path_mj = get_save_path(out_dir, sleep_study_pair.identifier + "_PRED.npy", "majority")
-    path_true = get_save_path(out_dir, sleep_study_pair.identifier + "_TRUE.npy", None)
+    save_out_dir, save_stem = get_save_out_dir_and_stem(out_dir, sleep_study_pair.identifier, args)
+    if save_stem != sleep_study_pair.identifier:
+        logger.info(f"Saving outputs for '{sleep_study_pair.identifier}' as '{save_stem}' under '{save_out_dir}'")
+
+    path_mj = get_save_path(save_out_dir, save_stem + "_PRED.npy", "majority")
+    path_true = get_save_path(save_out_dir, save_stem + "_TRUE.npy", None)
     
     with sleep_study_pair.loaded_in_context():
         true = sleep_study_pair.get_all_hypnogram_periods()
@@ -392,8 +480,8 @@ def run_pred_on_pair(sleep_study_pair, seq, model, model_func, out_dir, channel_
     
     for k, (sub_folder_name, channels_to_load) in enumerate(channel_sets):
 
-        path_pred = get_save_path(out_dir, sleep_study_pair.identifier + "_PRED.npy", sub_folder_name)
-        path_weight = get_save_path(out_dir, sleep_study_pair.identifier + "_WEIGHT.npy", sub_folder_name)
+        path_pred = get_save_path(save_out_dir, save_stem + "_PRED.npy", sub_folder_name)
+        path_weight = get_save_path(save_out_dir, save_stem + "_WEIGHT.npy", sub_folder_name)
 
         if channels_to_load:
             logger.info(f" -- Channels: {channels_to_load}")
@@ -534,14 +622,12 @@ def run(args):
                 # Create new prediction run
                 try:
                     import wandb as wandb_module
-                    project = args.wandb_project or "u-time-prediction"
-                    run_name = args.wandb_name or f"pred-{args.data_split if not args.folder_regex else 'custom'}"
-                    tags = args.wandb_tags or ["prediction"]
                     
                     wandb_run = wandb_module.init(
-                        project=project,
-                        name=run_name,
-                        tags=tags,
+                        project=args.wandb_project,
+                        group=args.wandb_group,
+                        name=args.wandb_name,
+                        tags=args.wandb_tags,
                         job_type="prediction",
                         config={
                             "data_split": args.data_split,
@@ -618,6 +704,22 @@ def run(args):
                 "predict/output_dir": out_dir
             })
             logger.info(f"Logged {n_predictions} prediction(s) to wandb")
+
+            if getattr(args, "wandb_save_artifact", False):
+                artifact_name = args.wandb_artifact_name or f"{wandb_run.id}-predictions"
+                artifact = wandb.Artifact(
+                    name=artifact_name,
+                    type=getattr(args, "wandb_artifact_type", "predictions"),
+                    metadata={
+                        "data_split": args.data_split,
+                        "folder_regex": args.folder_regex,
+                        "out_dir": os.path.abspath(out_dir),
+                        "n_predictions": n_predictions
+                    }
+                )
+                artifact.add_dir(os.path.abspath(out_dir))
+                wandb_run.log_artifact(artifact)
+                logger.info(f"Logged wandb artifact '{artifact_name}' from {out_dir}")
             
             finish_wandb_run()
         except Exception as e:
