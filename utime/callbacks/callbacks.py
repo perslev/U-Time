@@ -491,13 +491,14 @@ class WandbCallback(Callback):
     def __init__(self, config, hparams):
         """
         Args:
-            config: Wandb configuration dictionary from hparams['wandb']
+            config: Callback-specific wandb configuration from hparams['wandb']['callbacks']
             hparams: Complete YAMLHParams object for reference
         """
         super().__init__()
         self.config = config
         self.hparams = hparams
         self.wandb_available = False
+        # Get settings from callback-specific config
         self.save_confusion_matrix = config.get('save_confusion_matrix', True)
         self.save_predictions = config.get('save_predictions', False)
         self.watch_model = config.get('watch_model', True)

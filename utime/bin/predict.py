@@ -16,6 +16,11 @@ import json
 from argparse import ArgumentParser
 from utime import Defaults
 from utime.utils.system import find_and_set_gpus
+from utime.utils.scriptutils import (add_logging_file_handler, with_logging_level_wrapper,
+                                     assert_project_folder, get_dataset_from_regex_pattern,
+                                     get_dataset_splits_from_hparams, get_all_dataset_hparams)
+from utime.utils.wandb_logger import resume_wandb_run, finish_wandb_run, is_wandb_available
+from utime.utils.cli_utils import add_wandb_arguments, merge_wandb_args_with_hparams
 from utime.bin.evaluate import (predict_on,
                                 prepare_output_dir, get_and_load_model,
                                 get_and_load_one_shot_model, get_sequencer,
@@ -25,7 +30,6 @@ from psg_utils.io.channels import filter_non_available_channels
 from psg_utils.io.channels.utils import get_channel_group_combinations
 from psg_utils.errors import CouldNotLoadError
 from psg_utils.io.header import extract_header
-from utime.utils.scriptutils import add_logging_file_handler, with_logging_level_wrapper
 
 logger = logging.getLogger(__name__)
 
@@ -117,27 +121,8 @@ def get_argparser():
                              " in format 'source1:target1,source2:target2'. For example, '2:1,3:1' will sum probabilities "
                              "of classes 2 and 3 into class 1.")
     
-    # Weights & Biases (wandb) arguments
-    parser.add_argument("--wandb", action="store_true",
-                        help="Enable W&B logging. Creates a new run for prediction. "
-                             "Use --wandb-run-id to resume an existing training run instead.")
-    parser.add_argument("--wandb-run-id", type=str, default=None,
-                        help="W&B run ID to resume and log prediction results to. "
-                             "If provided, resumes the existing run for logging.")
-    parser.add_argument("--wandb-project", type=str, default=None,
-                        help="W&B project name")
-    parser.add_argument("--wandb-group", type=str, default=None,
-                        help="W&B group name (groups related prediction runs)")
-    parser.add_argument("--wandb-name", type=str, default=None,
-                        help="W&B run name")
-    parser.add_argument("--wandb-tags", nargs='*', type=str, default=None,
-                        help="W&B tags for the prediction run (space-separated)")
-    parser.add_argument("--wandb-save-artifact", action="store_true",
-                        help="If set, save prediction outputs as a W&B artifact (uploads the output directory).")
-    parser.add_argument("--wandb-artifact-name", type=str, default=None,
-                        help="Optional W&B artifact name (default: '<run_id>-predictions').")
-    parser.add_argument("--wandb-artifact-type", type=str, default="predictions",
-                        help="W&B artifact type (default: 'predictions').")
+    # Add wandb arguments using shared utility
+    add_wandb_arguments(parser)
 
     # Optional output structuring arguments
     parser.add_argument(
@@ -301,9 +286,6 @@ def get_prediction_channel_sets(sleep_study, dataset):
 
 
 def get_datasets(hparams, args):
-    from utime.utils.scriptutils import (get_dataset_from_regex_pattern,
-                                         get_dataset_splits_from_hparams,
-                                         get_all_dataset_hparams)
     # Get dictonary of dataset IDs to hparams
     all_dataset_hparams = get_all_dataset_hparams(hparams)
 
@@ -601,12 +583,16 @@ def run(args):
     """
     logger.info(f"Args dump: \n{vars(args)}")
     # Check project folder is valid
-    from utime.utils.scriptutils import assert_project_folder
     project_dir = os.path.abspath(Defaults.PROJECT_DIRECTORY)
     assert_project_folder(project_dir, evaluation=True)
 
-    # Initialize Weights & Biases if run_id provided
-    from utime.utils.wandb_logger import resume_wandb_run, finish_wandb_run, is_wandb_available
+    # Get hyperparameters first (needed for wandb config)
+    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir))
+    hparams["build"]["data_per_prediction"] = args.data_per_prediction
+    
+    # Initialize Weights & Biases if requested
+    # Merge CLI wandb args with hparams
+    wandb_config, cli_overrides = merge_wandb_args_with_hparams(hparams, args)
     
     wandb_run = None
     if args.wandb or args.wandb_run_id:
@@ -615,19 +601,27 @@ def run(args):
         else:
             if args.wandb_run_id:
                 # Resume existing run
-                wandb_run = resume_wandb_run(args.wandb_run_id, args.wandb_project)
+                project = wandb_config.get('project') if cli_overrides.get('project') is None else None
+                wandb_run = resume_wandb_run(args.wandb_run_id, project)
                 if wandb_run:
                     logger.info(f"Resumed wandb run: {args.wandb_run_id}")
             else:
-                # Create new prediction run
+                # Create new prediction run using merged config
                 try:
                     import wandb as wandb_module
+                    project = wandb_config.get('project', 'u-time-prediction')
+                    run_name = wandb_config.get('name') or f"pred-{args.data_split if not args.folder_regex else 'custom'}"
+                    tags = wandb_config.get('tags', [])
+                    if not tags:
+                        tags = ["prediction"]
                     
                     wandb_run = wandb_module.init(
-                        project=args.wandb_project,
-                        group=args.wandb_group,
-                        name=args.wandb_name,
-                        tags=args.wandb_tags,
+                        project=project,
+                        name=run_name,
+                        entity=wandb_config.get('entity'),
+                        tags=tags,
+                        group=wandb_config.get('group'),
+                        notes=wandb_config.get('notes'),
                         job_type="prediction",
                         config={
                             "data_split": args.data_split,
@@ -647,9 +641,6 @@ def run(args):
     else:
         out_dir = args.out_dir
     prepare_output_dir(out_dir, True)
-
-    hparams = YAMLHParams(Defaults.get_hparams_path(project_dir))
-    hparams["build"]["data_per_prediction"] = args.data_per_prediction
     if args.channels:
         hparams["select_channels"] = args.channels
         hparams["channel_sampling_groups"] = None

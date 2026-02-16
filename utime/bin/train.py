@@ -27,6 +27,10 @@ from utime.utils.scriptutils.train import (get_train_and_val_datasets,
                                            remove_previous_session,
                                            get_all_dataset_hparams,
                                            init_default_project_structure)
+from utime.utils.cli_utils import add_wandb_arguments, merge_wandb_args_with_hparams
+from utime.utils.wandb_logger import (
+    is_wandb_enabled, init_wandb_run, create_wandb_callbacks, finish_wandb_run
+)
 from psg_utils.dataset.queue.utils import get_data_queues
 
 logger = logging.getLogger(__name__)
@@ -120,21 +124,8 @@ def get_argparser():
                         help="Include the validation set in the training set."
                              " Will force --no_val to be active.")
     
-    # Weights & Biases (wandb) arguments
-    parser.add_argument("--wandb", action="store_true",
-                        help="Enable Weights & Biases experiment tracking. "
-                             "Overrides wandb.enabled setting in hparams.yaml. "
-                             "Requires: pip install wandb")
-    parser.add_argument("--wandb-project", type=str, default=None,
-                        help="W&B project name (overrides hparams.yaml setting)")
-    parser.add_argument("--wandb-entity", type=str, default=None,
-                        help="W&B entity/team name (overrides hparams.yaml setting)")
-    parser.add_argument("--wandb-name", type=str, default=None,
-                        help="W&B run name (overrides hparams.yaml setting)")
-    parser.add_argument("--wandb-group", type=str, default=None,
-                        help="W&B group name for organizing related runs")
-    parser.add_argument("--wandb-tags", nargs='*', type=str, default=None,
-                        help="W&B tags for the run (space-separated)")
+    # Add wandb arguments using shared utility
+    add_wandb_arguments(parser)
     
     return parser
 
@@ -265,26 +256,14 @@ def run(args):
     hparams.save_current()
 
     # Initialize Weights & Biases (wandb) if enabled
-    from utime.utils.wandb_logger import (
-        is_wandb_enabled, init_wandb_run, create_wandb_callbacks, finish_wandb_run
-    )
-    
     wandb_run = None
     wandb_callbacks = []
+    
+    # Merge CLI args with hparams for wandb config
+    wandb_config, cli_overrides = merge_wandb_args_with_hparams(hparams, args)
+    
     if is_wandb_enabled(hparams, cli_wandb_flag=args.wandb):
         try:
-            # Prepare CLI overrides for wandb config
-            cli_overrides = {
-                'project': args.wandb_project,
-                'entity': args.wandb_entity,
-                'name': args.wandb_name,
-                'group': args.wandb_group,
-                'tags': args.wandb_tags,
-            }
-            
-            # Get wandb config from hparams
-            wandb_config = hparams.get('wandb', {})
-            
             # Initialize wandb run
             wandb_run = init_wandb_run(
                 config=wandb_config,

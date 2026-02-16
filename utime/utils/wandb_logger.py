@@ -8,7 +8,9 @@ graceful degradation when wandb is not installed or not enabled.
 
 import logging
 import os
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -78,11 +80,11 @@ def init_wandb_run(
     """
     Initialize a wandb run with U-Time configuration.
     
-    Merges YAML config with CLI overrides and environment variables.
-    Logs hyperparameters and dataset metadata.
+    Uses only the global wandb config (enabled, project, entity, name, group, tags, notes).
+    Callback-specific config (log_model, watch_model, etc.) is handled separately.
     
     Args:
-        config: Wandb configuration dictionary from YAML
+        config: Wandb configuration dictionary from YAML (uses global settings only)
         hparams: Complete YAMLHParams object
         datasets: Optional list of dataset objects to log metadata
         cli_overrides: Optional dictionary with CLI argument overrides
@@ -97,11 +99,12 @@ def init_wandb_run(
     
     try:
         # Merge configurations (CLI overrides take precedence)
+        # Only use global config, not callback-specific config
         final_config = config.copy()
         if cli_overrides:
             final_config.update({k: v for k, v in cli_overrides.items() if v is not None})
         
-        # Extract wandb.init parameters
+        # Extract wandb.init parameters (global settings only)
         init_params = {
             'project': final_config.get('project', 'u-time'),
             'entity': final_config.get('entity'),
@@ -110,7 +113,7 @@ def init_wandb_run(
             'tags': final_config.get('tags', []),
             'notes': final_config.get('notes'),
             'config': _flatten_hparams(hparams),
-            'save_code': final_config.get('log_code', True),
+            'save_code': final_config.get('save_code', True),  # Global setting for wandb.init
         }
         
         # Remove None values
@@ -298,11 +301,12 @@ def create_wandb_callbacks(
     """
     Factory function to create all wandb callbacks based on configuration.
     
+    Uses callback-specific config from wandb.callbacks section.
     Returns list of initialized wandb callbacks (official + custom).
     Handles graceful degradation if wandb is unavailable.
     
     Args:
-        wandb_config: Wandb configuration dictionary from hparams
+        wandb_config: Wandb configuration dictionary from hparams (including callbacks section)
         hparams: Complete YAMLHParams object
         model_dir: Directory for saving model checkpoints
         
@@ -320,8 +324,11 @@ def create_wandb_callbacks(
     callbacks = []
     
     try:
+        # Get callback-specific config
+        callback_config = wandb_config.get('callbacks', {})
+        
         # 1. Add WandbMetricsLogger for standard metrics
-        log_freq = wandb_config.get('log_freq', 'epoch')
+        log_freq = callback_config.get('log_freq', 'epoch')
         if isinstance(log_freq, int) and log_freq > 0:
             log_freq = 'epoch'  # For compatibility with Keras callback
         
@@ -329,7 +336,7 @@ def create_wandb_callbacks(
         logger.info(f"Added WandbMetricsLogger (log_freq={log_freq})")
         
         # 2. Add WandbModelCheckpoint if model logging is enabled
-        if wandb_config.get('log_model', False):
+        if callback_config.get('log_model', False):
             checkpoint_path = os.path.join(model_dir, "wandb_checkpoint")
             callbacks.append(
                 WandbModelCheckpoint(
@@ -343,9 +350,9 @@ def create_wandb_callbacks(
             )
             logger.info(f"Added WandbModelCheckpoint (path={checkpoint_path})")
         
-        # 3. Add custom U-Time WandbCallback (will be implemented next)
+        # 3. Add custom U-Time WandbCallback
         from utime.callbacks import WandbCallback
-        callbacks.append(WandbCallback(config=wandb_config, hparams=hparams))
+        callbacks.append(WandbCallback(config=callback_config, hparams=hparams))
         logger.info("Added custom U-Time WandbCallback")
         
     except Exception as e:

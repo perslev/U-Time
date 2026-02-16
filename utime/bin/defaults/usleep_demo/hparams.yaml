@@ -103,17 +103,21 @@ fit:
 # Weights & Biases (wandb) experiment tracking configuration
 # wandb is optional - install with: pip install utime[wandb] or pip install wandb
 wandb:
+  # Global settings (used by train, evaluate, predict)
   enabled: false  # Set to true or use --wandb flag to enable experiment tracking
   project: "u-sleep-demo"  # W&B project name
   entity: null  # W&B team/user (null = use default from wandb config)
-  name: null  # Run name (null = auto-generate based on timestamp)
+  name: null  # Run name (null = auto-generated)
   group: null  # Group runs together (e.g., "demo-runs")
   tags: ["demo"]  # List of tags for organizing runs
   notes: "Demo training run with limited data"  # Optional description
-  log_model: false  # Log model checkpoints as W&B artifacts
-  log_code: true  # Save git commit info and code snapshot
-  log_freq: "epoch"  # Logging frequency: "epoch" or integer for batch-level logging
-  watch_model: true  # Use wandb.watch() to log gradients and parameters
-  watch_freq: 100  # How often to log gradients/parameters (in batches)
-  save_confusion_matrix: true  # Log confusion matrices during validation
-  save_predictions: false  # Log sample predictions (can generate large artifacts)
+  save_code: true  # Save git commit info and code snapshot to wandb
+  
+  # Callback-specific settings (only used during training)
+  callbacks:
+    log_model: false  # Log model checkpoints as W&B artifacts
+    log_freq: "epoch"  # Logging frequency: "epoch" or integer for batch-level logging
+    watch_model: true  # Use wandb.watch() to log gradients and parameters
+    watch_freq: 100  # How often to log gradients/parameters (in batches)
+    save_confusion_matrix: true  # Log confusion matrices during validation
+    save_predictions: false  # Log sample predictions (can generate large artifacts)

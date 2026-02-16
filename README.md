@@ -435,19 +435,41 @@ wandb login
 
 3. **Enable wandb in your project** (choose one method):
 
-   **Method A: Edit hyperparameters file** (recommended)
+   **Method A: Edit hyperparameters file**
    ```bash
    # Edit hyperparameters/hparams.yaml
    wandb:
+     # Global settings (used by train, evaluate, predict)
      enabled: true
      project: "my-sleep-study"
      entity: "my-team"  # Optional: your wandb team/username
      tags: ["baseline", "multi-dataset"]
+     save_code: true  # Save git info and code
+     
+     # Callback settings (optional, defaults are usually fine)
+     callbacks:
+       log_model: false  # Set to true to log model checkpoints
+       watch_model: true
    ```
 
    **Method B: Use CLI flags**
    ```bash
+   # CLI flags override hparams.yaml settings
    ut train --wandb --wandb-project my-sleep-study --num_gpus=1
+   
+   # Override multiple settings
+   ut train --wandb \
+            --wandb-project my-project \
+            --wandb-name run-baseline-v1 \
+            --wandb-tags baseline cv-fold-1 \
+            --num_gpus=1
+   ```
+   
+   **Method C: Environment variables**
+   ```bash
+   export WANDB_PROJECT=my-sleep-study
+   export WANDB_ENTITY=my-team
+   ut train --wandb --num_gpus=1
    ```
 
 ### Training with Wandb
@@ -471,7 +493,6 @@ ut train --wandb \
 WANDB_MODE=offline ut train --wandb --num_gpus=1
 ```
 
-### Evaluation and Prediction with Wandb
 
 **Option 1: Resume an existing training run** (link evaluation/prediction to training):
 
@@ -512,26 +533,8 @@ This is especially useful when:
 
 ### What Gets Logged
 
-**During Training:**
-- Training and validation metrics (loss, accuracy, dice, precision, recall)
-- Per-class and per-dataset metrics for multi-dataset training
-- Learning rate, batch size, and optimizer parameters
-- System metrics (GPU utilization, memory usage, CPU)
-- Training time per epoch and total training time
-- Model architecture and hyperparameters
-- Dataset information (sizes, splits, channels)
-- Carbon emissions (if CarbonTracker callback is enabled)
-- Model gradients and parameters (optional, via `watch_model: true`)
-- Model checkpoints as artifacts (optional, via `log_model: true`)
 
-**During Evaluation:**
-- Per-class evaluation metrics (dice, precision, recall)
-- Evaluation results as tables
-- Mean metrics across datasets
-
-**During Prediction:**
-- Number of predictions made
-- Prediction statistics and metadata
+TODO: Update when the PR is ready
 
 ### Configuration Options
 
@@ -539,6 +542,7 @@ Edit `hyperparameters/hparams.yaml` to customize wandb behavior:
 
 ```yaml
 wandb:
+  # Global settings (used by train, evaluate, predict)
   enabled: false              # Master switch
   project: "u-sleep"          # W&B project name
   entity: null                # W&B team/user (null = use default)
@@ -546,31 +550,18 @@ wandb:
   group: null                 # Group related runs (e.g., "cv-fold-1")
   tags: []                    # Tags for organization
   notes: null                 # Run description
-  log_model: false            # Log model checkpoints as W&B artifacts
-  log_code: true              # Save git info and code snapshot
-  log_freq: "epoch"           # "epoch" or integer for batch-level logging
-  watch_model: true           # Log gradients/parameters with wandb.watch()
-  watch_freq: 100             # How often to log gradients (in batches)
-  save_confusion_matrix: true # Log confusion matrices
-  save_predictions: false     # Log prediction samples (can be large)
+  save_code: true             # Save git info and code snapshot
+  
+  # Callback-specific settings (only used during training)
+  callbacks:
+    log_model: false            # Log model checkpoints as W&B artifacts
+    log_freq: "epoch"           # "epoch" or integer for batch-level logging
+    watch_model: true           # Log gradients/parameters with wandb.watch()
+    watch_freq: 100             # How often to log gradients (in batches)
+    save_confusion_matrix: true # Log confusion matrices
+    save_predictions: false     # Log prediction samples (can be large)
 ```
 
-### CLI Flags Reference
-
-**Training:**
-- `--wandb` - Enable wandb (overrides YAML `enabled` setting)
-- `--wandb-project <name>` - W&B project name
-- `--wandb-entity <name>` - W&B team/username
-- `--wandb-name <name>` - Run name
-- `--wandb-group <name>` - Group name for related runs
-- `--wandb-tags <tag1> <tag2> ...` - Space-separated tags
-
-**Evaluation & Prediction:**
-- `--wandb` - Enable wandb (creates new evaluation/prediction run)
-- `--wandb-run-id <id>` - Resume existing run for logging (alternative to --wandb)
-- `--wandb-project <name>` - W&B project name
-- `--wandb-name <name>` - Run name (auto-generated if not provided)
-- `--wandb-tags <tag1> <tag2> ...` - Space-separated tags
 
 ### Environment Variables
 
@@ -594,28 +585,12 @@ Wandb respects standard environment variables:
    ut train --wandb --wandb-tags ablation no-augmentation --num_gpus=1
    ```
 
-3. **Large models**: Enable artifact logging to version checkpoints
-   ```yaml
-   wandb:
-     log_model: true  # in hparams.yaml
-   ```
 
-4. **Debugging**: Use offline mode to avoid network issues
+
+3. **Debugging**: Use offline mode to avoid network issues
    ```bash
    WANDB_MODE=offline ut train --wandb --num_gpus=1
    wandb sync  # Sync later when ready
-   ```
-
-5. **Pretrained models**: Evaluate or predict with pretrained models using standalone wandb runs
-   ```bash
-   # Download or obtain a pretrained model
-   # Place it in your project's model/ directory
-   
-   # Evaluate with wandb tracking
-   ut evaluate --wandb \
-               --wandb-project pretrained-evaluation \
-               --wandb-tags pretrained public-model \
-               --out_dir eval
    ```
 
 ### Disabling Wandb
@@ -628,7 +603,9 @@ Wandb is optional and disabled by default. To ensure it's disabled:
 
 The code gracefully handles wandb not being installed - training will proceed normally with a warning message.
 
-### Example: Complete Training Session with Wandb
+### Example Workflows
+
+**Example 1: Training with wandb (YAML config)**
 
 ```bash
 # 1. Initialize project
@@ -643,16 +620,49 @@ wandb login
 # 4. Train with wandb tracking
 ut train --num_gpus=1 --preprocessed
 
-# 5. Monitor training in real-time at:
-#    https://wandb.ai/<your-entity>/<project-name>
+# 5. Monitor in real-time at: https://wandb.ai/<your-entity>/<project-name>
+```
 
-# 6. Evaluate and log results to same run
-#    (get run ID from wandb dashboard or training logs)
-ut evaluate --wandb-run-id <run-id> --out_dir eval --one_shot
+**Example 2: Quick experiment with CLI flags (no YAML editing)**
 
-# 7. Predict on test set
-ut predict --wandb-run-id <run-id> \
+```bash
+# Train with wandb using CLI overrides
+ut train --wandb \
+         --wandb-project my-quick-experiment \
+         --wandb-name baseline-v1 \
+         --wandb-tags baseline attention \
+         --num_gpus=1
+```
+
+**Example 3: Linked evaluation/prediction (same run as training)**
+
+```bash
+# Get run ID from training logs or wandb dashboard
+RUN_ID="abc123xyz"
+
+# Evaluate and log to training run
+ut evaluate --wandb-run-id $RUN_ID --out_dir eval --one_shot
+
+# Predict and log to training run
+ut predict --wandb-run-id $RUN_ID \
            --data_split test_data \
+           --out_dir predictions
+```
+
+**Example 4: Standalone evaluation/prediction (pretrained model)**
+
+```bash
+# Evaluate pretrained model with new wandb run
+ut evaluate --wandb \
+            --wandb-project pretrained-evaluation \
+            --wandb-name sedf-sc-eval \
+            --wandb-tags pretrained public-model \
+            --out_dir eval
+
+# Predict with pretrained model
+ut predict --wandb \
+           --wandb-project pretrained-predictions \
+           --wandb-tags pretrained \
            --out_dir predictions
 ```
 
