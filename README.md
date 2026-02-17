@@ -433,7 +433,7 @@ Install wandb support as described in the [Installation Guide](#optional-weights
 wandb login
 ```
 
-3. **Enable wandb in your project** (choose one method):
+3. **Use wandb in your project**:
 
    **Method A: Edit hyperparameters file**
    ```bash
@@ -452,7 +452,9 @@ wandb login
        watch_model: true
    ```
 
-   **Method B: Use CLI flags**
+   **Method B: Use CLI flags** (recommended for quick experiments)
+   
+   *Option 1: Create a new run*
    ```bash
    # CLI flags override hparams.yaml settings
    ut train --wandb --wandb-project my-sleep-study --num_gpus=1
@@ -465,6 +467,17 @@ wandb login
             --num_gpus=1
    ```
    
+   *Option 2: Resume an existing run*
+   ```bash
+   # Resume training or continue logging to an existing run
+   ut train --wandb-run-id <run-id> --num_gpus=1
+   
+   # Can also override settings when resuming
+   ut train --wandb-run-id <run-id> \
+            --wandb-name updated-name \
+            --num_gpus=1
+   ```
+   
    **Method C: Environment variables**
    ```bash
    export WANDB_PROJECT=my-sleep-study
@@ -472,67 +485,7 @@ wandb login
    ut train --wandb --num_gpus=1
    ```
 
-### Training with Wandb
-
-Basic training with wandb enabled:
-```bash
-# Using YAML configuration
-ut train --num_gpus=1 --preprocessed
-
-# Using CLI flags (overrides YAML)
-ut train --wandb --wandb-project u-sleep-experiments --wandb-name baseline-v1 --num_gpus=1
-
-# With tags and grouping for organization
-ut train --wandb \
-         --wandb-project u-sleep-cv \
-         --wandb-group fold-1 \
-         --wandb-tags baseline attention \
-         --num_gpus=1
-
-# Offline mode (sync later with: wandb sync)
-WANDB_MODE=offline ut train --wandb --num_gpus=1
-```
-
-
-**Option 1: Resume an existing training run** (link evaluation/prediction to training):
-
-```bash
-# Evaluate and log results to training run
-ut evaluate --wandb-run-id <run-id> --out_dir eval
-
-# Predict and log statistics to training run
-ut predict --wandb-run-id <run-id> \
-           --data_split test_data \
-           --out_dir predictions
-```
-
-To find your run ID, check the wandb dashboard or training logs.
-
-**Option 2: Create a new standalone run** (useful for pretrained models):
-
-```bash
-# Evaluate pretrained model with new wandb run
-ut evaluate --wandb \
-            --wandb-project my-evaluation \
-            --wandb-name pretrained-eval \
-            --wandb-tags pretrained baseline \
-            --out_dir eval
-
-# Predict with pretrained model and log to wandb
-ut predict --wandb \
-           --wandb-project my-predictions \
-           --wandb-name pretrained-pred \
-           --data_split test_data \
-           --out_dir predictions
-```
-
-This is especially useful when:
-- Using a pretrained model not trained by you
-- Evaluating a model trained without wandb
-- Running standalone evaluation/prediction experiments
-
 ### What Gets Logged
-
 
 TODO: Update when the PR is ready
 
@@ -562,7 +515,6 @@ wandb:
     save_predictions: false     # Log prediction samples (can be large)
 ```
 
-
 ### Environment Variables
 
 Wandb respects standard environment variables:
@@ -585,88 +537,11 @@ Wandb respects standard environment variables:
    ut train --wandb --wandb-tags ablation no-augmentation --num_gpus=1
    ```
 
-
-
 3. **Debugging**: Use offline mode to avoid network issues
    ```bash
    WANDB_MODE=offline ut train --wandb --num_gpus=1
    wandb sync  # Sync later when ready
    ```
-
-### Disabling Wandb
-
-Wandb is optional and disabled by default. To ensure it's disabled:
-
-1. Set `wandb.enabled: false` in `hparams.yaml` (default)
-2. Don't use the `--wandb` CLI flag
-3. Or set environment variable: `export WANDB_MODE=disabled`
-
-The code gracefully handles wandb not being installed - training will proceed normally with a warning message.
-
-### Example Workflows
-
-**Example 1: Training with wandb (YAML config)**
-
-```bash
-# 1. Initialize project
-ut init --name sleep_staging_experiment --model usleep
-
-# 2. Edit hyperparameters/hparams.yaml
-#    Set wandb.enabled: true and configure project name
-
-# 3. Login to wandb
-wandb login
-
-# 4. Train with wandb tracking
-ut train --num_gpus=1 --preprocessed
-
-# 5. Monitor in real-time at: https://wandb.ai/<your-entity>/<project-name>
-```
-
-**Example 2: Quick experiment with CLI flags (no YAML editing)**
-
-```bash
-# Train with wandb using CLI overrides
-ut train --wandb \
-         --wandb-project my-quick-experiment \
-         --wandb-name baseline-v1 \
-         --wandb-tags baseline attention \
-         --num_gpus=1
-```
-
-**Example 3: Linked evaluation/prediction (same run as training)**
-
-```bash
-# Get run ID from training logs or wandb dashboard
-RUN_ID="abc123xyz"
-
-# Evaluate and log to training run
-ut evaluate --wandb-run-id $RUN_ID --out_dir eval --one_shot
-
-# Predict and log to training run
-ut predict --wandb-run-id $RUN_ID \
-           --data_split test_data \
-           --out_dir predictions
-```
-
-**Example 4: Standalone evaluation/prediction (pretrained model)**
-
-```bash
-# Evaluate pretrained model with new wandb run
-ut evaluate --wandb \
-            --wandb-project pretrained-evaluation \
-            --wandb-name sedf-sc-eval \
-            --wandb-tags pretrained public-model \
-            --out_dir eval
-
-# Predict with pretrained model
-ut predict --wandb \
-           --wandb-project pretrained-predictions \
-           --wandb-tags pretrained \
-           --out_dir predictions
-```
-
-For more information on Weights & Biases, visit [https://docs.wandb.ai](https://docs.wandb.ai).
 
 
 ## References
