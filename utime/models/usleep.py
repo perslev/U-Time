@@ -49,24 +49,56 @@ class InputReshape(Layer):
 
 
 class OutputReshape(Layer):
-    def __init__(self, n_periods, name=None, **kwargs):
+    def __init__(self, n_periods, dynamic_dpp=False, name=None, **kwargs):
         super(OutputReshape, self).__init__(name=name, **kwargs)
         self.n_periods = n_periods
+        self.dynamic_dpp = dynamic_dpp
 
     def get_config(self):
         config = super().get_config()
         config.update({
-            "n_periods": self.n_periods
+            "n_periods": self.n_periods,
+            "dynamic_dpp": self.dynamic_dpp,
         })
         return config
 
     def call(self, inputs, **kwargs):
         shape = shape_safe(inputs)
+        if self.dynamic_dpp:
+            # With a dynamic prediction frequency the number of predictions per
+            # period is unknown at build time (and 'n_periods' may also be None
+            # for variable-length inputs). Collapse the time/dummy axes into a
+            # single 'n_pred' axis -> [batch, n_pred, n_classes]. The input here
+            # is [batch, n_pred, 1, n_classes].
+            return tf.reshape(inputs, shape=[shape[0], shape[1], inputs.shape[-1]])
         n_pred = int(shape[1] // self.n_periods)
         shape = [shape[0], self.n_periods or shape[1], n_pred, inputs.shape[-1]]
         if n_pred == 1:
             shape.pop(2)
         return tf.reshape(inputs, shape=shape)
+
+
+class DynamicAveragePool(Layer):
+    """
+    Average-pools the time axis into non-overlapping windows whose size is
+    provided at call time as a scalar tensor.
+
+    Functionally equivalent to ``AveragePooling2D((data_per_prediction, 1))``
+    but with the pooling window supplied dynamically, which lets the prediction
+    frequency be chosen at inference time (used for ONNX export). The 4D
+    ``[batch, time, 1, features]`` layout is preserved so the surrounding Conv2D
+    layers do not need to change. Exports to a ``Reshape`` + ``ReduceMean`` pair.
+    """
+    def call(self, inputs, **kwargs):
+        x, data_per_prediction = inputs
+        dpp = tf.reshape(tf.cast(data_per_prediction, tf.int32), [])
+        shape = shape_safe(x)  # [batch, time, 1, features]
+        batch, length = shape[0], shape[1]
+        features = x.shape[-1]
+        n_pred = length // dpp
+        x = tf.reshape(x, shape=tf.stack([batch, n_pred, dpp, features]))
+        x = tf.reduce_mean(x, axis=2)     # [batch, n_pred, features]
+        return tf.expand_dims(x, axis=2)  # [batch, n_pred, 1, features]
 
 
 class PadStartToEvenLength(Layer):
@@ -180,13 +212,22 @@ class USleep(Model):
             raise ValueError("Currently, must use 'same' padding.")
 
         self.dense_classifier_activation = dense_classifier_activation
-        self.data_per_prediction = data_per_prediction or self.input_dims
-        if not isinstance(self.data_per_prediction, (int, np.integer)):
-            raise TypeError("data_per_prediction must be an integer value")
-        if self.input_dims % self.data_per_prediction:
-            raise ValueError("'input_dims' ({}) must be evenly divisible by "
-                             "'data_per_prediction' ({})".format(self.input_dims,
-                                                                 self.data_per_prediction))
+        # A 'data_per_prediction' of -1 marks the value as *dynamic*: instead of
+        # being fixed at build time it is supplied at inference time through an
+        # additional scalar model input. This is used when exporting the model
+        # (e.g. to ONNX) so the prediction frequency can be chosen per call
+        # without rebuilding the graph. See 'init_model' and 'DynamicAveragePool'.
+        self.dynamic_dpp = (data_per_prediction == -1)
+        if self.dynamic_dpp:
+            self.data_per_prediction = None
+        else:
+            self.data_per_prediction = data_per_prediction or self.input_dims
+            if not isinstance(self.data_per_prediction, (int, np.integer)):
+                raise TypeError("data_per_prediction must be an integer value")
+            if self.input_dims % self.data_per_prediction:
+                raise ValueError("'input_dims' ({}) must be evenly divisible by "
+                                 "'data_per_prediction' ({})".format(self.input_dims,
+                                                                     self.data_per_prediction))
 
         # Build model and init base keras Model class
         super().__init__(*self.init_model(name_prefix=name))
@@ -310,9 +351,17 @@ class USleep(Model):
                             activation,
                             regularizer=None,
                             name_prefix="",
+                            data_per_prediction_tensor=None,
                             **other_conv_params):
-        cls = AveragePooling2D((data_per_period, 1),
-                               name="{}average_pool".format(name_prefix))(in_)
+        if data_per_prediction_tensor is not None:
+            # Dynamic prediction frequency (data_per_prediction supplied at
+            # inference time). Equivalent to the AveragePooling2D below.
+            cls = DynamicAveragePool(
+                name="{}average_pool".format(name_prefix)
+            )([in_, data_per_prediction_tensor])
+        else:
+            cls = AveragePooling2D((data_per_period, 1),
+                                   name="{}average_pool".format(name_prefix))(in_)
         out = Conv2D(filters=n_classes,
                      kernel_size=(transition_window, 1),
                      activation=activation,
@@ -329,7 +378,9 @@ class USleep(Model):
                      padding="same",
                      name="{}sequence_conv_out_2".format(name_prefix),
                      **other_conv_params)(out)
-        out = OutputReshape(n_periods=n_periods, name="{}output_reshape".format(name_prefix))(out)
+        out = OutputReshape(n_periods=n_periods,
+                            dynamic_dpp=data_per_prediction_tensor is not None,
+                            name="{}output_reshape".format(name_prefix))(out)
         return out
 
     def init_model(self, inputs=None, name_prefix=""):
@@ -338,7 +389,17 @@ class USleep(Model):
         """
         seq_length = self.n_periods * self.input_dims if self.n_periods else None
         if inputs is None:
-            inputs = Input(shape=[self.n_periods, self.input_dims, self.n_channels])
+            inputs = Input(shape=[self.n_periods, self.input_dims, self.n_channels],
+                           name="signals")
+        model_inputs = [inputs]
+        data_per_prediction_tensor = None
+        if self.dynamic_dpp:
+            # Scalar (rank-0) runtime input giving the number of data points to
+            # average per prediction. batch_shape=() yields a true scalar so the
+            # exported signature accepts a plain integer.
+            data_per_prediction_tensor = Input(batch_shape=(), dtype=tf.int32,
+                                                name="data_per_prediction")
+            model_inputs.append(data_per_prediction_tensor)
         inputs_reshaped = InputReshape(seq_length, self.n_channels)(inputs)
         
         # Apply regularization if not None or 0
@@ -394,9 +455,10 @@ class USleep(Model):
                                        transition_window=self.transition_window,
                                        activation=self.activation,
                                        regularizer=regularizer,
-                                       name_prefix=name_prefix)
+                                       name_prefix=name_prefix,
+                                       data_per_prediction_tensor=data_per_prediction_tensor)
 
-        return [inputs], [out]
+        return model_inputs, [out]
 
     def log(self):
         logger.info(f"\nUSleep Model Summary\n"
