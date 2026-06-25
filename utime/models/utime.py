@@ -364,7 +364,7 @@ class UTime(Model):
 
         if np.any(s1 != s2):
             self.n_crops += 1
-            c = (s1 - s2).astype(np.int)
+            c = (s1 - s2).astype(np.int32)
             cr = np.array([c // 2, c // 2]).flatten()
             cr[self.n_crops % 2] += c % 2
             cropped_node1 = Cropping2D([list(cr), [0, 0]])(node1)
