@@ -90,9 +90,16 @@ def get_parser():
     )
     parser.add_argument(
         "--seed", type=int, default=42,
-        help="Base random seed used for reproducible subject subsampling. "
-             "Each (N, rep) pair derives its seed as base_seed + hash(N, rep). "
-             "Default: 42"
+        help="Base random seed used for reproducible subject subsampling and, "
+             "unless --no_inject_seed, for injecting `ut --seed=<run_seed>` into "
+             "each run's script commands. Default: 42"
+    )
+    parser.add_argument(
+        "--no_inject_seed", action="store_true",
+        help="Do not inject per-run `--seed` into `ut` script commands. "
+             "Subject subsampling still uses the derived run seed. "
+             "Use this to keep any `--seed` already present in the script "
+             "prototype unchanged."
     )
 
     # ---- paths -------------------------------------------------------------
@@ -117,6 +124,8 @@ def get_parser():
         help="Path to a text file listing `ut <command> ...` lines to execute "
              "inside each run folder.  GPU-related flags are stripped and "
              "--force_gpus=<assigned> is injected automatically. "
+             "Unless --no_inject_seed, each run's derived seed is injected as "
+             "`ut --seed=<run_seed>` (replacing any existing --seed). "
              "For the zero-shot condition (N=0) any line whose first token "
              "contains 'train' is automatically skipped. Default: ./script"
     )
@@ -565,19 +574,52 @@ def _parse_script(script_path, gpus, skip_train=False):
     return commands
 
 
-def _run_sub_experiment(run_dir, script_path, gpus, gpu_queue, lock, N):
+def _inject_ut_seed(cmd, seed):
+    """
+    Ensure a top-level ``ut --seed=<seed>`` is present on *cmd*.
+
+    Only modifies commands whose first token is ``ut`` (or a path ending in
+    ``ut``). Any existing ``--seed`` / ``--seed=...`` tokens (and a following
+    value for the space-separated form) are removed before injecting the new
+    flag immediately after ``ut``. Non-``ut`` commands are returned unchanged.
+    """
+    if not cmd:
+        return cmd
+    if os.path.basename(cmd[0]) != "ut":
+        return cmd
+
+    cleaned = []
+    skip_next = False
+    for tok in cmd[1:]:
+        if skip_next:
+            skip_next = False
+            continue
+        if tok == "--seed":
+            skip_next = True
+            continue
+        if tok.startswith("--seed="):
+            continue
+        cleaned.append(tok)
+    return [cmd[0], f"--seed={int(seed)}"] + cleaned
+
+
+def _run_sub_experiment(run_dir, script_path, gpus, gpu_queue, lock, N,
+                        seed=None, inject_seed=True):
     run_label = os.path.relpath(run_dir)
     commands = _parse_script(script_path, gpus, skip_train=(N == 0))
+    if inject_seed and seed is not None:
+        commands = [_inject_ut_seed(c, seed) for c in commands]
 
     orig_dir = os.getcwd()
     os.chdir(run_dir)
 
     lock.acquire()
     sep = "-" * 60
+    seed_info = f"  seed={seed}" if seed is not None else ""
     logger.info(
         f"\n{sep}\n"
         f"[*] Run: {run_label}\n"
-        f"    N={N}  GPUs={gpus}\n"
+        f"    N={N}  GPUs={gpus}{seed_info}\n"
         f"    Commands:\n" +
         "\n".join(f"      ({i+1}) {' '.join(c)}" for i, c in enumerate(commands)) +
         f"\n{sep}"
@@ -870,7 +912,16 @@ def run(args):
             run_dir = os.path.join(out_dir, _run_dir_name(run_info["N"], run_info["rep"]))
             t = Process(
                 target=_run_sub_experiment,
-                args=(run_dir, script_path, gpus, gpu_queue, lock, run_info["N"]),
+                args=(
+                    run_dir,
+                    script_path,
+                    gpus,
+                    gpu_queue,
+                    lock,
+                    run_info["N"],
+                    run_info["seed"],
+                    not args.no_inject_seed,
+                ),
             )
             t.start()
             running_procs.append(t)

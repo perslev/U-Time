@@ -32,6 +32,10 @@ Folder layout under --out_dir:
         ...
 
 Training from scratch (no --pretrained_weights_dir) is the default.
+
+Unless --no_inject_seed is set, each (combo, rep) run injects its derived
+seed as `ut --seed=<run_seed>` into every `ut ...` line of the script
+prototype (replacing any existing --seed on those lines).
 """
 
 import logging
@@ -49,6 +53,7 @@ from utime.utils.scriptutils import add_logging_file_handler
 # Reuse GPU helpers and script parser from the learning curve script
 from utime.bin.learning_curve_experiment import (
     _parse_script,
+    _inject_ut_seed,
     _get_free_gpu_sets,
     _start_gpu_monitor,
     _link_pretrained_weights,
@@ -91,12 +96,18 @@ def get_parser():
         "--num_repeats", type=int, default=1,
         help="Number of independent repeats per hyperparameter combination "
              "(useful when training from scratch with different random seeds). "
-             "Default: 1"
+             "Each repeat gets a distinct derived seed injected into `ut` "
+             "commands unless --no_inject_seed. Default: 1"
     )
     parser.add_argument(
         "--seed", type=int, default=42,
         help="Base random seed. Each (combo, rep) derives its seed for "
-             "deterministic reproducibility. Default: 42"
+             "deterministic reproducibility; that seed is injected as "
+             "`ut --seed=<run_seed>` unless --no_inject_seed. Default: 42"
+    )
+    parser.add_argument(
+        "--no_inject_seed", action="store_true",
+        help="Do not inject per-run `--seed` into `ut` script commands."
     )
 
     # ---- paths -------------------------------------------------------------
@@ -336,19 +347,23 @@ def _setup_run_folder(run_dir, run, hparams_prototype_dir, pretrained_weights_di
 # Command execution
 # ======================================================================
 
-def _run_sub_experiment(run_dir, script_path, gpus, gpu_queue, lock):
+def _run_sub_experiment(run_dir, script_path, gpus, gpu_queue, lock,
+                        seed=None, inject_seed=True):
     run_label = os.path.relpath(run_dir)
     commands = _parse_script(script_path, gpus, skip_train=False)
+    if inject_seed and seed is not None:
+        commands = [_inject_ut_seed(c, seed) for c in commands]
 
     orig_dir = os.getcwd()
     os.chdir(run_dir)
 
     lock.acquire()
     sep = "-" * 60
+    seed_info = f"  seed={seed}" if seed is not None else ""
     logger.info(
         f"\n{sep}\n"
         f"[*] Run: {run_label}\n"
-        f"    GPUs={gpus}\n"
+        f"    GPUs={gpus}{seed_info}\n"
         f"    Commands:\n" +
         "\n".join(f"      ({i+1}) {' '.join(c)}" for i, c in enumerate(commands)) +
         f"\n{sep}"
@@ -423,6 +438,7 @@ def _collect_results(out_dir, run_plan):
                 row = {
                     "combo_name": run["combo_name"],
                     "rep": run["rep"],
+                    "seed": run["seed"],
                     "dataset": rel.split(os.sep)[0] if os.sep in rel else "combined",
                     "overall_metrics_json": metrics_json,
                     "accuracy": overall["accuracy"],
@@ -506,7 +522,7 @@ def run(args):
     logger.info(
         f"\nGrid search plan ({len(run_plan)} total runs):\n" +
         "\n".join(
-            f"  [{i:03d}] {r['combo_name']}  rep={r['rep']:2d}"
+            f"  [{i:03d}] {r['combo_name']}  rep={r['rep']:2d}  seed={r['seed']}"
             for i, r in enumerate(run_plan)
         )
     )
@@ -563,7 +579,15 @@ def run(args):
             run_dir = os.path.join(out_dir, _run_dir_name(run_info["combo_name"], run_info["rep"]))
             t = Process(
                 target=_run_sub_experiment,
-                args=(run_dir, script_path, gpus, gpu_queue, lock),
+                args=(
+                    run_dir,
+                    script_path,
+                    gpus,
+                    gpu_queue,
+                    lock,
+                    run_info["seed"],
+                    not args.no_inject_seed,
+                ),
             )
             t.start()
             running_procs.append(t)
